@@ -59,6 +59,8 @@ qt_add_executable(hyprendfield
     src/activitycontroller.hpp
     src/calendarcontroller.cpp
     src/calendarcontroller.hpp
+    src/focusmodecontroller.cpp
+    src/focusmodecontroller.hpp
     src/clipboardcontroller.cpp
     src/clipboardcontroller.hpp
     src/notescontroller.cpp
@@ -102,6 +104,8 @@ qt_add_qml_module(hyprendfield
         qml/CalendarEventPlate.qml
         qml/CalendarMonthPicker.qml
         qml/CalendarConfirmBar.qml
+        qml/FocusModePage.qml
+        qml/FocusModeButton.qml
         qml/ClipboardPage.qml
         qml/ClipboardCard.qml
         qml/ClipboardGlyph.qml
@@ -274,6 +278,15 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_calendar_tests PRIVATE CALENDAR_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME calendar COMMAND hyprendfield_calendar_tests)
     set_tests_properties(calendar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    qt_add_executable(hyprendfield_focus_mode_tests tests/focus_mode.cpp
+        src/focusmodecontroller.cpp src/focusmodecontroller.hpp)
+    target_include_directories(hyprendfield_focus_mode_tests PRIVATE src)
+    target_link_libraries(hyprendfield_focus_mode_tests PRIVATE Qt6::Quick Qt6::Test)
+    target_compile_definitions(hyprendfield_focus_mode_tests PRIVATE
+        FOCUS_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
+        FOCUS_PREVIEW_PATH="${CMAKE_BINARY_DIR}/focus-mode-preview.png")
+    add_test(NAME focus_mode COMMAND hyprendfield_focus_mode_tests)
+    set_tests_properties(focus_mode PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     qt_add_executable(hyprendfield_clipboard_tests tests/clipboard.cpp tests/clipboard_wayland_server.hpp
         src/clipboardcontroller.cpp src/clipboardcontroller.hpp
         ${WLR_DATA_CONTROL_HEADER} ${WLR_DATA_CONTROL_SOURCE} ${WLR_DATA_CONTROL_SERVER_HEADER})

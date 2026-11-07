@@ -7,6 +7,7 @@
 #include "terminalview.hpp"
 #include "activitycontroller.hpp"
 #include "calendarcontroller.hpp"
+#include "focusmodecontroller.hpp"
 #include "clipboardcontroller.hpp"
 #include "notescontroller.hpp"
 #include "fileshelfcontroller.hpp"
@@ -181,6 +182,7 @@ int main(int argc, char *argv[])
     TerminalSession terminal;
     ActivityController activity;
     CalendarController calendar;
+    FocusModeController focusMode;
     ClipboardController clipboard;
     NotesController notes;
     FileShelfController fileShelf;
@@ -208,6 +210,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("terminalSession"), &terminal);
     engine.rootContext()->setContextProperty(QStringLiteral("activityController"), &activity);
     engine.rootContext()->setContextProperty(QStringLiteral("calendarController"), &calendar);
+    engine.rootContext()->setContextProperty(QStringLiteral("focusModeController"), &focusMode);
     engine.rootContext()->setContextProperty(QStringLiteral("clipboardController"), &clipboard);
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
     engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
@@ -230,6 +233,8 @@ int main(int argc, char *argv[])
     }
 
     controller.setWindow(window);
+    QObject::connect(&application, &QCoreApplication::aboutToQuit,
+                     &focusMode, &FocusModeController::shutdown);
     fileShelf.setWindow(window);
     QObject::connect(&fileShelf, &FileShelfController::externalOpened, &controller, &ApplicationController::hideHud);
     QObject::connect(&fileShelf, &FileShelfController::dragStarted, &controller, &ApplicationController::beginFileDrag);

@@ -282,6 +282,15 @@ Item {
             presented: visible && appController.hudOpen
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        FocusModePage {
+            x: 630
+            y: 198
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "workMode"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
     }
     MenuPlane {
         scene: menu.shell

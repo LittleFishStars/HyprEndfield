@@ -75,7 +75,7 @@ Item {
     Text {
         x: 22
         y: 94
-        text: "WORK MODE"
+        text: "FOCUS MODE"
         color: "#737373"
         font.family: harmonyMedium.name
         font.pixelSize: 12

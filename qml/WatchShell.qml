@@ -102,18 +102,13 @@ Item {
         },
         {
             key: "workMode",
-            label: "工作模式",
+            label: "专注模式",
             icon: "qrc:/assets/icons/work-mode.png"
         },
         {
             key: "calendar",
             label: "日历",
             icon: "qrc:/assets/icons/calendar.png"
-        },
-        {
-            key: "addApp",
-            label: "+ 添加应用",
-            glyph: "addApp"
         }
     ]
 

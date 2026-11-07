@@ -40,8 +40,6 @@ Item {
             return circle(14) + circle(11) + "M12 9L24 16L12 23Z";
         case "volume":
             return "M2 12H8L17 5V27L8 20H2Z";
-        case "addApp":
-            return roundBox(3, 3, 26, 26, 3) + box(7, 7, 18, 18) + "M14 10H18V14H22V18H18V22H14V18H10V14H14Z";
         case "storage":
             return box(12, 2, 8, 8) + box(14.5, 11, 3, 4) + box(5, 15, 22, 3) + box(5, 19, 2, 3) + box(15, 19, 2, 3) + box(25, 19, 2, 3) + box(2, 23, 8, 7) + box(12, 23, 8, 7) + box(22, 23, 8, 7);
         case "activity":
