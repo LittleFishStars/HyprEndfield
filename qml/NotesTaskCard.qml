@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 Item {
@@ -28,7 +29,7 @@ Item {
             strokeWidth: -1
             fillGradient: LinearGradient {
                 x1: 0; y1: 0; x2: card.sideWidth; y2: card.height
-                GradientStop { position: 0; color: card.task.checked ? "#FFFC6B" : "#BEBFBA" }
+                GradientStop { position: 0; color: card.task.checked ? Appearance.accent("#FFFC6B") : "#BEBFBA" }
                 GradientStop { position: 1; color: card.task.checked ? "#D9D300" : "#AFB0AB" }
             }
             PathSvg { path: "M0 0H" + (card.sideWidth - 10) + "L" + card.sideWidth + " 10V" + card.height + "H0Z" }
@@ -37,6 +38,7 @@ Item {
     Rectangle { x: 14; y: 4; width: 21; height: 8; color: card.task.checked ? "#222222" : "#F5F5F2" }
     TextInput {
         id: titleInput; x: 18; y: 13; width: card.bodyWidth - 40; height: 22
+        visible: !Appearance.recording(); readOnly: Appearance.recording()
         text: card.task.text; color: card.task.checked ? "#F2F2F2" : "#151515"
         selectByMouse: true; maximumLength: 60
         font.family: harmonyMedium.name; font.pointSize: 14.5 * 0.75; font.weight: Font.Medium
@@ -46,14 +48,14 @@ Item {
         onActiveFocusChanged: if (!activeFocus && text.trim() && text.trim() !== card.task.text) card.renamed(text)
     }
     Rectangle { x: 18; y: 44; width: 150; height: 3; color: card.task.checked ? "#3F3F3F" : "#A9AAA5" }
-    Rectangle { x: 18; y: 44; width: card.task.checked ? 150 : 1; height: 3; color: card.task.checked ? "#FFFA00" : "#222222"; Behavior on width { NumberAnimation { duration: card.reduceMotion ? 0 : 350 } } }
+    Rectangle { x: 18; y: 44; width: card.task.checked ? 150 : 1; height: 3; color: card.task.checked ? Appearance.accent("#FFFA00") : "#222222"; Behavior on width { NumberAnimation { duration: card.reduceMotion ? 0 : 350 } } }
     Text { x: 178; y: 38; text: card.task.checked ? "1/1" : "0/1"; color: card.task.checked ? "#CFCFCF" : "#666666"; font.family: harmonyBold.name; font.pointSize: 10.5 * 0.75; font.weight: Font.Bold; renderType: Text.CurveRendering }
     Text { x: card.bodyWidth + 8; y: 22; text: "COMPLETED"; visible: card.task.checked; color: "#241F0022"; font.family: harmonyBold.name; font.pixelSize: 28; font.weight: Font.Black; renderType: Text.CurveRendering }
     Rectangle {
         id: status; x: card.width - width - 12; y: 17; width: statusText.width + (card.task.checked ? 43 : 26); height: 26; radius: 13
         color: card.task.checked ? "#282828" : statusPointer.containsMouse ? "#FFFFFF" : "#DCDCDA"
-        NotesGlyph { x: 12; y: 7; width: 12; height: 12; kind: "check"; ink: "#FFFA00"; visible: card.task.checked }
-        Text { id: statusText; x: card.task.checked ? 30 : 13; y: 6; text: card.task.checked ? "已完成" : "进行中"; color: card.task.checked ? "#FFFA00" : "#222222"; font.family: harmonyMedium.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
+        NotesGlyph { x: 12; y: 7; width: 12; height: 12; kind: "check"; ink: Appearance.accent("#FFFA00"); visible: card.task.checked }
+        Text { id: statusText; x: card.task.checked ? 30 : 13; y: 6; text: card.task.checked ? qsTr("已完成") : qsTr("进行中"); color: card.task.checked ? Appearance.accent("#FFFA00") : "#222222"; font.family: harmonyMedium.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
         MouseArea { id: statusPointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: card.toggled() }
     }
     Shape {
@@ -73,5 +75,6 @@ Item {
             }
         }
     }
+    Redaction { x: 18; y: 16; width: Math.min(card.bodyWidth - 40, Math.min(260, Math.max(44, card.task.text.length * 7.2))); height: 16; visible: Appearance.recording() }
     HoverHandler { id: hover }
 }

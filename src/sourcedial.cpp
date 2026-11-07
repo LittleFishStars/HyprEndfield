@@ -1,4 +1,6 @@
 #include "sourcedial.hpp"
+#include "centerlogo.hpp"
+#include <QImageReader>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QJsonArray>
@@ -70,6 +72,9 @@ public:
     void synchronize(QQuickFramebufferObject* item) override
     {
         const auto* dial = static_cast<SourceDial*>(item);
+        if (logo.cacheKey() != dial->logoImage().cacheKey()) {
+            logo = dial->logoImage(); logoDirty = true;
+        }
         if (!dial->animation)
             return;
         const auto p = dial->pose();
@@ -82,6 +87,10 @@ public:
             d.projection = dial->animation->projectSourceGeometry(d.id, phase, time, gyro, ambient);
             d.color = dial->animation->sourceGraphicColor(d.id, phase, time, d.isMesh);
             d.color.setW(d.color.w() * d.opacity);
+            if (!logo.isNull()) {
+                if (d.id.endsWith(":-8595532247694873385")) d.color.setW(0);
+                if (d.id.endsWith(":469684920047201495")) d.projection.scale(float(65. * logo.width() / logo.height() / 300.), 1, 1);
+            }
             const auto material = materials.value(d.material).toObject();
             const auto u = material.value("uniforms").toArray();
             for (int i = 0; i < 80; ++i)
@@ -106,6 +115,21 @@ public:
     {
         if (!initialized)
             initialize();
+        if (logoDirty) {
+            if (textures.contains("__logo")) { const auto texture = textures.take("__logo"); glDeleteTextures(1, &texture); }
+            if (!logo.isNull()) {
+                GLuint texture; glGenTextures(1, &texture); glBindTexture(GL_TEXTURE_2D, texture);
+                const auto pixels = logo.mirrored(false, true);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, pixels.width(), pixels.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.constBits());
+                glGenerateMipmap(GL_TEXTURE_2D);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                textures.insert("__logo", texture);
+            }
+            logoDirty = false;
+        }
         const QSize size = framebufferObject()->size();
         if (!scene || scene->size() != size)
         {
@@ -143,6 +167,7 @@ public:
             if (d.color.w() <= 0)
                 continue;
             const auto m = materials.value(d.material).toObject(), bindings = m.value("textures").toObject();
+            const bool customLogo = !logo.isNull() && d.id.endsWith(":469684920047201495");
             program.setUniformValue("projection", d.projection);
             program.setUniformValue("color", d.color);
             program.setUniformValue("fx", m.value("fx").toBool());
@@ -150,13 +175,13 @@ public:
             const QStringList names { "_MainTex", "_MaskTex", "_DissolveTex" };
             for (int i = 0; i < 3; ++i)
             {
-                const auto id
-                    = i == 0 && !d.texture.isEmpty() ? d.texture : bindings.value(names[i]).toString();
+                const auto id = i == 0 && customLogo ? QString("__logo")
+                    : i == 0 && !d.texture.isEmpty() ? d.texture : bindings.value(names[i]).toString();
                 glActiveTexture(GL_TEXTURE0 + i);
                 glBindTexture(GL_TEXTURE_2D, textures.value(id, textures.value("__white")));
                 glBindSampler(i, 0);
             }
-            const auto mesh = meshes.value(d.mesh);
+            const auto mesh = meshes.value(customLogo ? "__logo" : d.mesh);
             glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices);
             glEnableVertexAttribArray(0);
@@ -249,6 +274,13 @@ private:
             meshes.insert(it.key(), mesh);
         }
         const auto sourceTextures = catalog.value("textures").toObject();
+        // Untrimmed replacement quad; the authored quad uses atlas-specific UVs.
+        const float quad[]{-150, -32.5, 0, 0, 0, -150, 32.5, 0, 0, 1, 150, 32.5, 0, 1, 1, 150, -32.5, 0, 1, 0};
+        const GLuint indices[]{0, 1, 2, 2, 3, 0};
+        Mesh logoMesh; logoMesh.count = 6;
+        glGenBuffers(1, &logoMesh.vertices); glBindBuffer(GL_ARRAY_BUFFER, logoMesh.vertices); glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+        glGenBuffers(1, &logoMesh.indices); glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, logoMesh.indices); glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+        meshes.insert("__logo", logoMesh);
         for (auto it = sourceTextures.begin(); it != sourceTextures.end(); ++it)
         {
             const auto t = it.value().toObject(), sampler = t.value("sampler").toObject();
@@ -310,6 +342,8 @@ private:
     QElapsedTimer clock;
     GLuint vao = 0;
     bool initialized = false;
+    QImage logo;
+    bool logoDirty = false;
 };
 }
 SourceDial::SourceDial(QQuickItem* parent)
@@ -329,4 +363,14 @@ void SourceDial::setPose(const QVariantMap& pose)
     m_pose = pose;
     emit poseChanged();
     update();
+}
+void SourceDial::setLogo(const QUrl &url) {
+    if (m_logo == url) return;
+    m_logo = url;
+    QImageReader reader(url.scheme() == "qrc" ? ':' + url.path() : url.toLocalFile());
+    reader.setAutoTransform(true);
+    const auto size = reader.size();
+    if (size.isValid()) reader.setScaledSize(size.scaled(768, 768, Qt::KeepAspectRatio));
+    m_logoImage = url.isEmpty() ? QImage() : centerLogoArtwork(reader.read());
+    emit logoChanged(); update();
 }

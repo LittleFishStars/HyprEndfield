@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 Item {
@@ -31,8 +32,8 @@ Item {
             strokeWidth: -1
             fillGradient: LinearGradient {
                 x1: 0; y1: 0; x2: control.width; y2: control.height
-                GradientStop { position: 0; color: "#FFFC6B" }
-                GradientStop { position: 0.42; color: "#FFFA00" }
+                GradientStop { position: 0; color: Appearance.accent("#FFFC6B") }
+                GradientStop { position: 0.42; color: Appearance.accent("#FFFA00") }
                 GradientStop { position: 1; color: "#D9D300" }
             }
             PathSvg { path: "M0 0H" + (control.width - 12) + "L" + control.width + " 12V" + control.height + "H0Z" }
@@ -53,7 +54,7 @@ Item {
     Rectangle {
         visible: control.kind === "secondary"
         x: 9; y: 12; width: pointer.containsMouse ? 7 : 4; height: 16
-        color: "#FFFA00"
+        color: Appearance.accent("#FFFA00")
         Behavior on width { NumberAnimation { duration: control.reduceMotion ? 0 : 180; easing.type: Easing.OutCubic } }
     }
 

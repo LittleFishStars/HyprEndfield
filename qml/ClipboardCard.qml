@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD HUDListCard: 58 px row, 10 px top-right chamfer.
@@ -7,6 +8,7 @@ Item {
     required property var entry
     property bool focused: false
     property bool reduceMotion: false
+    readonly property bool redacted: Appearance.recording()
     property string age: ""
     property real liftX: (hover.hovered || focused) ? 3 : 0
     signal copied(string id)
@@ -49,14 +51,14 @@ Item {
         Rectangle { anchors.fill: parent; color: "#1B1B1B" }
         Image {
             id: thumbnailImage
-            x: 0; y: 0; width: 44; height: 35; visible: card.entry.thumbnail !== undefined && card.entry.thumbnail !== ""
+            x: 0; y: 0; width: 44; height: 35; visible: !card.redacted && card.entry.thumbnail !== undefined && card.entry.thumbnail !== ""
             source: visible ? card.entry.thumbnail : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: true
         }
         ClipboardGlyph {
             x: 13; y: 11; width: 18; height: 18
             visible: !thumbnailImage.visible; kind: card.entry.kind === "url" ? "link" : card.entry.kind === "files" ? "file" : card.entry.kind
         }
-        Rectangle { x: 0; y: 35; width: 44; height: 10; color: "#FFFA00" }
+        Rectangle { x: 0; y: 35; width: 44; height: 10; color: Appearance.accent("#FFFA00") }
         Text {
             x: 0; y: 35; width: 44; height: 10; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
             text: card.entry.kind === "url" ? "LINK" : card.entry.kind === "files" ? "FILE" : card.entry.kind.toUpperCase()
@@ -66,12 +68,14 @@ Item {
     }
     Text {
         x: 64; y: 13; width: Math.max(80, card.width - 64 - 80 - 62); height: 17
-        text: card.entry.kind === "image" ? "图片" : card.entry.preview; color: "#1A1A1A"; elide: Text.ElideRight
+        text: card.entry.kind === "image" ? qsTr("图片") : card.entry.preview; color: "#1A1A1A"; elide: Text.ElideRight
+        visible: !card.redacted
         font.family: harmonyMedium.name; font.pointSize: 13.5 * 0.75; font.weight: Font.Medium; renderType: Text.CurveRendering
     }
     Text {
         x: 64; y: 32.9; width: Math.max(80, card.width - 64 - 80 - 62); height: 13
         text: card.entry.meta || ""; color: "#6C6D68"; elide: Text.ElideRight
+        visible: !card.redacted
         font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; renderType: Text.CurveRendering
     }
     Text {
@@ -107,7 +111,7 @@ Item {
                 required property var modelData; required property int index
                 x: index * 30; y: 17; width: 24; height: 24; opacity: modelData.enabled ? 1 : 0.35
                 scale: actionMouse.pressed ? 0.94 : actionHover.hovered ? 1.06 : 1
-                Rectangle { anchors.fill: parent; color: index === 0 && card.entry.pinned ? "#FFFA00" : "#E1E2DD"; border.color: index === 0 && card.entry.pinned ? "transparent" : "#B9BAB5" }
+                Rectangle { anchors.fill: parent; color: index === 0 && card.entry.pinned ? Appearance.accent("#FFFA00") : "#E1E2DD"; border.color: index === 0 && card.entry.pinned ? "transparent" : "#B9BAB5" }
                 ClipboardGlyph { x: 5.5; y: 5.5; width: 13; height: 13; kind: modelData.kind; ink: "#33342F" }
                 HoverHandler { id: actionHover }
                 MouseArea {
@@ -123,11 +127,13 @@ Item {
         transform: Translate { x: hover.hovered || card.focused ? 0 : 6 }
         Behavior on opacity { NumberAnimation { duration: card.reduceMotion ? 0 : 140 } }
         ClipboardGlyph { x: 0; y: 1; width: 14; height: 14; kind: "copy"; ink: "#55564F" }
-        Text { x: 18; width: 44; height: 16; text: "复制"; color: "#55564F"; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Bold; renderType: Text.CurveRendering }
+        Text { x: 18; width: 44; height: 16; text: qsTr("复制"); color: "#55564F"; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Bold; renderType: Text.CurveRendering }
     }
     Shape {
         x: card.width - 14; width: 14; height: 14; visible: card.entry.pinned; preferredRendererType: Shape.CurveRenderer
-        ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M0 0H14V14Z" } }
+        ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M0 0H14V14Z" } }
     }
+    Redaction { x: 64; y: 14; width: Math.min(Math.max(80, card.width - 206), Math.min(260, Math.max(44, (card.entry.preview || "").length * 7.2))); height: 15; visible: card.redacted }
+    Redaction { x: 64; y: 34; width: 96; height: 12; visible: card.redacted }
     HoverHandler { id: hover }
 }

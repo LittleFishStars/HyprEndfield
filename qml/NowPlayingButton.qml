@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD HUDDesignButtons.swift / HUDDesignIcons.swift / NowPlayingPlayButton.
@@ -10,7 +11,7 @@ Item {
     property bool reduceMotion: false
     readonly property bool playButton: kind === "play" || kind === "pause"
     readonly property bool transport: playButton || kind === "previous" || kind === "next"
-    readonly property color ink: playButton || selected ? "#111111" : "#EEEEEE"
+    readonly property color ink: playButton || selected ? Appearance.tone("#111111") : Appearance.tone("#EEEEEE")
     signal triggered()
     width: playButton ? 54 : transport ? 44 : 30
     height: width
@@ -29,9 +30,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: button.transport ? width / 2 : 0
-        color: button.selected ? "#FFFA00" : "#2B2B2B"
+        color: button.selected ? Appearance.accent("#FFFA00") : Appearance.tone("#2B2B2B")
         border.width: button.playButton || button.selected ? 0 : 1
-        border.color: pointer.containsMouse ? "#888888" : "#444444"
+        border.color: pointer.containsMouse ? Appearance.tone("#888888") : Appearance.tone("#444444")
         Behavior on color {
             ColorAnimation { duration: button.reduceMotion ? 0 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 0.1, 0.25, 1, 1, 1] }
         }
@@ -41,9 +42,9 @@ Item {
         gradient: button.playButton ? playGradient : null
         Gradient {
             id: playGradient
-            GradientStop { position: 0; color: "#FFFC6B" }
-            GradientStop { position: 0.5; color: "#FFFA00" }
-            GradientStop { position: 1; color: "#E9CF12" }
+            GradientStop { position: 0; color: Appearance.accent("#FFFC6B") }
+            GradientStop { position: 0.5; color: Appearance.accent("#FFFA00") }
+            GradientStop { position: 1; color: Appearance.accent("#E9CF12") }
         }
         Rectangle {
             anchors.fill: parent

@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 // endfield_menu/player-badge.js. The content is local desktop identity only.
 Item {
@@ -37,12 +38,14 @@ Item {
         y: 8
         width: 195
         text: appController.localUserName
+        visible: !Appearance.recording()
         elide: Text.ElideRight
         font.family: harmonyBold.name
         font.pixelSize: 24
         color: "white"
         renderType: Text.CurveRendering
     }
+    Redaction { x: 120; y: 10; width: 150; height: 26; visible: Appearance.recording() }
     Text {
         x: 120
         y: 37

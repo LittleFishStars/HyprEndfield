@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import "ActivityFormat.js" as Format
 
@@ -20,11 +21,11 @@ Item {
     property bool scrollActive: false
     property int sortRevision: 0
     readonly property var columns: [
-        { key: "name", title: "应用", x: 18, w: 274 },
+        { key: "name", title: qsTr("应用"), x: 18, w: 274 },
         { key: "gpu", title: "GPU", x: 300, w: 60 },
         { key: "cpu", title: "CPU", x: 368, w: 60 },
         { key: "memory", title: "RAM", x: 436, w: 66 },
-        { key: "threads", title: "线程", x: 510, w: 62 }
+        { key: "threads", title: qsTr("线程"), x: 510, w: 62 }
     ]
     function syncDemand() { activityController.applications = presented && requestedTab === 1; activityController.active = presented; }
     function navigate(next, directionHint) {
@@ -66,13 +67,13 @@ Item {
                 model: ["// HUD", "/", "ACTIVITY"]
                 Text {
                     required property string modelData; required property int index
-                    text: modelData; color: index === 2 ? "#E6E6E6" : "#8A8A8A"
+                    text: modelData; color: index === 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A")
                     font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
                 }
             }
         }
         Text {
-            x: 549 - width; y: 1.75; text: "SYS-11"; color: "#8A8A8A"
+            x: 549 - width; y: 1.75; text: "SYS-11"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
         }
         Item {
@@ -83,39 +84,39 @@ Item {
             }
         }
         Text {
-            id: title; y: 20; height: 30; text: "活动监视器"; color: "#F4F4F4"
+            id: title; y: 20; height: 30; text: qsTr("活动监视器"); color: Appearance.tone("#F4F4F4")
             font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08; renderType: Text.CurveRendering
         }
         Text {
-            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "ACTIVITY"; color: "#8A8A8A"
+            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "ACTIVITY"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyMedium.name; font.pixelSize: 13; font.letterSpacing: 2.6; font.weight: Font.Medium; renderType: Text.CurveRendering
         }
         Item {
             y: 60; width: 590; height: 9
             Rectangle { y: 4; width: 590; height: 1; color: "#38FFFFFF" }
-            Rectangle { y: 3; width: 56; height: 3; color: "#FFFA00" }
+            Rectangle { y: 3; width: 56; height: 3; color: Appearance.accent("#FFFA00") }
             Repeater { model: 10; Rectangle { required property int index; x: 454 + index * 9; width: 1; height: 9; color: "#59FFFFFF" } }
-            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: "#151515" }
+            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: Appearance.tone("#151515") }
             Text {
                 id: counter; objectName: "activityCounter"; x: 590 - width; y: -1.5
                 text: activityPage.tab === 0 ? "LIVE" : String(activityPage.apps.length).padStart(2, "0")
-                color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering
+                color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering
             }
         }
     }
     NowPlayingSection {
         page: activityPage; sectionIndex: 0; y: 81; width: 590; height: 34
-        Rectangle { anchors.fill: parent; color: "#1E1E1E"; border.color: "#343434" }
+        Rectangle { anchors.fill: parent; color: Appearance.tone("#1E1E1E"); border.color: Appearance.tone("#343434") }
         Repeater {
             model: ["Q", "E"]
             Rectangle {
                 required property string modelData; required property int index
-                x: index ? 568.5 : 6.5; y: 9.5; width: 15; height: 15; color: "transparent"; border.color: "#6A6A6A"
-                Text { anchors.centerIn: parent; text: parent.modelData; color: "#8A8A8A"; font.family: harmonyBold.name; font.pixelSize: 9; font.weight: Font.Bold; renderType: Text.CurveRendering }
+                x: index ? 568.5 : 6.5; y: 9.5; width: 15; height: 15; color: "transparent"; border.color: Appearance.tone("#6A6A6A")
+                Text { anchors.centerIn: parent; text: parent.modelData; color: Appearance.tone("#8A8A8A"); font.family: harmonyBold.name; font.pixelSize: 9; font.weight: Font.Bold; renderType: Text.CurveRendering }
             }
         }
         Repeater {
-            model: ["概览", "应用"]
+            model: [qsTr("概览"), qsTr("应用")]
             Item {
                 id: tabButton
                 required property string modelData; required property int index
@@ -127,15 +128,15 @@ Item {
                 Behavior on fillAmount { NumberAnimation { duration: activityPage.reduceMotion ? 0 : 200; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter; width: parent.width * tabButton.fillAmount; height: parent.height
-                    gradient: Gradient { GradientStop { position: 0; color: "#FFFC6B" } GradientStop { position: 0.45; color: "#FFFA00" } }
+                    gradient: Gradient { GradientStop { position: 0; color: Appearance.accent("#FFFC6B") } GradientStop { position: 0.45; color: Appearance.accent("#FFFA00") } }
                 }
                 Rectangle {
                     anchors.fill: parent; color: "white"; opacity: !tabButton.selected && pointer.containsMouse ? 0.06 : 0
                     Behavior on opacity { NumberAnimation { duration: activityPage.reduceMotion ? 0 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 0.1, 0.25, 1, 1, 1] } }
                 }
-                Rectangle { x: parent.width * 0.32; y: parent.height + 3; width: parent.width * 0.36; height: 3; color: "#FFFA00"; visible: tabButton.selected }
+                Rectangle { x: parent.width * 0.32; y: parent.height + 3; width: parent.width * 0.36; height: 3; color: Appearance.accent("#FFFA00"); visible: tabButton.selected }
                 Text {
-                    anchors.centerIn: parent; text: tabButton.modelData; color: tabButton.selected ? "#111111" : pointer.containsMouse ? "white" : "#D8D8D8"
+                    anchors.centerIn: parent; text: tabButton.modelData; color: tabButton.selected ? Appearance.tone("#111111") : pointer.containsMouse ? "white" : Appearance.tone("#D8D8D8")
                     font.family: tabButton.selected ? harmonyBold.name : harmonyMedium.name; font.pixelSize: 13; font.letterSpacing: 0.52
                     font.weight: tabButton.selected ? Font.Bold : Font.Medium; renderType: Text.CurveRendering
                 }
@@ -162,7 +163,7 @@ Item {
                     x: 0; y: 8; width: parent.width; height: 10
                     text: modelData.title + (activityPage.activity.sortKey === modelData.key ? (activityPage.activity.descending ? " ▼" : " ▲") : "")
                     horizontalAlignment: modelData.key === "name" ? Text.AlignLeft : Text.AlignRight
-                    color: activityPage.activity.sortKey === modelData.key ? "#FFFA00" : "#8A8A8A"
+                    color: activityPage.activity.sortKey === modelData.key ? Appearance.accent("#FFFA00") : Appearance.tone("#8A8A8A")
                     font.family: harmonyRegular.name; font.pixelSize: 10; font.letterSpacing: 0.8; renderType: Text.CurveRendering
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: activityPage.sort(modelData.key) }
@@ -199,11 +200,11 @@ Item {
                     VolumeRow {
                         width: 584; height: 40; reduceMotion: activityPage.reduceMotion
                         Rectangle {
-                            x: 18; y: 11; width: 20; height: 20; color: "#1B1B1B"; visible: !appRow.entry.icon || appIcon.status === Image.Error
+                            x: 18; y: 11; width: 20; height: 20; color: Appearance.tone("#1B1B1B"); visible: !appRow.entry.icon || appIcon.status === Image.Error
                             Shape {
                                 x: 4; y: 4; width: 12; height: 12; preferredRendererType: Shape.CurveRenderer
-                                ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M1.5 1.5H5V5H1.5ZM7 1.5h3.5V5H7ZM1.5 7H5v3.5H1.5Z" } }
-                                ShapePath { strokeWidth: 1.2; strokeColor: "#FFFA00"; fillColor: "transparent"; PathSvg { path: "M7 7h3.5v3.5H7Z" } }
+                                ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M1.5 1.5H5V5H1.5ZM7 1.5h3.5V5H7ZM1.5 7H5v3.5H1.5Z" } }
+                                ShapePath { strokeWidth: 1.2; strokeColor: Appearance.accent("#FFFA00"); fillColor: "transparent"; PathSvg { path: "M7 7h3.5v3.5H7Z" } }
                             }
                         }
                         Image {
@@ -213,7 +214,7 @@ Item {
                         }
                         Text {
                             x: 46; y: 14.25; width: 246; height: 13.5; text: appRow.entry.name; elide: Text.ElideRight
-                            color: "#121212"; font.family: harmonyMedium.name; font.pointSize: 13.5 * 0.75; font.weight: Font.Medium; renderType: Text.CurveRendering
+                            color: Appearance.tone("#121212"); font.family: harmonyMedium.name; font.pointSize: 13.5 * 0.75; font.weight: Font.Medium; renderType: Text.CurveRendering
                         }
                         Repeater {
                             model: activityPage.columns.slice(1)
@@ -222,7 +223,7 @@ Item {
                                 x: modelData.x; y: 15.25; width: modelData.w; height: 11.5; horizontalAlignment: Text.AlignRight
                                 text: modelData.key === "gpu" || modelData.key === "cpu" ? Format.percent(appRow.entry[modelData.key], false)
                                     : modelData.key === "memory" ? Format.memory(appRow.entry.memory) : Format.valid(appRow.entry.threads) ? String(appRow.entry.threads) : "—"
-                                color: activityPage.activity.sortKey === modelData.key ? "#111111" : "#555555"
+                                color: activityPage.activity.sortKey === modelData.key ? Appearance.tone("#111111") : Appearance.tone("#555555")
                                 font.family: harmonyBold.name; font.pointSize: 11.5 * 0.75; font.weight: Font.Bold; font.features: { "tnum": 1 }; renderType: Text.CurveRendering
                             }
                         }
@@ -232,17 +233,17 @@ Item {
         }
         Item {
             width: 590; height: 250; visible: activityPage.activity.appsReady && activityPage.apps.length === 0; clip: true
-            Rectangle { anchors.fill: parent; color: "transparent"; border.color: "#3A3A3A" }
+            Rectangle { anchors.fill: parent; color: "transparent"; border.color: Appearance.tone("#3A3A3A") }
             Shape {
                 anchors.fill: parent; preferredRendererType: Shape.CurveRenderer
                 ShapePath { strokeWidth: -1; fillColor: Qt.rgba(1, 1, 1, 0.14); PathSvg { path: { let p = ""; for (let x = -250; x < 590; x += 3.5 * Math.SQRT2) p += "M" + x + " 250l250 -250h1.414l-250 250Z"; return p; } } }
             }
             Text {
                 y: 104.25; width: 590; height: 20; horizontalAlignment: Text.AlignHCenter
-                text: "<font color='#FFFA00'>[ </font>NO APP READINGS<font color='#FFFA00'> ]</font>"; textFormat: Text.RichText; color: "#E9E9E9"
+                text: "<font color='#FFFA00'>[ </font>NO APP READINGS<font color='#FFFA00'> ]</font>"; textFormat: Text.RichText; color: Appearance.tone("#E9E9E9")
                 font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering
             }
-            Text { y: 134.25; width: 590; height: 11.5; horizontalAlignment: Text.AlignHCenter; text: "暂无应用读数"; color: "#8A8A8A"; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; font.letterSpacing: 1.38; renderType: Text.CurveRendering }
+            Text { y: 134.25; width: 590; height: 11.5; horizontalAlignment: Text.AlignHCenter; text: qsTr("暂无应用读数"); color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; font.letterSpacing: 1.38; renderType: Text.CurveRendering }
         }
         Item {
             z: 1; anchors.fill: parent
@@ -271,11 +272,11 @@ Item {
                 linger.restart()
             }
             Rectangle {
-                x: 8; width: 4; height: 330; color: "#222222"
+                x: 8; width: 4; height: 330; color: Appearance.tone("#222222")
                 opacity: activityPage.scrollActive || scrollPointer.containsMouse || scrollPointer.pressed ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: activityPage.reduceMotion ? 0 : (activityPage.scrollActive || scrollPointer.containsMouse || scrollPointer.pressed ? 150 : 300); easing.type: Easing.BezierSpline; easing.bezierCurve: activityPage.scrollActive || scrollPointer.containsMouse || scrollPointer.pressed ? [0, 0, 0.58, 1, 1, 1] : [0.42, 0, 1, 1, 1, 1] } }
                 Rectangle {
-                    objectName: "activityScrollThumb"; width: 4; height: scrollStrip.thumbHeight; color: "#FFFA00"
+                    objectName: "activityScrollThumb"; width: 4; height: scrollStrip.thumbHeight; color: Appearance.accent("#FFFA00")
                     y: activityPage.maxAppOffset > 0 ? activityPage.appOffset / activityPage.maxAppOffset * scrollStrip.thumbTravel : 0
                 }
             }

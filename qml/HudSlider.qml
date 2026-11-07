@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 Item {
     id: root
@@ -11,7 +12,9 @@ Item {
     property string valueFormat: "percent"
     property Item bubbleHost: null
     readonly property real trackWidth: Math.max(40, width - 66)
-    readonly property real fraction: maximum > minimum ? Math.max(0, Math.min(1, (value - minimum) / (maximum - minimum))) : 0
+    property real dragValue: value
+    readonly property real shownValue: dragging ? dragValue : value
+    readonly property real fraction: maximum > minimum ? Math.max(0, Math.min(1, (shownValue - minimum) / (maximum - minimum))) : 0
     readonly property real zeroFraction: maximum > minimum && Number.isFinite(zeroValue) ? Math.max(0, Math.min(1, (zeroValue - minimum) / (maximum - minimum))) : 0
     property bool dragging: false
 
@@ -31,6 +34,7 @@ Item {
     function formattedValue(candidate) {
         if (valueFormat === "scale")
             return Number(candidate).toFixed(2) + "×";
+        if (valueFormat === "seconds") return Math.round(candidate) + " s";
         const rounded = Math.round(candidate);
         if (valueFormat === "signedPercent")
             return (rounded > 0 ? "+" : "") + rounded + "%";
@@ -47,7 +51,7 @@ Item {
             return;
         }
         const point = mapToItem(bubbleHost, fraction * trackWidth, 2);
-        bubbleRequested(shown, formattedValue(value), point.x, point.y);
+        bubbleRequested(shown, formattedValue(shownValue), point.x, point.y);
     }
 
     Rectangle {
@@ -69,11 +73,11 @@ Item {
             orientation: Gradient.Horizontal
             GradientStop {
                 position: 0
-                color: "#E9CF12"
+                color: Appearance.accent("#E9CF12")
             }
             GradientStop {
                 position: 1
-                color: "#FFFA00"
+                color: Appearance.accent("#FFFA00")
             }
         }
     }
@@ -126,7 +130,7 @@ Item {
             y: (parent.height - 11) / 2
             width: 2
             height: 11
-            color: "#FFFA00"
+            color: Appearance.accent("#FFFA00")
         }
     }
 
@@ -147,7 +151,7 @@ Item {
         }
         Text {
             renderType: Text.CurveRendering
-            text: root.formattedValue(root.value)
+            text: root.formattedValue(root.shownValue)
             color: "#121212"
             font.family: harmonyMedium.name
             font.pixelSize: 12
@@ -174,20 +178,20 @@ Item {
 
         onPressed: mouse => {
             root.dragging = true;
-            root.value = root.valueAt(mouse.x - 4.5);
-            root.valueModified(root.value, false);
+            root.dragValue = root.valueAt(mouse.x - 4.5);
+            root.valueModified(root.dragValue, false);
             root.reportBubble(true);
         }
         onPositionChanged: mouse => {
             if (!pressed)
                 return;
-            root.value = root.valueAt(mouse.x - 4.5);
-            root.valueModified(root.value, false);
+            root.dragValue = root.valueAt(mouse.x - 4.5);
+            root.valueModified(root.dragValue, false);
             root.reportBubble(true);
         }
         onReleased: {
+            root.valueModified(root.dragValue, true);
             root.dragging = false;
-            root.valueModified(root.value, true);
             root.reportBubble(false);
         }
         onCanceled: {

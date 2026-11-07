@@ -1,403 +1,105 @@
 import QtQuick
-import QtQuick.Window
+import QtQuick.Controls
+import "Appearance.js" as Appearance
 
 Item {
     id: root
-
-    property int languageIndex: 0
-    property int displayIndex: 0
-    property bool launchAtLogin: true
-    property bool closeOnFocusLost: true
+    property var settings: settingsController
+    property string section: "main"
     property string openMenu: ""
-    property var languageOptions: ["跟随系统", "English", "简体中文", "繁體中文", "日本語", "한국어"]
-    property var displayOptions: ["鼠标所在显示器", "主显示器", Screen.name]
-    readonly property string languageValue: languageOptions[languageIndex]
-    readonly property string displayValue: displayOptions[displayIndex]
-
-    signal modulesRequested
-
-    width: 590
-    height: 510
-
-    function resetSettings() {
-        languageIndex = 0;
-        displayIndex = 0;
-        launchAtLogin = true;
-        closeOnFocusLost = true;
-        openMenu = "";
-    }
-
-    Text {
-        renderType: Text.CurveRendering
-        x: 0
-        y: 0
-        height: 14
-        text: "// HUD  /  "
-        color: "#8A8A8A"
-        font.family: harmonyRegular.name
-        font.pixelSize: 11
-        font.letterSpacing: 0.06
-        verticalAlignment: Text.AlignVCenter
-    }
-
-    Text {
-        renderType: Text.CurveRendering
-        x: 69
-        y: 0
-        height: 14
-        text: "SYSTEM"
-        color: "#E6E6E6"
-        font.family: harmonyRegular.name
-        font.pixelSize: 11
-        font.letterSpacing: 0.06
-        verticalAlignment: Text.AlignVCenter
-    }
-
-    Text {
-        renderType: Text.CurveRendering
-        x: 500
-        y: 0
-        width: 49
-        height: 14
-        text: "SYS-01"
-        color: "#8A8A8A"
-        font.family: harmonyRegular.name
-        font.pixelSize: 11
-        font.letterSpacing: 0.06
-        horizontalAlignment: Text.AlignRight
-        verticalAlignment: Text.AlignVCenter
-    }
-
+    property bool confirming: false
+    property string draggedModule: ""
+    property real draggedY: 0
+    property var previewOrder: []
+    property var languageOptions: [qsTr("跟随系统"), "English", "简体中文", "繁體中文", "日本語", "한국어"]
+    readonly property var moduleNames: ({notes: qsTr("便笺"), fileShelf: qsTr("文件暂存架"), clipboard: qsTr("剪贴板"), archive: qsTr("档案库"), nowPlaying: qsTr("当前播放"), volume: qsTr("音量"), reader: qsTr("阅读器"), workMode: qsTr("专注模式"), calendar: qsTr("日历")})
+    readonly property var moduleIcons: ({notes: "notes", fileShelf: "file-shelf", clipboard: "clipboard", archive: "archive", reader: "reader", workMode: "work-mode", calendar: "calendar"})
+    readonly property string moduleCount: (settings.moduleOrder.length - settings.hiddenModules.length) + " / " + settings.moduleOrder.length
+    readonly property int selectedDisplay: settings.displays.findIndex(item => item.id === settings.displayChoice)
+    width: 590; height: 510
+    onVisibleChanged: { openMenu = ""; confirming = false }
+    onConfirmingChanged: if (confirming) forceActiveFocus()
+    onOpenMenuChanged: if (openMenu) forceActiveFocus()
+    Keys.onEscapePressed: event => { if (confirming || openMenu) { confirming = false; openMenu = ""; event.accepted = true; } else event.accepted = false; }
+    SettingsHeader { title: root.section === "main" ? qsTr("系统设置") : qsTr("模块"); english: root.section === "main" ? "SYSTEM" : "MODULES"; crumbs: root.section === "main" ? "SYSTEM" : "SYSTEM / MODULES"; count: root.section === "main" ? "06" : String(root.settings.moduleOrder.length).padStart(2, "0"); back: root.section !== "main"; onBackRequested: root.section = "main" }
     Item {
-        x: 556
-        y: 3.5
-        width: 34
-        height: 7
-        clip: true
-
+        visible: root.section === "main"; y: 81; width: 590; height: 429
+        HudSettingsRow { objectName: "settingLanguage"; title: qsTr("语言"); mode: "dropdown"; value: root.languageOptions[root.settings.languageIndex]; dropdownOpened: root.openMenu === "language"; onActivated: root.openMenu = root.openMenu === "language" ? "" : "language" }
+        HudSettingsRow { objectName: "settingLogin"; y: 56; title: qsTr("登录时启动"); mode: "toggle"; switched: root.settings.launchAtLogin; onToggleRequested: value => root.settings.set("launchAtLogin", value) }
+        HudSettingsRow { objectName: "settingFocus"; y: 112; title: qsTr("失去焦点时关闭"); mode: "toggle"; switched: root.settings.closeOnFocusLost; onToggleRequested: value => root.settings.set("closeOnFocusLost", value) }
+        HudSettingsRow { objectName: "settingDisplay"; y: 168; title: qsTr("显示器"); mode: "dropdown"; value: root.selectedDisplay >= 0 ? root.settings.displays[root.selectedDisplay].title : "—"; dropdownOpened: root.openMenu === "screen"; onActivated: root.openMenu = root.openMenu === "screen" ? "" : "screen" }
+        HudSettingsRow { objectName: "settingModules"; y: 224; title: qsTr("模块"); mode: "nav"; chipText: root.moduleCount; onActivated: root.section = "modules" }
+        HudSettingsRow { objectName: "settingRestore"; y: 280; title: qsTr("恢复默认设置"); mode: "button"; onActivated: root.confirming = true }
+    }
+    Flickable {
+        id: modules; objectName: "settingsModuleList"; visible: root.section === "modules"
+        y: 81; width: 590; height: 429; contentHeight: root.settings.moduleOrder.length * 56 + 50; clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; width: 6 }
         Repeater {
-            model: 12
-
-            Rectangle {
-                required property int index
-                x: index * 3.5 - 7
-                y: -5
-                width: 1
-                height: 18
-                rotation: 45
-                color: "#777777"
-            }
-        }
-    }
-
-    Text {
-        renderType: Text.CurveRendering
-        x: 0
-        y: 18
-        width: 140
-        height: 34
-        text: "系统设置"
-        color: "#F4F4F4"
-        font.family: harmonyBold.name
-        font.pixelSize: 26
-        font.weight: Font.Bold
-        font.letterSpacing: 0.08
-        verticalAlignment: Text.AlignVCenter
-    }
-
-    Text {
-        renderType: Text.CurveRendering
-        x: 151
-        y: 21
-        width: 100
-        height: 29
-        text: "SYSTEM"
-        color: "#8A8A8A"
-        font.family: harmonyMedium.name
-        font.pixelSize: 13
-        font.weight: Font.Medium
-        font.letterSpacing: 0.2
-        verticalAlignment: Text.AlignVCenter
-    }
-
-    Rectangle {
-        x: 0
-        y: 64
-        width: 590
-        height: 1
-        color: "#38FFFFFF"
-    }
-
-    Rectangle {
-        x: 0
-        y: 63
-        width: 56
-        height: 3
-        color: "#FFFA00"
-    }
-
-    Repeater {
-        model: 11
-
-        Rectangle {
-            required property int index
-            x: 454 + index * 9
-            y: 60
-            width: 1
-            height: 9
-            color: "#59FFFFFF"
-        }
-    }
-
-    Rectangle {
-        x: 563
-        y: 58
-        width: 27
-        height: 12
-        color: "#151515"
-
-        Text {
-            renderType: Text.CurveRendering
-            anchors.fill: parent
-            text: "06"
-            color: "#FFFA00"
-            font.family: harmonyBold.name
-            font.pixelSize: 11
-            font.weight: Font.Bold
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-    }
-
-    HudSettingsRow {
-        x: 0
-        y: 81
-        title: "语言"
-        mode: "dropdown"
-        value: root.languageValue
-        dropdownOpened: root.openMenu === "language"
-        onActivated: root.openMenu = root.openMenu === "language" ? "" : "language"
-    }
-
-    HudSettingsRow {
-        x: 0
-        y: 137
-        title: "登录时启动"
-        mode: "toggle"
-        switched: root.launchAtLogin
-        onToggleRequested: value => root.launchAtLogin = value
-    }
-
-    HudSettingsRow {
-        x: 0
-        y: 193
-        title: "失去焦点时关闭"
-        mode: "toggle"
-        switched: root.closeOnFocusLost
-        onToggleRequested: value => root.closeOnFocusLost = value
-    }
-
-    HudSettingsRow {
-        x: 0
-        y: 249
-        title: "显示器"
-        mode: "dropdown"
-        value: root.displayValue
-        dropdownOpened: root.openMenu === "display"
-        onActivated: root.openMenu = root.openMenu === "display" ? "" : "display"
-    }
-
-    HudSettingsRow {
-        x: 0
-        y: 305
-        title: "模块"
-        mode: "nav"
-        chipText: "12 / 12"
-        onActivated: root.modulesRequested()
-    }
-
-    HudSettingsRow {
-        x: 0
-        y: 361
-        title: "恢复默认设置"
-        mode: "button"
-        onActivated: root.resetSettings()
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        visible: root.openMenu.length > 0
-        z: 20
-        onClicked: root.openMenu = ""
-    }
-
-    Item {
-        id: languageMenu
-        visible: root.openMenu === "language"
-        x: 400
-        y: 135
-        width: 178
-        height: root.languageOptions.length * 28 + 8
-        z: 21
-
-        Rectangle {
-            anchors.fill: parent
-            color: "#1A1A1A"
-            border.width: 1
-            border.color: "#3D3D3D"
-        }
-
-        Rectangle {
-            x: 0
-            y: 0
-            width: 10
-            height: 2
-            color: "#D7BC18"
-        }
-        Rectangle {
-            x: 0
-            y: 0
-            width: 2
-            height: 10
-            color: "#D7BC18"
-        }
-
-        Repeater {
-            model: root.languageOptions
-
-            delegate: Item {
-                required property int index
-                required property string modelData
-                x: 4
-                y: 4 + index * 28
-                width: 170
-                height: 28
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: optionPointer.containsMouse ? "#2B2B2B" : "transparent"
-                }
-
-                Rectangle {
-                    x: 9
-                    y: 10
-                    width: 8
-                    height: 8
-                    color: index === root.languageIndex ? "#FFFA00" : "transparent"
-                    border.width: index === root.languageIndex ? 0 : 1
-                    border.color: "#555555"
-                }
-
-                Text {
-                    renderType: Text.CurveRendering
-                    x: 28
-                    y: 0
-                    width: 132
-                    height: 28
-                    text: modelData
-                    color: "#D9D9D9"
-                    font.family: harmonyRegular.name
-                    font.pixelSize: 13
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
-                }
-
+            model: Object.keys(root.moduleNames)
+            delegate: HudSettingsRow {
+                id: moduleRow
+                required property int index; required property string modelData
+                readonly property int orderIndex: root.settings.moduleOrder.indexOf(modelData)
+                objectName: "module-" + modelData
+                y: root.draggedModule === modelData ? root.draggedY : (root.previewOrder.length ? root.previewOrder : root.settings.moduleOrder).indexOf(modelData) * 56
+                z: root.draggedModule === modelData ? 10 : 0
+                Behavior on y { enabled: root.draggedModule !== moduleRow.modelData; NumberAnimation { duration: root.settings.reduceMotion ? 0 : 240; easing.type: Easing.BezierSpline; easing.bezierCurve: [.2, .9, .1, 1, 1, 1] } }
+                width: 580; title: root.moduleNames[modelData] || modelData; titleInset: 74; mode: "toggle"
+                switched: !root.settings.hiddenModules.includes(modelData)
+                toggleEnabled: !switched || root.settings.hiddenModules.length < root.settings.moduleOrder.length - 1
+                onToggleRequested: value => root.settings.showModule(modelData, value)
+                Grid { x: 22; y: 22; columns: 2; rowSpacing: 2; columnSpacing: 2; Repeater { model: 6; Rectangle { width: 2; height: 2; radius: 1; color: "#333333" } } }
+                Image { x: 42; y: 15; width: 24; height: 24; visible: !!root.moduleIcons[moduleRow.modelData]; source: visible ? "qrc:/assets/icons/" + root.moduleIcons[moduleRow.modelData] + ".png" : ""; fillMode: Image.PreserveAspectFit; mipmap: true; opacity: moduleRow.switched ? 1 : .35 }
+                HudGlyph { x: 42; y: 15; width: 24; height: 24; visible: !root.moduleIcons[moduleRow.modelData]; kind: moduleRow.modelData; ink: "#202020"; opacity: moduleRow.switched ? 1 : .35 }
                 MouseArea {
-                    id: optionPointer
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.languageIndex = index;
-                        root.openMenu = "";
+                    x: 8; width: 36; height: 50; cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                    preventStealing: true
+                    property real grabY: 0
+                    onPressed: mouse => { grabY = mouse.y; root.previewOrder = [...root.settings.moduleOrder]; root.draggedY = moduleRow.y; root.draggedModule = moduleRow.modelData; }
+                    onPositionChanged: mouse => {
+                        if (!pressed) return;
+                        const point = mapToItem(modules, mouse.x, mouse.y);
+                        if (point.y < 36) modules.contentY = Math.max(0, modules.contentY - 10);
+                        if (point.y > modules.height - 36) modules.contentY = Math.min(modules.contentHeight - modules.height, modules.contentY + 10);
+                        root.draggedY = Math.max(0, Math.min((root.settings.moduleOrder.length - 1) * 56, mapToItem(modules.contentItem, mouse.x, mouse.y).y - grabY));
+                        let order = [...root.previewOrder]; order.splice(order.indexOf(moduleRow.modelData), 1); order.splice(Math.round(root.draggedY / 56), 0, moduleRow.modelData); root.previewOrder = order;
+                    }
+                    onReleased: mouse => {
+                        root.settings.moveModule(moduleRow.modelData, root.previewOrder.indexOf(moduleRow.modelData)); root.draggedModule = ""; root.previewOrder = [];
+                    }
+                    onCanceled: { root.draggedModule = ""; root.previewOrder = []; }
+                }
+                Repeater {
+                    model: [-1, 1]
+                    Rectangle {
+                        required property int index; required property int modelData
+                        x: 414 + index * 32; y: 12; width: 26; height: 26; color: pointer.containsMouse ? "#ECEDE8" : "#CDCEC9"
+                        enabled: moduleRow.orderIndex + modelData >= 0 && moduleRow.orderIndex + modelData < root.settings.moduleOrder.length; opacity: enabled ? 1 : .35
+                        Text { anchors.centerIn: parent; text: modelData < 0 ? "⌃" : "⌄"; color: "#111111"; font.pixelSize: 18; renderType: Text.CurveRendering }
+                        MouseArea { id: pointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.settings.moveModule(moduleRow.modelData, moduleRow.orderIndex + modelData) }
                     }
                 }
             }
         }
+        HudSettingsRow { y: root.settings.moduleOrder.length * 56; width: 580; title: qsTr("恢复默认布局"); mode: "button"; onActivated: root.confirming = true }
     }
-
-    Item {
-        id: displayMenu
-        visible: root.openMenu === "display"
-        x: 400
-        y: 303
-        width: 178
-        height: root.displayOptions.length * 28 + 8
-        z: 21
-
-        Rectangle {
-            anchors.fill: parent
-            color: "#1A1A1A"
-            border.width: 1
-            border.color: "#3D3D3D"
-        }
-
-        Rectangle {
-            x: 0
-            y: 0
-            width: 10
-            height: 2
-            color: "#D7BC18"
-        }
-        Rectangle {
-            x: 0
-            y: 0
-            width: 2
-            height: 10
-            color: "#D7BC18"
-        }
-
-        Repeater {
-            model: root.displayOptions
-
-            delegate: Item {
-                required property int index
-                required property string modelData
-                x: 4
-                y: 4 + index * 28
-                width: 170
-                height: 28
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: displayPointer.containsMouse ? "#2B2B2B" : "transparent"
-                }
-
-                Rectangle {
-                    x: 9
-                    y: 10
-                    width: 8
-                    height: 8
-                    color: index === root.displayIndex ? "#FFFA00" : "transparent"
-                    border.width: index === root.displayIndex ? 0 : 1
-                    border.color: "#555555"
-                }
-
-                Text {
-                    renderType: Text.CurveRendering
-                    x: 28
-                    y: 0
-                    width: 132
-                    height: 28
-                    text: modelData
-                    color: "#D9D9D9"
-                    font.family: harmonyRegular.name
-                    font.pixelSize: 13
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
-                }
-
-                MouseArea {
-                    id: displayPointer
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.displayIndex = index;
-                        root.openMenu = "";
-                    }
-                }
-            }
-        }
+    MouseArea { anchors.fill: parent; visible: root.openMenu !== ""; z: 20; onClicked: root.openMenu = "" }
+    SettingsMenu {
+        x: 400; y: root.openMenu === "language" ? 125 : 293; z: 21; visible: root.openMenu !== ""
+        entries: root.openMenu === "language" ? root.languageOptions : root.settings.displays
+        selected: root.openMenu === "language" ? root.settings.languageIndex : root.selectedDisplay
+        onChosen: index => { if (root.openMenu === "language") root.settings.set("languageIndex", index); else root.settings.set("displayChoice", root.settings.displays[index].id); root.openMenu = "" }
+    }
+    MouseArea { anchors.fill: parent; z: 24; visible: root.confirming; onClicked: root.confirming = false }
+    ClipboardConfirmBar {
+        z: 25; x: -15; y: 200; visible: root.confirming
+        title: root.section === "main" ? qsTr("恢复默认设置？") : qsTr("恢复默认布局？")
+        message: root.section === "main" ? qsTr("保留便笺、文件与应用快捷方式。") : qsTr("所有模块按原顺序显示。")
+        confirmTitle: qsTr("恢复"); confirmGlyph: "refresh"; accentColor: Appearance.accent("#FFFA00")
+        reduceMotion: root.settings.reduceMotion
+        onAccepted: { if (root.section === "main") root.settings.restoreDefaults(); else root.settings.resetModules(); root.confirming = false }
+        onCancelled: root.confirming = false
     }
 }

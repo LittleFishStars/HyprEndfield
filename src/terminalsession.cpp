@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "terminalsession.hpp"
 
 #include <QDir>
@@ -38,12 +39,12 @@ TerminalSession::TerminalSession(QObject *parent) : QObject(parent)
     connect(&m_process, &QProcess::started, this, [this] { closeSlave(); setStatus(QStringLiteral("BASH")); });
     connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
-            closePty(); setStatus(QStringLiteral("终端启动失败：") + m_process.errorString());
+            closePty(); setStatus(QCoreApplication::translate("HyprEndfield", "终端启动失败：") + m_process.errorString());
         }
     });
     connect(&m_process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus) {
         readPty(); closePty();
-        setStatus(QStringLiteral("会话已结束（%1） · Enter 重新启动").arg(code));
+        setStatus(QCoreApplication::translate("HyprEndfield", "会话已结束（%1） · Enter 重新启动").arg(code));
     });
 }
 
@@ -77,7 +78,7 @@ void TerminalSession::start(const QString &program, const QStringList &arguments
     struct winsize size{};
     size.ws_row = m_rows; size.ws_col = m_columns;
     if (::openpty(&m_master, &m_slave, nullptr, nullptr, &size) < 0) {
-        setStatus(QStringLiteral("无法创建终端：") + QString::fromLocal8Bit(std::strerror(errno))); return;
+        setStatus(QCoreApplication::translate("HyprEndfield", "无法创建终端：") + QString::fromLocal8Bit(std::strerror(errno))); return;
     }
     ::fcntl(m_master, F_SETFD, FD_CLOEXEC); ::fcntl(m_slave, F_SETFD, FD_CLOEXEC);
     ::fcntl(m_master, F_SETFL, ::fcntl(m_master, F_GETFL) | O_NONBLOCK);
@@ -103,7 +104,7 @@ void TerminalSession::start(const QString &program, const QStringList &arguments
     m_writer->setEnabled(false);
     connect(m_writer, &QSocketNotifier::activated, this, &TerminalSession::flushWrite);
     m_process.start(program, arguments);
-    setStatus(QStringLiteral("正在启动…"));
+    setStatus(QCoreApplication::translate("HyprEndfield", "正在启动…"));
     emit screenChanged();
 }
 void TerminalSession::closeSlave()

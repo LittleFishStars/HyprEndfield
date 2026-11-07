@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 Item {
@@ -7,6 +8,11 @@ Item {
     required property string title
     property string mode: "plain"
     property string value: ""
+    property url artwork: ""
+    property string sublabel: ""
+    property real titleInset: 18
+    property bool toggleEnabled: true
+    property string buttonTitle: qsTr("恢复")
     property bool switched: false
     property bool dropdownOpened: false
     property string chipText: ""
@@ -17,7 +23,7 @@ Item {
     property real sliderZero: Number.NaN
     property string sliderFormat: "percent"
     property Item sliderBubbleHost: null
-    property var segmentOptions: ["24 小时制", "12 小时制"]
+    property var segmentOptions: [qsTr("24 小时制"), qsTr("12 小时制")]
     property int segmentIndex: 0
     property var swatchColors: ["#FAD41F", "#6EDFE8", "#A8E58B", "#C9A2FF", "#FF8F78", "custom"]
     property int swatchIndex: 0
@@ -91,7 +97,7 @@ Item {
         y: hoverHandler.hovered ? 5 : 9
         width: 3
         height: hoverHandler.hovered ? 40 : 32
-        color: hoverHandler.hovered ? "#D7BC18" : "#2A2A2A"
+        color: hoverHandler.hovered ? Appearance.accent("#D7BC18") : "#2A2A2A"
 
         Behavior on y {
             NumberAnimation {
@@ -159,8 +165,8 @@ Item {
 
     Text {
         renderType: Text.CurveRendering
-        x: 18
-        y: 16
+        x: root.titleInset
+        y: root.sublabel ? 11 : 16
         width: 350
         height: 24
         text: root.title
@@ -172,6 +178,19 @@ Item {
         elide: Text.ElideRight
     }
 
+    Text {
+        visible: root.sublabel.length > 0
+        x: root.titleInset; y: 33; width: 390; height: 14
+        text: root.sublabel; color: "#6C6D68"; elide: Text.ElideRight
+        font.family: harmonyRegular.name; font.pixelSize: 11; renderType: Text.CurveRendering
+    }
+    Text {
+        visible: root.mode === "value"
+        x: 280; y: 12; width: root.width - 292; height: 26
+        text: "[ " + root.value + " ]"; color: "#151515"; horizontalAlignment: Text.AlignRight
+        elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
+        font.family: harmonyBold.name; font.pixelSize: 12; renderType: Text.CurveRendering
+    }
     Item {
         id: dropdown
         visible: root.mode === "dropdown"
@@ -192,7 +211,7 @@ Item {
             y: root.dropdownOpened || dropdownPointer.containsMouse ? 0 : 15
             width: 2
             height: root.dropdownOpened || dropdownPointer.containsMouse ? 30 : 0
-            color: "#D7BC18"
+            color: Appearance.accent("#D7BC18")
 
             Behavior on y {
                 NumberAnimation {
@@ -213,6 +232,7 @@ Item {
             width: 133
             height: 30
             text: root.value
+            visible: root.artwork.toString() === ""
             color: "#EEEEEE"
             font.family: harmonyMedium.name
             font.pixelSize: 13
@@ -221,6 +241,7 @@ Item {
             elide: Text.ElideRight
         }
 
+        Image { x: 12; y: 7; width: 130; height: 16; visible: root.artwork.toString() !== ""; source: root.artwork; fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true }
         Shape {
             x: 155
             y: 12
@@ -236,7 +257,7 @@ Item {
             }
             ShapePath {
                 strokeWidth: -1
-                fillColor: "#D7BC18"
+                fillColor: Appearance.accent("#D7BC18")
                 PathSvg {
                     path: "M0 0H9L4.5 6Z"
                 }
@@ -254,6 +275,8 @@ Item {
 
     Item {
         id: toggle
+        enabled: root.toggleEnabled
+        opacity: enabled ? 1 : 0.35
         visible: root.mode === "toggle"
         x: 490
         y: 12
@@ -306,7 +329,7 @@ Item {
             y: 2
             width: 42
             height: 22
-            color: root.switched ? "#FFFA00" : "#8E8F8A"
+            color: root.switched ? Appearance.accent("#FFFA00") : "#8E8F8A"
             z: 1
 
             Behavior on x {
@@ -439,7 +462,7 @@ Item {
                     height: 34
                     color: "transparent"
                     border.width: 3
-                    border.color: "#FFFA00"
+                    border.color: Appearance.accent("#FFFA00")
 
                     Rectangle {
                         anchors.fill: parent
@@ -576,7 +599,7 @@ Item {
             y: 7
             width: restorePointer.containsMouse ? 7 : 4
             height: 12
-            color: "#D7BC18"
+            color: Appearance.accent("#D7BC18")
 
             Behavior on width {
                 NumberAnimation {
@@ -605,7 +628,9 @@ Item {
             y: 0
             width: 31
             height: 26
-            text: "恢复"
+            text: root.buttonTitle
+            fontSizeMode: Text.HorizontalFit
+            minimumPixelSize: 7
             color: "#EEEEEE"
             font.family: harmonyBold.name
             font.pixelSize: 11

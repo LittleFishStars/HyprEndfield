@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "archivecontroller.hpp"
 
 #include <QCryptographicHash>
@@ -58,7 +59,7 @@ QString uuid() { return QUuid::createUuid().toString(QUuid::WithoutBraces).toUpp
 
 QString secretError(GError *error)
 {
-    if (!error) return QStringLiteral("系统密钥服务没有返回原因。");
+    if (!error) return QCoreApplication::translate("HyprEndfield", "系统密钥服务没有返回原因。");
     const QString message = QString::fromUtf8(error->message);
     g_error_free(error);
     return message;
@@ -207,7 +208,7 @@ int pamConversation(int count, const pam_message **messages, pam_response **resp
 QVariantMap authenticateWithPam(QByteArray password)
 {
     const passwd *user = getpwuid(geteuid());
-    if (!user || !user->pw_name) return {{"ok", false}, {"message", QStringLiteral("无法确定当前 Linux 用户。")}};
+    if (!user || !user->pw_name) return {{"ok", false}, {"message", QCoreApplication::translate("HyprEndfield", "无法确定当前 Linux 用户。")}};
     PamConversationData data{password};
     pam_conv conversation{pamConversation, &data};
     pam_handle_t *handle = nullptr;
@@ -275,7 +276,7 @@ bool ArchiveController::exec(const QString &statement)
 
 void ArchiveController::load()
 {
-    if (!QDir().mkpath(m_directory)) { m_error = QStringLiteral("无法创建档案库目录。"); emit stateChanged(); return; }
+    if (!QDir().mkpath(m_directory)) { m_error = QCoreApplication::translate("HyprEndfield", "无法创建档案库目录。"); emit stateChanged(); return; }
     m_database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connectionName);
     m_database.setDatabaseName(m_path);
     if (!m_database.open()) { m_error = m_database.lastError().text(); emit stateChanged(); return; }
@@ -294,7 +295,7 @@ bool ArchiveController::createSchema()
     if (!ok || !m_database.commit()) { m_database.rollback(); if (m_error.isEmpty()) m_error = m_database.lastError().text(); return false; }
     QSqlQuery version(m_database); version.exec(QStringLiteral("PRAGMA user_version"));
     if (!version.next() || (version.value(0).toInt() != 0 && version.value(0).toInt() != 2 && version.value(0).toInt() != 3)) {
-        m_error = QStringLiteral("档案库数据库版本无法识别，原文件保持不变。"); return false;
+        m_error = QCoreApplication::translate("HyprEndfield", "档案库数据库版本无法识别，原文件保持不变。"); return false;
     }
     return true;
 }
@@ -305,10 +306,10 @@ bool ArchiveController::loadRows()
     if (!categories.exec(QStringLiteral("SELECT id,name,created,viewed FROM categories ORDER BY created,id"))) { m_error = categories.lastError().text(); return false; }
     while (categories.next()) {
         Category category{categories.value(0).toString(), categories.value(1).toString(), categories.value(2).toLongLong(), categories.value(3).toBool()};
-        if (category.id.isEmpty() || normalizedCategoryName(category.name).isEmpty() || category.name.size() > 80) { m_error = QStringLiteral("档案库含有无效分类，原文件保持不变。"); return false; }
+        if (category.id.isEmpty() || normalizedCategoryName(category.name).isEmpty() || category.name.size() > 80) { m_error = QCoreApplication::translate("HyprEndfield", "档案库含有无效分类，原文件保持不变。"); return false; }
         m_categories.append(category);
     }
-    if (m_categories.size() > maximumCategories) { m_error = QStringLiteral("档案库分类数量超过上限。"); return false; }
+    if (m_categories.size() > maximumCategories) { m_error = QCoreApplication::translate("HyprEndfield", "档案库分类数量超过上限。"); return false; }
     QSqlQuery entries(m_database);
     if (!entries.exec(QStringLiteral("SELECT id,title,date,modified,payload,categoryID,classification FROM entries ORDER BY date DESC,id"))) { m_error = entries.lastError().text(); return false; }
     while (entries.next()) {
@@ -316,11 +317,11 @@ bool ArchiveController::loadRows()
         entry.date = entries.value(2).toLongLong(); entry.modified = entries.value(3).toLongLong();
         entry.categoryId = entries.value(5).toString(); entry.keyId = entries.value(6).toString();
         if (entry.id.isEmpty() || entry.title.size() > 200 || !parsePayload(entries.value(4).toByteArray(), entry)) {
-            m_error = QStringLiteral("档案库含有无效文档，原文件保持不变。"); return false;
+            m_error = QCoreApplication::translate("HyprEndfield", "档案库含有无效文档，原文件保持不变。"); return false;
         }
         m_entries.append(entry);
     }
-    if (m_entries.size() > maximumDocuments) { m_error = QStringLiteral("档案库文档数量超过上限。"); return false; }
+    if (m_entries.size() > maximumDocuments) { m_error = QCoreApplication::translate("HyprEndfield", "档案库文档数量超过上限。"); return false; }
     QSqlQuery state(m_database);
     if (!state.exec(QStringLiteral("SELECT key,value FROM state"))) { m_error = state.lastError().text(); return false; }
     while (state.next()) {
@@ -393,10 +394,10 @@ QList<int> ArchiveController::redactionWidths(const QString &body)
 QVariantMap ArchiveController::state() const
 {
     QVariantList categories;
-    categories.append(QVariantMap{{"id", "all"}, {"name", QStringLiteral("全部")}, {"count", m_entries.size()}, {"isNew", false}});
+    categories.append(QVariantMap{{"id", "all"}, {"name", QCoreApplication::translate("HyprEndfield", "全部")}, {"count", m_entries.size()}, {"isNew", false}});
     int uncategorized = 0;
     for (const auto &entry : m_entries) if (entry.categoryId.isEmpty()) ++uncategorized;
-    categories.append(QVariantMap{{"id", "uncategorized"}, {"name", QStringLiteral("未分类")}, {"count", uncategorized}, {"isNew", false}});
+    categories.append(QVariantMap{{"id", "uncategorized"}, {"name", QCoreApplication::translate("HyprEndfield", "未分类")}, {"count", uncategorized}, {"isNew", false}});
     for (const auto &category : m_categories) {
         int count = 0; for (const auto &entry : m_entries) if (entry.categoryId == category.id) ++count;
         categories.append(categoryMap(category, count));
@@ -411,7 +412,7 @@ QVariantMap ArchiveController::state() const
         const QVariant thumbnail = !classified && !entry.media.isEmpty() && mediaStillAvailable(entry.media.constFirst())
             ? QVariant(QUrl(QStringLiteral("image://archive-thumbnails/") + QString::fromLatin1(entry.media.constFirst().path.toUtf8().toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals))))
             : QVariant();
-        entries.append(QVariantMap{{"id", entry.id}, {"title", classified ? QStringLiteral("[ 机密 ]") : entry.title},
+        entries.append(QVariantMap{{"id", entry.id}, {"title", classified ? QCoreApplication::translate("HyprEndfield", "[ 机密 ]") : entry.title},
             {"number", number}, {"date", dateLabel(entry.date)}, {"classified", classified}, {"mediaCount", classified ? 0 : entry.media.size()},
             {"thumbnail", thumbnail}});
     }
@@ -467,7 +468,7 @@ void ArchiveController::updateSchemaVersion()
 bool ArchiveController::saveEntry(const Entry &entry)
 {
     const QByteArray encoded = payload(entry);
-    if (encoded.size() > maximumPayloadBytes) return fail(QStringLiteral("save"), QStringLiteral("文档内容超过 20 MiB 上限。"));
+    if (encoded.size() > maximumPayloadBytes) return fail(QStringLiteral("save"), QCoreApplication::translate("HyprEndfield", "文档内容超过 20 MiB 上限。"));
     QSqlQuery query(m_database);
     query.prepare(QStringLiteral("INSERT INTO entries(id,template,title,date,modified,mediaCount,payload,categoryID,thumbnail,classification) VALUES(?,?,?,?,?,?,?,?,NULL,?) "
         "ON CONFLICT(id) DO UPDATE SET title=excluded.title,modified=excluded.modified,mediaCount=excluded.mediaCount,payload=excluded.payload,categoryID=excluded.categoryID,classification=excluded.classification"));
@@ -512,22 +513,22 @@ bool ArchiveController::selectCategory(const QString &id)
 }
 QString ArchiveController::addCategory()
 {
-    if (!m_ready || m_categories.size() >= maximumCategories) { fail("category", QStringLiteral("最多可创建 100 个分类。")); return {}; }
+    if (!m_ready || m_categories.size() >= maximumCategories) { fail("category", QCoreApplication::translate("HyprEndfield", "最多可创建 100 个分类。")); return {}; }
     QString name; int number = m_categories.size() + 1;
-    do { name = QStringLiteral("新分类 %1").arg(number++); } while (std::any_of(m_categories.cbegin(), m_categories.cend(), [&](const Category &item) { return item.name.compare(name, Qt::CaseInsensitive) == 0; }));
+    do { name = QCoreApplication::translate("HyprEndfield", "新分类 %1").arg(number++); } while (std::any_of(m_categories.cbegin(), m_categories.cend(), [&](const Category &item) { return item.name.compare(name, Qt::CaseInsensitive) == 0; }));
     Category category{uuid(), name, QDateTime::currentMSecsSinceEpoch(), false};
     QSqlQuery query(m_database); query.prepare("INSERT INTO categories(id,name,created,viewed) VALUES(?,?,?,0)");
     query.addBindValue(category.id); query.addBindValue(category.name); query.addBindValue(category.created);
     if (!query.exec()) { fail("category", query.lastError().text()); return {}; }
-    m_categories.append(category); emit stateChanged(); emit actionFinished("category", true, QStringLiteral("分类已创建。")); return category.id;
+    m_categories.append(category); emit stateChanged(); emit actionFinished("category", true, QCoreApplication::translate("HyprEndfield", "分类已创建。")); return category.id;
 }
 bool ArchiveController::renameCategory(const QString &id, const QString &name)
 {
     const QString normalized = normalizedCategoryName(name);
     if (normalized.isEmpty() || normalized.size() > 24 || normalized.compare("全部", Qt::CaseInsensitive) == 0 || normalized.compare("未分类", Qt::CaseInsensitive) == 0)
-        return fail("category", QStringLiteral("分类名称需要为 1 至 24 个字符。"));
+        return fail("category", QCoreApplication::translate("HyprEndfield", "分类名称需要为 1 至 24 个字符。"));
     if (std::any_of(m_categories.cbegin(), m_categories.cend(), [&](const Category &item) { return item.id != id && item.name.compare(normalized, Qt::CaseInsensitive) == 0; }))
-        return fail("category", QStringLiteral("已经存在同名分类。"));
+        return fail("category", QCoreApplication::translate("HyprEndfield", "已经存在同名分类。"));
     for (auto &category : m_categories) if (category.id == id) {
         QSqlQuery query(m_database); query.prepare("UPDATE categories SET name=? WHERE id=?"); query.addBindValue(normalized); query.addBindValue(id);
         if (!query.exec()) return fail("category", query.lastError().text());
@@ -541,7 +542,7 @@ bool ArchiveController::removeCategory(const QString &id)
     if (!m_database.transaction()) return fail("category", m_database.lastError().text());
     QSqlQuery update(m_database); update.prepare("UPDATE entries SET categoryID=NULL WHERE categoryID=?"); update.addBindValue(id);
     QSqlQuery remove(m_database); remove.prepare("DELETE FROM categories WHERE id=?"); remove.addBindValue(id);
-    if (!update.exec() || !remove.exec() || !m_database.commit()) { m_database.rollback(); return fail("category", QStringLiteral("无法删除分类。")); }
+    if (!update.exec() || !remove.exec() || !m_database.commit()) { m_database.rollback(); return fail("category", QCoreApplication::translate("HyprEndfield", "无法删除分类。")); }
     for (auto &entry : m_entries) if (entry.categoryId == id) entry.categoryId.clear();
     m_categories.erase(std::remove_if(m_categories.begin(), m_categories.end(), [&](const Category &item) { return item.id == id; }), m_categories.end());
     if (m_filter == id) { m_filter = "uncategorized"; saveStateValue("filter", m_filter); }
@@ -549,9 +550,9 @@ bool ArchiveController::removeCategory(const QString &id)
 }
 QString ArchiveController::createDocument()
 {
-    if (!m_ready || m_entries.size() >= maximumDocuments) { fail("document", QStringLiteral("最多可保存 2000 份文档。")); return {}; }
+    if (!m_ready || m_entries.size() >= maximumDocuments) { fail("document", QCoreApplication::translate("HyprEndfield", "最多可保存 2000 份文档。")); return {}; }
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    Entry entry; entry.id = uuid(); entry.title = QStringLiteral("未命名文档"); entry.date = now; entry.modified = now;
+    Entry entry; entry.id = uuid(); entry.title = QCoreApplication::translate("HyprEndfield", "未命名文档"); entry.date = now; entry.modified = now;
     if (m_filter != "all" && m_filter != "uncategorized") entry.categoryId = m_filter;
     if (!saveEntry(entry)) return {};
     m_entries.prepend(entry); m_selectedId = entry.id; saveStateValue("selected", m_selectedId); emit stateChanged(); return entry.id;
@@ -574,7 +575,7 @@ bool ArchiveController::updateSelected(const QString &title, const QString &body
 {
     auto *entry = selectedEntry(); if (!entry || (!entry->keyId.isEmpty() && m_unlockedId != entry->id)) return false;
     if (title.size() > 200 || body.toUtf8().size() > maximumBodyBytes || richBody.toUtf8().size() > maximumPayloadBytes)
-        return fail("document", QStringLiteral("文档内容超过保存上限。"));
+        return fail("document", QCoreApplication::translate("HyprEndfield", "文档内容超过保存上限。"));
     entry->title = title; entry->body = body; entry->richBody = richBody; entry->modified = QDateTime::currentMSecsSinceEpoch();
     scheduleSave(); emit stateChanged(); return true;
 }
@@ -600,17 +601,17 @@ bool ArchiveController::deleteSelected()
 bool ArchiveController::importMedia(const QList<QUrl> &urls)
 {
     auto *entry = selectedEntry(); if (!entry || (!entry->keyId.isEmpty() && m_unlockedId != entry->id)) return false;
-    if (urls.isEmpty() || entry->media.size() + urls.size() > maximumMedia) return fail("media", QStringLiteral("每份文档最多添加 16 个媒体文件。"));
+    if (urls.isEmpty() || entry->media.size() + urls.size() > maximumMedia) return fail("media", QCoreApplication::translate("HyprEndfield", "每份文档最多添加 16 个媒体文件。"));
     QList<Media> additions;
     for (const auto &url : urls) {
-        if (!url.isLocalFile()) return fail("media", QStringLiteral("只支持本机图片和视频。"));
+        if (!url.isLocalFile()) return fail("media", QCoreApplication::translate("HyprEndfield", "只支持本机图片和视频。"));
         const QString path = QFileInfo(url.toLocalFile()).canonicalFilePath(); QFileInfo info(path); struct stat identity{};
         const auto native = QFile::encodeName(path);
         if (path.isEmpty() || ::stat(native.constData(), &identity) != 0 || !S_ISREG(identity.st_mode) || ::access(native.constData(), R_OK) != 0)
-            return fail("media", QStringLiteral("媒体文件无法访问。"));
+            return fail("media", QCoreApplication::translate("HyprEndfield", "媒体文件无法访问。"));
         const QString mime = QMimeDatabase().mimeTypeForFile(info, QMimeDatabase::MatchContent).name();
         QString kind = mime.startsWith("video/") ? "video" : mime == "image/gif" ? "gif" : mime.startsWith("image/") ? "image" : QString();
-        if (kind.isEmpty()) return fail("media", QStringLiteral("只支持图片、GIF 和视频。"));
+        if (kind.isEmpty()) return fail("media", QCoreApplication::translate("HyprEndfield", "只支持图片、GIF 和视频。"));
         Media media{uuid(), path, info.fileName(), kind, QString::number(qulonglong(identity.st_dev)), QString::number(qulonglong(identity.st_ino))};
         additions.append(media);
     }
@@ -624,9 +625,9 @@ bool ArchiveController::removeMedia(int index)
 
 bool ArchiveController::validPassword(const QString &password, const QString &confirmation, QString *message)
 {
-    if (password.size() < 4) { if (message) *message = QStringLiteral("密码至少需要 4 个字符。"); return false; }
-    if (password.normalized(QString::NormalizationForm_C).toUtf8().size() > 1024) { if (message) *message = QStringLiteral("密码最多可占用 1024 字节。"); return false; }
-    if (password != confirmation) { if (message) *message = QStringLiteral("两次输入的密码不一致。"); return false; }
+    if (password.size() < 4) { if (message) *message = QCoreApplication::translate("HyprEndfield", "密码至少需要 4 个字符。"); return false; }
+    if (password.normalized(QString::NormalizationForm_C).toUtf8().size() > 1024) { if (message) *message = QCoreApplication::translate("HyprEndfield", "密码最多可占用 1024 字节。"); return false; }
+    if (password != confirmation) { if (message) *message = QCoreApplication::translate("HyprEndfield", "两次输入的密码不一致。"); return false; }
     return true;
 }
 QString ArchiveController::classificationAccount(const Entry &entry) const { return entry.id + '/' + entry.keyId; }
@@ -643,12 +644,12 @@ void ArchiveController::classifySelected(const QString &password, const QString 
         if (!result.value("ok").toBool()) { fail("classify", result.value("message").toString()); return; }
         for (auto &value : m_entries) if (value.id == id) { value.keyId = keyId; value.modified = QDateTime::currentMSecsSinceEpoch(); saveEntry(value); m_unlockedId.clear(); break; }
         m_passwordStatuses.insert(id, QStringLiteral("protected"));
-        updateSchemaVersion(); emit stateChanged(); emit actionFinished("classify", true, QStringLiteral("文档已设为机密。"));
+        updateSchemaVersion(); emit stateChanged(); emit actionFinished("classify", true, QCoreApplication::translate("HyprEndfield", "文档已设为机密。"));
     });
     watcher->setFuture(QtConcurrent::run([vault = m_vault, account, bytes]() mutable {
         const QByteArray record = verifier(bytes); std::fill(bytes.begin(), bytes.end(), '\0'); QString error;
         const bool ok = vault->add(account, record, &error);
-        return QVariantMap{{"ok", ok}, {"message", ok ? QString() : QStringLiteral("无法写入系统密钥服务：") + error}};
+        return QVariantMap{{"ok", ok}, {"message", ok ? QString() : QCoreApplication::translate("HyprEndfield", "无法写入系统密钥服务：") + error}};
     }));
 }
 
@@ -671,7 +672,7 @@ void ArchiveController::unlockSelected(const QString &password)
         bool found = false; QString error; const QByteArray record = vault->read(account, &found, &error);
         const bool matches = found && error.isEmpty() && verifyPassword(record, bytes); std::fill(bytes.begin(), bytes.end(), '\0');
         return QVariantMap{{"ok", matches}, {"wrong", found && error.isEmpty() && !matches}, {"found", found}, {"unavailable", !error.isEmpty()},
-            {"message", !error.isEmpty() ? QStringLiteral("无法读取系统密钥服务：") + error : !found ? QStringLiteral("这份档案的密码记录已经丢失。") : QString()}};
+            {"message", !error.isEmpty() ? QCoreApplication::translate("HyprEndfield", "无法读取系统密钥服务：") + error : !found ? QCoreApplication::translate("HyprEndfield", "这份档案的密码记录已经丢失。") : QString()}};
     }));
 }
 
@@ -684,7 +685,7 @@ void ArchiveController::declassifySelected()
         const auto result = watcher->result(); watcher->deleteLater(); setBusy(false);
         if (!result.value("ok").toBool()) { fail("declassify", result.value("message").toString()); return; }
         for (auto &value : m_entries) if (value.id == id) { value.keyId.clear(); value.modified = QDateTime::currentMSecsSinceEpoch(); saveEntry(value); break; }
-        m_passwordStatuses.remove(id); m_unlockedId.clear(); updateSchemaVersion(); emit stateChanged(); emit actionFinished("declassify", true, QStringLiteral("已取消机密。"));
+        m_passwordStatuses.remove(id); m_unlockedId.clear(); updateSchemaVersion(); emit stateChanged(); emit actionFinished("declassify", true, QCoreApplication::translate("HyprEndfield", "已取消机密。"));
     });
     watcher->setFuture(QtConcurrent::run([vault = m_vault, account] { QString error; const bool ok = vault->remove(account, &error); return QVariantMap{{"ok", ok}, {"message", error}}; }));
 }
@@ -699,7 +700,7 @@ void ArchiveController::authenticateOwner(const QString &linuxPassword)
         const auto result = watcher->result(); watcher->deleteLater(); setBusy(false);
         const bool ok = result.value("ok").toBool() && m_selectedId == id;
         if (ok) m_ownerAuthorizedId = id;
-        emit ownerAuthenticationFinished(ok, ok ? QString() : QStringLiteral("Linux 用户认证失败：") + result.value("message").toString());
+        emit ownerAuthenticationFinished(ok, ok ? QString() : QCoreApplication::translate("HyprEndfield", "Linux 用户认证失败：") + result.value("message").toString());
     });
     watcher->setFuture(QtConcurrent::run([password]() mutable { return authenticateWithPam(password); }));
 }
@@ -719,14 +720,14 @@ void ArchiveController::recoverSelected(const QString &newPassword, const QStrin
         if (!result.value("ok").toBool()) { emit recoveryFinished(false, result.value("message").toString()); return; }
         for (auto &value : m_entries) if (value.id == id) { value.keyId = newKey; value.modified = QDateTime::currentMSecsSinceEpoch(); saveEntry(value); break; }
         if (declassify) m_passwordStatuses.remove(id); else m_passwordStatuses.insert(id, QStringLiteral("protected"));
-        m_unlockedId = declassify ? QString() : id; updateSchemaVersion(); emit stateChanged(); emit recoveryFinished(true, declassify ? QStringLiteral("已取消机密。") : QStringLiteral("密码已重新设置。"));
+        m_unlockedId = declassify ? QString() : id; updateSchemaVersion(); emit stateChanged(); emit recoveryFinished(true, declassify ? QCoreApplication::translate("HyprEndfield", "已取消机密。") : QCoreApplication::translate("HyprEndfield", "密码已重新设置。"));
     });
     watcher->setFuture(QtConcurrent::run([vault = m_vault, oldAccount, newAccount, bytes, declassify]() mutable {
         QString error; bool ok = true;
         if (!declassify) { const QByteArray record = verifier(bytes); ok = vault->add(newAccount, record, &error); }
         std::fill(bytes.begin(), bytes.end(), '\0');
         if (ok) { QString ignored; vault->remove(oldAccount, &ignored); }
-        return QVariantMap{{"ok", ok}, {"message", ok ? QString() : QStringLiteral("无法保存新密码：") + error}};
+        return QVariantMap{{"ok", ok}, {"message", ok ? QString() : QCoreApplication::translate("HyprEndfield", "无法保存新密码：") + error}};
     }));
 }
 

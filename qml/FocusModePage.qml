@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD WorkModeCanvas and WorkModeController, adapted to Focus Mode.
@@ -27,7 +28,7 @@ Item {
         return String(Math.floor(value / 60)).padStart(2, "0") + ":" + String(value % 60).padStart(2, "0");
     }
     function durationTitle(seconds) {
-        return seconds % 60 === 0 ? Math.floor(seconds / 60) + " 分" : formatTime(seconds);
+        return seconds % 60 === 0 ? Math.floor(seconds / 60) + qsTr(" 分") : formatTime(seconds);
     }
     function syncDial() {
         const next = Number(session.dialFraction || 0);
@@ -121,12 +122,12 @@ Item {
                 PathAngleArc { centerX: 310; centerY: 310; radiusX: 304; radiusY: 304; startAngle: 0; sweepAngle: 360 }
             }
             ShapePath {
-                fillColor: "transparent"; strokeColor: "#2A2A2A"; strokeWidth: 10
+                fillColor: "transparent"; strokeColor: Appearance.tone("#2A2A2A"); strokeWidth: 10
                 capStyle: ShapePath.FlatCap
                 PathAngleArc { centerX: 310; centerY: 310; radiusX: 252; radiusY: 252; startAngle: -90; sweepAngle: 360 }
             }
             ShapePath {
-                fillColor: "transparent"; strokeColor: "#FFFA00"; strokeWidth: 10
+                fillColor: "transparent"; strokeColor: Appearance.accent("#FFFA00"); strokeWidth: 10
                 capStyle: ShapePath.FlatCap
                 PathAngleArc { centerX: 310; centerY: 310; radiusX: 252; radiusY: 252; startAngle: -90; sweepAngle: 360 * focusPage.dialFraction }
             }
@@ -144,7 +145,7 @@ Item {
                 readonly property bool major: index % 10 === 0
                 x: 310 - width / 2; y: 18
                 width: major ? 4 : 2.4; height: major ? 24 : 14
-                color: index < focusPage.litTicks ? "#FFFA00" : "#3D3D3D"
+                color: index < focusPage.litTicks ? Appearance.accent("#FFFA00") : Appearance.tone("#3D3D3D")
                 antialiasing: true
                 transform: Rotation { origin.x: width / 2; origin.y: 292; angle: index * 3 }
                 Behavior on color { ColorAnimation { duration: focusPage.reduceMotion ? 0 : 160 } }
@@ -160,7 +161,7 @@ Item {
                 x: 310 + Math.cos(angle) * 322 - 15
                 y: 310 + Math.sin(angle) * 322 - 7
                 width: 30; height: 14
-                text: modelData; color: "#8A8A8A"
+                text: modelData; color: Appearance.tone("#8A8A8A")
                 horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                 font.family: harmonyRegular.name; font.pixelSize: 11; renderType: Text.CurveRendering
             }
@@ -176,12 +177,12 @@ Item {
             }
             Shape {
                 anchors.fill: parent; preferredRendererType: Shape.CurveRenderer
-                ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M310 41L319 56L301 56Z" } }
+                ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M310 41L319 56L301 56Z" } }
             }
         }
         Shape {
             anchors.fill: parent; preferredRendererType: Shape.CurveRenderer
-            ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M310 4L317 14L303 14Z" } }
+            ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M310 4L317 14L303 14Z" } }
         }
     }
 
@@ -190,13 +191,13 @@ Item {
         y: 118; anchors.horizontalCenter: parent.horizontalCenter; spacing: 12
         Text {
             id: titleChinese
-            text: "专注模式"; color: "#F4F4F4"
+            text: qsTr("专注模式"); color: Appearance.tone("#F4F4F4")
             font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 1.2
             renderType: Text.CurveRendering
         }
         Text {
             anchors.baseline: titleChinese.baseline
-            text: "FOCUS MODE"; color: "#8A8A8A"
+            text: "FOCUS MODE"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyMedium.name; font.pixelSize: 10; font.weight: Font.Medium; font.letterSpacing: 1.8
             renderType: Text.CurveRendering
         }
@@ -205,9 +206,9 @@ Item {
     Item {
         id: kindTabs
         x: 160; y: 150; width: 270; height: 30
-        Rectangle { anchors.fill: parent; color: "#191919"; border.color: "#434343" }
+        Rectangle { anchors.fill: parent; color: Appearance.tone("#191919"); border.color: Appearance.tone("#434343") }
         Repeater {
-            model: ["倒计时", "正计时"]
+            model: [qsTr("倒计时"), qsTr("正计时")]
             delegate: Item {
                 id: tab
                 required property string modelData
@@ -215,10 +216,10 @@ Item {
                 readonly property bool selected: focusPage.session.kind === (index === 0 ? "countdown" : "stopwatch")
                 x: index * 135; width: 135; height: 30
                 opacity: focusPage.sessionLocked && !selected ? 0.35 : 1
-                Rectangle { anchors.fill: parent; color: tab.selected ? "#FFFA00" : tabHover.hovered ? "#2A2A2A" : "transparent" }
+                Rectangle { anchors.fill: parent; color: tab.selected ? Appearance.accent("#FFFA00") : tabHover.hovered ? Appearance.tone("#2A2A2A") : "transparent" }
                 Text {
                     anchors.centerIn: parent; text: tab.modelData
-                    color: tab.selected ? "#171717" : "#B6B6B6"
+                    color: tab.selected ? Appearance.tone("#171717") : Appearance.tone("#B6B6B6")
                     font.family: tab.selected ? harmonyBold.name : harmonyMedium.name
                     font.pixelSize: 12; font.weight: tab.selected ? Font.Bold : Font.Medium; renderType: Text.CurveRendering
                 }
@@ -226,7 +227,7 @@ Item {
                 TapHandler { enabled: !focusPage.sessionLocked && !tab.selected; onTapped: focusPage.chooseKind(tab.index) }
             }
         }
-        Rectangle { x: 134.5; y: 8; width: 1; height: 14; color: "#4A4A4A"; visible: false }
+        Rectangle { x: 134.5; y: 8; width: 1; height: 14; color: Appearance.tone("#4A4A4A"); visible: false }
     }
 
     Row {
@@ -236,7 +237,7 @@ Item {
             id: stateDot
             anchors.verticalCenter: parent.verticalCenter
             width: 7; height: 7
-            color: focusPage.session.sessionActive ? "#48D17C" : "#666666"
+            color: focusPage.session.sessionActive ? "#48D17C" : Appearance.tone("#666666")
             SequentialAnimation on opacity {
                 running: focusPage.presented && focusPage.session.running && !focusPage.reduceMotion
                 loops: Animation.Infinite
@@ -245,8 +246,8 @@ Item {
             }
         }
         Text {
-            text: focusPage.session.sessionActive ? "专注中" : focusPage.session.phase === "completed" ? "专注结束" : "待机"
-            color: "#A8A8A8"; font.family: harmonyMedium.name; font.pixelSize: 10; font.letterSpacing: 1
+            text: focusPage.session.sessionActive ? qsTr("专注中") : focusPage.session.phase === "completed" ? qsTr("专注结束") : qsTr("待机")
+            color: Appearance.tone("#A8A8A8"); font.family: harmonyMedium.name; font.pixelSize: 10; font.letterSpacing: 1
             renderType: Text.CurveRendering
         }
     }
@@ -256,7 +257,7 @@ Item {
         objectName: "focusModeTimer"
         x: 115; y: 218; width: 360; height: 101
         text: focusPage.session.timeText
-        color: "#F6F6F6"
+        color: Appearance.tone("#F6F6F6")
         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
         font.family: harmonyRegular.name; font.pixelSize: 112; font.weight: Font.Light
         font.letterSpacing: -3.36; font.features: { "tnum": 1 }
@@ -276,10 +277,10 @@ Item {
                 readonly property bool selected: index < 3 ? focusPage.session.duration === modelData
                     : focusPage.session.duration !== 300 && focusPage.session.duration !== 1800 && focusPage.session.duration !== 3600
                 x: index * 75; width: 75; height: 30
-                Rectangle { anchors.fill: parent; color: preset.selected ? "#FFFA00" : presetHover.hovered ? "#303030" : "#202020"; border.color: "#444444" }
+                Rectangle { anchors.fill: parent; color: preset.selected ? Appearance.accent("#FFFA00") : presetHover.hovered ? Appearance.tone("#303030") : Appearance.tone("#202020"); border.color: Appearance.tone("#444444") }
                 Text {
-                    anchors.centerIn: parent; text: preset.index < 3 ? focusPage.durationTitle(preset.modelData) : "自定义"
-                    color: preset.selected ? "#171717" : "#D2D2D2"
+                    anchors.centerIn: parent; text: preset.index < 3 ? focusPage.durationTitle(preset.modelData) : qsTr("自定义")
+                    color: preset.selected ? Appearance.tone("#171717") : Appearance.tone("#D2D2D2")
                     font.family: preset.selected ? harmonyBold.name : harmonyMedium.name; font.pixelSize: 11
                     font.weight: preset.selected ? Font.Bold : Font.Medium; renderType: Text.CurveRendering
                 }
@@ -293,14 +294,14 @@ Item {
         id: customEditor
         x: 145; y: 331; width: 300; height: 30
         visible: focusPage.session.kind === "countdown" && focusPage.editingCustom
-        color: "#191919"; border.width: 1; border.color: focusPage.customInvalid ? "#E45A5A" : customInput.activeFocus ? "#FFFA00" : "#555555"
+        color: Appearance.tone("#191919"); border.width: 1; border.color: focusPage.customInvalid ? "#E45A5A" : customInput.activeFocus ? Appearance.accent("#FFFA00") : Appearance.tone("#555555")
         transform: Translate { id: customShift }
         TextInput {
             id: customInput
             objectName: "focusModeCustomInput"
             x: 10; width: 280; height: 30
             verticalAlignment: TextInput.AlignVCenter
-            color: "#F2F2F2"; selectionColor: "#FFFA00"; selectedTextColor: "#151515"
+            color: Appearance.tone("#F2F2F2"); selectionColor: Appearance.accent("#FFFA00"); selectedTextColor: Appearance.tone("#151515")
             font.family: harmonyMedium.name; font.pixelSize: 12; maximumLength: 7
             inputMethodHints: Qt.ImhFormattedNumbersOnly
             onAccepted: focusPage.commitCustom()
@@ -308,7 +309,7 @@ Item {
         }
         Text {
             anchors.centerIn: parent; visible: customInput.text.length === 0 && !customInput.activeFocus
-            text: "分钟或 分:秒"; color: "#777777"; font.family: harmonyRegular.name; font.pixelSize: 11; renderType: Text.CurveRendering
+            text: qsTr("分钟或 分:秒"); color: Appearance.tone("#777777"); font.family: harmonyRegular.name; font.pixelSize: 11; renderType: Text.CurveRendering
         }
         SequentialAnimation {
             id: invalidShake
@@ -328,7 +329,7 @@ Item {
                 required property var modelData
                 width: 360; height: 20
                 text: "#" + String(modelData.number).padStart(2, "0") + "   " + focusPage.formatTime(modelData.seconds)
-                color: "#BBBBBB"; horizontalAlignment: Text.AlignHCenter
+                color: Appearance.tone("#BBBBBB"); horizontalAlignment: Text.AlignHCenter
                 font.family: harmonyRegular.name; font.pixelSize: 13; font.features: { "tnum": 1 }; renderType: Text.CurveRendering
             }
         }
@@ -343,7 +344,7 @@ Item {
             id: primaryButton
             objectName: "focusModePrimary"
             width: 150; height: 40; kind: "primary"; reduceMotion: focusPage.reduceMotion
-            title: focusPage.session.phase === "running" ? "暂停" : focusPage.session.phase === "paused" ? "继续" : "开始"
+            title: focusPage.session.phase === "running" ? qsTr("暂停") : focusPage.session.phase === "paused" ? qsTr("继续") : qsTr("开始")
             icon: focusPage.session.phase === "running" ? "pause" : "play"
             onTriggered: focusPage.primaryAction()
         }
@@ -352,7 +353,7 @@ Item {
             objectName: "focusModeSecondary"
             width: 92; height: 40; kind: "secondary"; reduceMotion: focusPage.reduceMotion
             readonly property bool lapAction: focusPage.session.kind === "stopwatch" && focusPage.session.phase === "running"
-            title: lapAction ? "计次" : focusPage.session.sessionActive ? "停止" : "重置"
+            title: lapAction ? qsTr("计次") : focusPage.session.sessionActive ? qsTr("停止") : qsTr("重置")
             icon: lapAction ? "plus" : focusPage.session.sessionActive ? "stop" : "reset"
             enabled: !(focusPage.session.kind === "stopwatch" && focusPage.session.phase === "idle")
             onTriggered: focusPage.secondaryAction()

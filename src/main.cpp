@@ -1,4 +1,10 @@
 #include "applicationcontroller.hpp"
+#include "settingscontroller.hpp"
+#include "facilitycontroller.hpp"
+#include "centerlogo.hpp"
+#include <QApplication>
+#include <QMenu>
+#include <QSystemTrayIcon>
 #include "watchanimationcontroller.hpp"
 #include "sourcedial.hpp"
 #include "batterycontroller.hpp"
@@ -39,6 +45,27 @@
 
 namespace
 {
+class LogoImageProvider final : public QQuickImageProvider {
+public:
+    LogoImageProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}
+    QImage requestImage(const QString &id, QSize *size, const QSize &) override {
+        if (!cache.contains(id)) {
+            const QStringList presets{"endfield", "rhodesIsland", "babel", "rhineLab"};
+            const QString path = id.startsWith("custom/") ? QUrl::fromPercentEncoding(id.mid(7).toUtf8())
+                               : ":/assets/settings/center-logos/" + presets.value(id.toInt(), "endfield") + ".png";
+            QImageReader reader(path); const auto dimensions = reader.size();
+            if (dimensions.isValid()) reader.setScaledSize(dimensions.scaled(768, 768, Qt::KeepAspectRatio));
+            QImage image = reader.read();
+            if (id == "0" && !image.isNull()) { const double unit = image.width() / 430.; image = image.copy(0, qRound(142 * unit), image.width(), qRound(83 * unit)); }
+            if (id.startsWith("custom/")) for (auto it = cache.begin(); it != cache.end();) { if (it.key().startsWith("custom/")) it = cache.erase(it); else ++it; }
+            cache[id] = centerLogoArtwork(image);
+        }
+        if (size) *size = cache.value(id).size();
+        return cache.value(id);
+    }
+private:
+    QHash<QString, QImage> cache;
+};
 class AudioIconProvider final : public QQuickImageProvider
 {
 public:
@@ -109,6 +136,7 @@ QString requestedCommand(const QStringList &arguments, bool &valid)
     }
 
     const QString argument = arguments.at(1).toLower();
+    if (argument == QStringLiteral("--background")) return QStringLiteral("background");
     if (argument == QStringLiteral("--show")) {
         return QStringLiteral("show");
     }
@@ -157,16 +185,17 @@ int main(int argc, char *argv[])
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
-    QGuiApplication application(argc, argv);
+    QApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("HyprEndfield"));
     application.setApplicationDisplayName(QStringLiteral("HyprEndfield"));
     application.setOrganizationName(QStringLiteral("HyprEndfield"));
+    application.setApplicationVersion(QStringLiteral(HYPR_VERSION));
     application.setQuitOnLastWindowClosed(false);
 
     bool commandValid = false;
     const QString command = requestedCommand(application.arguments(), commandValid);
     if (!commandValid) {
-        qCritical("Usage: HyprEndfield [--show|--hide|--toggle|--quit]");
+        qCritical("Usage: HyprEndfield [--show|--hide|--toggle|--quit|--background]");
         return 2;
     }
 
@@ -179,14 +208,47 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    SettingsController settings;
     ApplicationController controller;
+    controller.setSettings(&settings);
+    QMenu trayMenu;
+    trayMenu.addAction(QObject::tr("打开 / 关闭 HUD"), &controller, &ApplicationController::toggleHud);
+    trayMenu.addAction(QObject::tr("退出"), &controller, &ApplicationController::quitApplication);
+    QSystemTrayIcon tray;
+    tray.setToolTip(QStringLiteral("HyprEndfield · SUPER + Esc"));
+    tray.setContextMenu(&trayMenu);
+    const auto updateIcon = [&] {
+        const QString id = settings.value("applicationIcon").toString();
+        application.setWindowIcon(QIcon(":/assets/settings/application-icons/" + id + "-app.png"));
+        tray.setIcon(QIcon(":/assets/settings/application-icons/" + id + "-tray.png"));
+    };
+    updateIcon();
+    tray.show();
+    QObject::connect(&tray, &QSystemTrayIcon::activated, &controller, [&controller](auto reason) {
+        if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) controller.toggleHud();
+    });
+    QObject::connect(&settings, &SettingsController::preferenceChanged, &application, [&](const QString &key, const QVariant &) {
+        if (key == "applicationIcon") updateIcon();
+    });
     WatchAnimationController watchAnimation;
     BatteryController battery;
+    QObject::connect(&battery, &BatteryController::stateChanged, &settings, [&] { settings.updateBattery(battery.state()); });
+    QObject::connect(&settings, &SettingsController::preferenceChanged, &battery, [&](const QString &key, const QVariant &) {
+        if (key == "batteryMethod") battery.setMonitoring(settings.value("batteryMethod").toInt() != 2);
+    });
+    settings.updateBattery(battery.state());
+    battery.setMonitoring(settings.value("batteryMethod").toInt() != 2);
     NowPlayingController nowPlaying;
     SPlayerLyrics lyrics(&nowPlaying);
     AudioController audio;
     TerminalSession terminal;
     ActivityController activity;
+    FacilityController facility;
+    facility.setEnabled(settings.value("facilityAlerts").toBool());
+    QObject::connect(&settings, &SettingsController::preferenceChanged, &facility, [&](const QString &key, const QVariant &value) {
+        if (key == "facilityAlerts") facility.setEnabled(value.toBool());
+    });
+    QObject::connect(&settings, &SettingsController::languageChanged, &facility, &FacilityController::alertsChanged);
     CalendarController calendar;
     FocusModeController focusMode;
     ClipboardController clipboard;
@@ -209,6 +271,9 @@ int main(int argc, char *argv[])
     }
 
     QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("settingsController"), &settings);
+    engine.rootContext()->setContextProperty(QStringLiteral("facilityController"), &facility);
+    QObject::connect(&settings, &SettingsController::languageChanged, &engine, &QQmlEngine::retranslate);
     engine.rootContext()->setContextProperty(QStringLiteral("appController"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("batteryController"), &battery);
     engine.rootContext()->setContextProperty(QStringLiteral("sourceWatchAnimation"), &watchAnimation);
@@ -225,6 +290,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("archiveController"), &archive);
     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &reader);
     engine.addImageProvider(QStringLiteral("activity-icons"), new ActivityIconProvider);
+    engine.addImageProvider(QStringLiteral("settings-logos"), new LogoImageProvider);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.addImageProvider(QStringLiteral("archive-thumbnails"), new ArchiveThumbnailProvider);
     engine.addImageProvider(QStringLiteral("reader-pages"), readerImages);
@@ -241,6 +307,7 @@ int main(int argc, char *argv[])
     }
 
     controller.setWindow(window);
+    settings.setBatteryWindow(window->findChild<QQuickWindow *>(QStringLiteral("batteryAlertWindow")));
     QObject::connect(&application, &QCoreApplication::aboutToQuit,
                      &focusMode, &FocusModeController::shutdown);
     fileShelf.setWindow(window);
@@ -248,7 +315,7 @@ int main(int argc, char *argv[])
     QObject::connect(&fileShelf, &FileShelfController::dragStarted, &controller, &ApplicationController::beginFileDrag);
     QObject::connect(&fileShelf, &FileShelfController::dragFinished, &controller, &ApplicationController::endFileDrag);
     QTimer::singleShot(0, &controller, [&controller, command] {
-        controller.executeCommand(command);
+        if (command != QStringLiteral("background")) controller.executeCommand(command);
     });
 
     return application.exec();

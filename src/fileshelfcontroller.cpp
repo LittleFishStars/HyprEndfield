@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "fileshelfcontroller.hpp"
 
 #include <QDBusConnection>
@@ -70,13 +71,13 @@ FileShelfController::Entry FileShelfController::inspect(const QString &path, con
     if (::lstat(native.constData(), &identity) != 0 || !info.exists()
         || (!S_ISREG(identity.st_mode) && !S_ISDIR(identity.st_mode) && !S_ISLNK(identity.st_mode))
         || ::access(native.constData(), R_OK) != 0) {
-        entry.error = QStringLiteral("原文件已移动、删除或无法访问，请重新添加。");
+        entry.error = QCoreApplication::translate("HyprEndfield", "原文件已移动、删除或无法访问，请重新添加。");
         return entry;
     }
     const auto device = QString::number(qulonglong(identity.st_dev));
     const auto inode = QString::number(qulonglong(identity.st_ino));
     if (previous && (device != previous->device || inode != previous->inode)) {
-        entry.error = QStringLiteral("原文件不可用，原路径已被其他文件占用。");
+        entry.error = QCoreApplication::translate("HyprEndfield", "原文件不可用，原路径已被其他文件占用。");
         return entry;
     }
     entry.device = device; entry.inode = inode;
@@ -107,10 +108,10 @@ QVariantMap FileShelfController::describe(const Entry &entry)
     return {{"id", entry.id}, {"path", entry.path}, {"name", entry.name}, {"kind", entry.kind},
             {"extension", entry.extension}, {"directory", entry.directory}, {"available", entry.error.isEmpty()},
             {"error", entry.error}, {"location", location},
-            {"kindText", entry.directory ? QStringLiteral("文件夹") : entry.extension == QStringLiteral("FILE")
-                ? QStringLiteral("文件") : entry.extension + QStringLiteral(" 文件")},
+            {"kindText", entry.directory ? QCoreApplication::translate("HyprEndfield", "文件夹") : entry.extension == QStringLiteral("FILE")
+                ? QCoreApplication::translate("HyprEndfield", "文件") : entry.extension + QCoreApplication::translate("HyprEndfield", " 文件")},
             {"size", entry.directory ? QString() : sizeLabel(entry.bytes)},
-            {"sizeTag", !entry.error.isEmpty() ? QStringLiteral("不可用") : entry.directory ? QString() : sizeLabel(entry.bytes)}};
+            {"sizeTag", !entry.error.isEmpty() ? QCoreApplication::translate("HyprEndfield", "不可用") : entry.directory ? QString() : sizeLabel(entry.bytes)}};
 }
 
 QVariantMap FileShelfController::state() const
@@ -134,13 +135,13 @@ void FileShelfController::load()
     m_fileExisted = file.exists();
     if (!m_fileExisted) return;
     if (!file.open(QIODevice::ReadOnly) || file.size() > maximumArchiveBytes) {
-        m_ready = false; m_error = QStringLiteral("无法读取暂存架数据，原始数据已保留。"); return;
+        m_ready = false; m_error = QCoreApplication::translate("HyprEndfield", "无法读取暂存架数据，原始数据已保留。"); return;
     }
     m_persisted = file.readAll();
     const auto document = QJsonDocument::fromJson(m_persisted);
     const auto root = document.object();
     const auto invalid = [this] {
-        m_ready = false; m_entries.clear(); m_error = QStringLiteral("无法读取暂存架数据，原始数据已保留。");
+        m_ready = false; m_entries.clear(); m_error = QCoreApplication::translate("HyprEndfield", "无法读取暂存架数据，原始数据已保留。");
     };
     if (!document.isObject() || root.value("version").toInt() != 1 || !root.value("items").isArray()) { invalid(); return; }
     QSet<QString> ids;
@@ -164,22 +165,22 @@ void FileShelfController::load()
 
 bool FileShelfController::save(const QList<Entry> &entries)
 {
-    if (!m_ready) return fail("save", QStringLiteral("文件暂存架存储不可用。"));
+    if (!m_ready) return fail("save", QCoreApplication::translate("HyprEndfield", "文件暂存架存储不可用。"));
     QFile current(m_path);
     if (current.exists() != m_fileExisted || (m_fileExisted
         && (!current.open(QIODevice::ReadOnly) || current.size() > maximumArchiveBytes || current.readAll() != m_persisted)))
-        return fail("save", QStringLiteral("暂存架数据已被其他程序修改，请重启后再保存。"));
+        return fail("save", QCoreApplication::translate("HyprEndfield", "暂存架数据已被其他程序修改，请重启后再保存。"));
     QJsonArray records;
     for (const auto &entry : entries) records.append(QJsonObject{
         {"id", entry.id}, {"path", entry.path}, {"name", entry.name}, {"kind", entry.kind},
         {"extension", entry.extension}, {"directory", entry.directory}, {"bytes", entry.bytes},
         {"device", entry.device}, {"inode", entry.inode}});
     const auto bytes = QJsonDocument(QJsonObject{{"version", 1}, {"items", records}}).toJson(QJsonDocument::Compact);
-    if (bytes.size() > maximumArchiveBytes) return fail("save", QStringLiteral("暂存架引用列表已达到容量上限。"));
-    if (!QDir().mkpath(m_directory)) return fail("save", QStringLiteral("无法创建暂存架数据目录。"));
+    if (bytes.size() > maximumArchiveBytes) return fail("save", QCoreApplication::translate("HyprEndfield", "暂存架引用列表已达到容量上限。"));
+    if (!QDir().mkpath(m_directory)) return fail("save", QCoreApplication::translate("HyprEndfield", "无法创建暂存架数据目录。"));
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
-        return fail("save", QStringLiteral("无法保存暂存架数据。"));
+        return fail("save", QCoreApplication::translate("HyprEndfield", "无法保存暂存架数据。"));
     m_entries = entries; m_persisted = bytes; m_fileExisted = true; m_error.clear();
     emit stateChanged();
     return true;
@@ -211,11 +212,11 @@ void FileShelfController::refresh()
 bool FileShelfController::addUrls(const QList<QUrl> &urls)
 {
     if (m_busy || m_dragging) return false;
-    if (!m_ready) return fail("add", QStringLiteral("文件暂存架存储不可用。"));
+    if (!m_ready) return fail("add", QCoreApplication::translate("HyprEndfield", "文件暂存架存储不可用。"));
     if (urls.isEmpty()) return false;
     for (const auto &url : urls) {
         if (!url.isLocalFile() || !QDir::isAbsolutePath(url.toLocalFile()) || url.toLocalFile().contains(QChar::Null))
-            return fail("add", QStringLiteral("请选择本机可访问的文件或文件夹。"));
+            return fail("add", QCoreApplication::translate("HyprEndfield", "请选择本机可访问的文件或文件夹。"));
     }
     m_busy = true; emit stateChanged();
     auto *watcher = new QFutureWatcher<QList<Entry>>(this);
@@ -230,8 +231,8 @@ bool FileShelfController::addUrls(const QList<QUrl> &urls)
             if (existing != next.cend()) continue;
             next.append(entry); added.append(entry.id);
         }
-        if (added.isEmpty()) { emit stateChanged(); emit actionFinished("add", true, QStringLiteral("所选项目已在暂存架中。")); return; }
-        if (save(next)) { emit itemsAdded(added); emit actionFinished("add", true, QStringLiteral("已添加 %1 个引用").arg(added.size())); }
+        if (added.isEmpty()) { emit stateChanged(); emit actionFinished("add", true, QCoreApplication::translate("HyprEndfield", "所选项目已在暂存架中。")); return; }
+        if (save(next)) { emit itemsAdded(added); emit actionFinished("add", true, QCoreApplication::translate("HyprEndfield", "已添加 %1 个引用").arg(added.size())); }
     });
     watcher->setFuture(QtConcurrent::run([urls] {
         QList<Entry> result;
@@ -245,12 +246,12 @@ void FileShelfController::pasteFiles()
 {
     if (m_busy || m_dragging) return;
     const auto executable = QStandardPaths::findExecutable(QStringLiteral("wl-paste"));
-    if (executable.isEmpty()) { fail("paste", QStringLiteral("需要 wl-clipboard 才能粘贴文件引用。")); return; }
+    if (executable.isEmpty()) { fail("paste", QCoreApplication::translate("HyprEndfield", "需要 wl-clipboard 才能粘贴文件引用。")); return; }
     auto *process = new QProcess(this);
     auto *timeout = new QTimer(process); timeout->setSingleShot(true); timeout->setInterval(2000);
     connect(timeout, &QTimer::timeout, process, &QProcess::kill);
     connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart) { fail("paste", QStringLiteral("无法读取文件剪贴板。")); process->deleteLater(); }
+        if (error == QProcess::FailedToStart) { fail("paste", QCoreApplication::translate("HyprEndfield", "无法读取文件剪贴板。")); process->deleteLater(); }
     });
     connect(process, &QProcess::readyReadStandardOutput, this, [process] {
         if (process->bytesAvailable() > maximumArchiveBytes) process->kill();
@@ -259,10 +260,10 @@ void FileShelfController::pasteFiles()
         timeout->stop();
         const auto bytes = process->readAllStandardOutput(); process->deleteLater();
         if (status != QProcess::NormalExit || code != 0 || bytes.size() > maximumArchiveBytes) {
-            fail("paste", QStringLiteral("剪贴板没有可添加的本地文件。")); return;
+            fail("paste", QCoreApplication::translate("HyprEndfield", "剪贴板没有可添加的本地文件。")); return;
         }
         QMimeData mime; mime.setData(QStringLiteral("text/uri-list"), bytes);
-        if (mime.urls().isEmpty()) fail("paste", QStringLiteral("剪贴板没有可添加的本地文件。"));
+        if (mime.urls().isEmpty()) fail("paste", QCoreApplication::translate("HyprEndfield", "剪贴板没有可添加的本地文件。"));
         else addUrls(mime.urls());
     });
     process->start(executable, {QStringLiteral("--type"), QStringLiteral("text/uri-list"), QStringLiteral("--no-newline")});
@@ -274,14 +275,14 @@ bool FileShelfController::removeItems(const QStringList &ids)
     if (m_busy || m_dragging || ids.isEmpty()) return false;
     auto next = m_entries;
     next.removeIf([&ids](const Entry &entry) { return ids.contains(entry.id); });
-    if (save(next)) { emit actionFinished("remove", true, QStringLiteral("已从暂存架移除")); return true; }
+    if (save(next)) { emit actionFinished("remove", true, QCoreApplication::translate("HyprEndfield", "已从暂存架移除")); return true; }
     return false;
 }
 
 bool FileShelfController::clear()
 {
     if (m_busy || m_dragging) return false;
-    if (save({})) { emit actionFinished("clear", true, QStringLiteral("暂存架已清空")); return true; }
+    if (save({})) { emit actionFinished("clear", true, QCoreApplication::translate("HyprEndfield", "暂存架已清空")); return true; }
     return false;
 }
 
@@ -313,7 +314,7 @@ void FileShelfController::readProperties(const QString &id)
             QDirIterator children(entry.path, QDir::AllEntries | QDir::NoDotAndDotDot, QDirIterator::NoIteratorFlags);
             int count = 0;
             while (children.hasNext() && count <= 10000) { children.next(); ++count; }
-            if (count <= 10000) result["count"] = QStringLiteral("%1 项").arg(count);
+            if (count <= 10000) result["count"] = QCoreApplication::translate("HyprEndfield", "%1 项").arg(count);
         }
         return result;
     }));
@@ -324,7 +325,7 @@ QList<QUrl> FileShelfController::exportUrls(const QStringList &ids, QString *err
     QList<QUrl> urls;
     for (const auto &id : ids) {
         const auto *entry = find(id);
-        if (!entry) { *error = QStringLiteral("此项目已不在暂存架中。"); return {}; }
+        if (!entry) { *error = QCoreApplication::translate("HyprEndfield", "此项目已不在暂存架中。"); return {}; }
         const auto checked = inspect(entry->path, entry);
         if (!checked.error.isEmpty()) { *error = checked.error; return {}; }
         urls.append(QUrl::fromLocalFile(entry->path));
@@ -337,7 +338,7 @@ bool FileShelfController::openItem(const QString &id)
     QString error;
     const auto urls = exportUrls({id}, &error);
     if (urls.isEmpty()) return fail("open", error);
-    if (!QDesktopServices::openUrl(urls.constFirst())) return fail("open", QStringLiteral("无法使用默认应用打开此项目。"));
+    if (!QDesktopServices::openUrl(urls.constFirst())) return fail("open", QCoreApplication::translate("HyprEndfield", "无法使用默认应用打开此项目。"));
     emit externalOpened();
     return true;
 }
@@ -356,7 +357,7 @@ void FileShelfController::revealItem(const QString &id)
         const QDBusPendingReply<> reply = *watcher; watcher->deleteLater();
         if (!reply.isError() || QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(url.toLocalFile()).absolutePath())))
             emit externalOpened();
-        else fail("reveal", QStringLiteral("无法在文件管理器中显示此项目。"));
+        else fail("reveal", QCoreApplication::translate("HyprEndfield", "无法在文件管理器中显示此项目。"));
     });
 }
 

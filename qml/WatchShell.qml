@@ -10,6 +10,7 @@ Item {
     height: 640
 
     property string selectedModule: "system"
+    readonly property bool bootLogActive: menuScene.bootActive
     property real rightScrollOffset: 0
     readonly property real maximumRightScrollOffset: Math.max(0, (Math.ceil(rightButtons.length / 2) - 5) * 15.5)
     property string clockText: "00:00:00"
@@ -48,74 +49,82 @@ Item {
     readonly property var leftButtons: [
         {
             key: "system",
-            label: "系统"
+            label: qsTr("系统")
         },
         {
             key: "display",
-            label: "显示"
+            label: qsTr("显示")
         },
         {
             key: "hotkeys",
-            label: "快捷终端"
+            label: qsTr("快捷终端")
         },
         {
             key: "about",
-            label: "关于"
+            label: qsTr("关于")
         }
     ]
 
-    readonly property var rightButtons: [
+    readonly property var availableRightButtons: [
         {
             key: "notes",
-            label: "便笺",
+            label: qsTr("便笺"),
             icon: "qrc:/assets/icons/notes.png"
         },
         {
             key: "fileShelf",
-            label: "文件暂存架",
+            label: qsTr("文件暂存架"),
             icon: "qrc:/assets/icons/file-shelf.png"
         },
         {
             key: "clipboard",
-            label: "剪贴板",
+            label: qsTr("剪贴板"),
             icon: "qrc:/assets/icons/clipboard.png"
         },
         {
             key: "archive",
-            label: "档案库",
+            label: qsTr("档案库"),
             icon: "qrc:/assets/icons/archive.png"
         },
         {
             key: "nowPlaying",
-            label: "当前播放",
+            label: qsTr("当前播放"),
             glyph: "nowPlaying"
         },
         {
             key: "volume",
-            label: "音量",
+            label: qsTr("音量"),
             glyph: "volume"
         },
         {
             key: "reader",
-            label: "阅读器",
+            label: qsTr("阅读器"),
             icon: "qrc:/assets/icons/reader.png"
         },
         {
             key: "workMode",
-            label: "专注模式",
+            label: qsTr("专注模式"),
             icon: "qrc:/assets/icons/work-mode.png"
         },
         {
             key: "calendar",
-            label: "日历",
+            label: qsTr("日历"),
             icon: "qrc:/assets/icons/calendar.png"
         }
     ]
 
+    readonly property var rightButtons: displaySettings.moduleOrder
+        .filter(key => !displaySettings.hiddenModules.includes(key))
+        .map(key => availableRightButtons.find(entry => entry.key === key)).filter(Boolean)
+    onRightButtonsChanged: {
+        rightScrollOffset = Math.min(maximumRightScrollOffset, rightScrollOffset);
+        if (availableRightButtons.some(entry => entry.key === selectedModule)
+                && !rightButtons.some(entry => entry.key === selectedModule)) selectedModule = rightButtons[0].key;
+    }
     function updateClock() {
         const now = new Date();
         clockText = Qt.formatTime(now, displaySettings.clock24Hour ? "HH:mm:ss" : "hh:mm:ss AP");
-        dateText = Qt.formatDate(now, "ddd MMM d");
+        dateText = now.toLocaleDateString(Qt.locale("en_US"), "ddd MMM d").toUpperCase();
         clockSeconds = now.getSeconds();
     }
 
@@ -266,6 +275,7 @@ Item {
     }
 
     MenuScene {
+        id: menuScene
         shell: parent
         y: (640 - 1080 * (1000 / 1920)) / 2
         scale: 1000 / 1920

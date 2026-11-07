@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD HUDArchiveTile with the 96 px well and 24 px label strip.
@@ -26,7 +27,7 @@ Item {
             anchors.fill: parent; source: tile.entry.thumbnail || ""; fillMode: Image.PreserveAspectCrop
             visible: !tile.classified && status === Image.Ready; asynchronous: true; cache: false
         }
-        Rectangle { width: 34; height: 4; color: "#FFFA00" }
+        Rectangle { width: 34; height: 4; color: Appearance.accent("#FFFA00") }
         Text { x: 38; y: -1; text: "#" + String(tile.number).padStart(2, "0"); color: "#222222"; font.family: harmonyBold.name; font.pixelSize: 6; font.weight: Font.Bold; renderType: Text.CurveRendering }
 
         Item {
@@ -45,7 +46,7 @@ Item {
         Item {
             visible: tile.classified; anchors.centerIn: parent; width: 72; height: 25; rotation: -10
             Rectangle { anchors.fill: parent; color: "transparent"; border.width: 2; border.color: "#D63235" }
-            Text { anchors.centerIn: parent; text: "机密"; color: "#D63235"; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Black; font.letterSpacing: 1.8; renderType: Text.CurveRendering }
+            Text { anchors.centerIn: parent; text: qsTr("机密"); color: "#D63235"; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Black; font.letterSpacing: 1.8; renderType: Text.CurveRendering }
         }
         Text {
             x: 6; y: 83; text: tile.entry.date; color: tile.classified ? "#777777" : "#222222"
@@ -56,7 +57,7 @@ Item {
     Rectangle { y: 96; width: parent.width; height: 24; color: tile.classified ? "#262626" : "#C4C4C6" }
     Text {
         x: 6; y: 102.25; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-        text: tile.entry.title && tile.entry.title.length ? tile.entry.title : "未命名"
+        text: tile.entry.title && tile.entry.title.length ? tile.entry.title : qsTr("未命名")
         color: tile.classified ? "#D63235" : "#191919"
         font.family: tile.classified ? harmonyBold.name : harmonyMedium.name; font.pixelSize: tile.classified ? 10 : 11.5
         font.weight: tile.classified ? Font.Bold : Font.Medium; font.letterSpacing: tile.classified ? 1.2 : 0

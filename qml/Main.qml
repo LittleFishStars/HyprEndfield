@@ -45,33 +45,13 @@ Window {
         onActivated: appController.toggleHud()
     }
 
-    Settings {
-        id: displaySettings
-        category: "display"
-        property real uiScale: 1.0
-        property real hudOffsetX: 0.0
-        property real hudOffsetY: 0.0
-        property real parallaxIntensity: 1.0
-        property real perspectiveIntensity: 1.0
-        property real backgroundBrightness: 0.37
-        property real blurAmount: 0.75
-        property int themeIndex: 0
-        property bool clock24Hour: true
-        property int clockStyleIndex: 0
-        property int centerLogoIndex: 0
-        property int accentIndex: 0
-        property bool ambientAnimation: true
-        property bool reduceMotion: false
-        property bool lowPowerVisualMode: false
-        property bool recordingMode: false
-        property bool dailyBootLog: true
-        property bool facilityAlerts: true
-    }
+    readonly property var displaySettings: settingsController
+    BatteryAlertWindow { }
 
     Rectangle {
         id: backdrop
         anchors.fill: parent
-        color: Qt.rgba(0.106, 0.110, 0.118,
+        color: Qt.rgba(settingsController.light ? .90 : .106, settingsController.light ? .90 : .110, settingsController.light ? .90 : .118,
                        Math.max(0, Math.min(1, 1 - displaySettings.backgroundBrightness)))
         opacity: root.backdropOpacity
 
@@ -89,6 +69,27 @@ Window {
         displaySettings: displaySettings
         scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.75)
                               * displaySettings.uiScale)
+    }
+    FacilityBanner {
+        x: (root.width - width * scale) / 2; y: 14; z: 1500
+        scale: watchShell.scale * 1000 / 1920 * 1.12; transformOrigin: Item.TopLeft
+        presented: appController.hudOpen && !watchShell.transitioning && !watchShell.bootLogActive
+        onOpenModule: module => watchShell.selectedModule = module
+    }
+    Item {
+        id: batteryPositionEditor; anchors.fill: parent; z: 1600; visible: settingsController.editingBatteryPosition
+        onVisibleChanged: if (visible) { preview.x = width * settingsController.batteryX - preview.width / 2; preview.y = settingsController.batteryPlacement === 0 ? 12 : height * settingsController.batteryY - preview.height / 2; forceActiveFocus(); }
+        Keys.onEscapePressed: event => { settingsController.cancelBatteryPosition(); event.accepted = true; }
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onClicked: settingsController.cancelBatteryPosition() }
+        Item {
+            id: preview; width: 300 * settingsController.batteryScale; height: 84 * settingsController.batteryScale
+            BatteryBadge { scale: settingsController.batteryScale; transformOrigin: Item.TopLeft; alwaysExpanded: true; manageMonitoring: false; presented: batteryPositionEditor.visible; reading: batteryController.state }
+            MouseArea {
+                anchors.fill: parent; cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                drag.target: preview; drag.minimumX: 0; drag.minimumY: 0; drag.maximumX: batteryPositionEditor.width - preview.width; drag.maximumY: batteryPositionEditor.height - preview.height
+                onReleased: settingsController.placeBattery((preview.x + preview.width / 2) / batteryPositionEditor.width, (preview.y + preview.height / 2) / batteryPositionEditor.height)
+            }
+        }
     }
 
     HoverHandler {

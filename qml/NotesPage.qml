@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Dialogs
 import QtQuick.Shapes
 
@@ -8,6 +9,8 @@ Item {
     width: 590; height: 510; focus: presented
     property bool presented: false
     property bool reduceMotion: false
+    readonly property bool redacted: Appearance.recording()
+    onRedactedChanged: if (redacted) { flushText(); rootFocus.forceActiveFocus(); formatBar.closeMenus() }
     readonly property var notes: notesController.state
     readonly property var centre: notes.centre
     readonly property var tasks: centre.tasks || []
@@ -63,9 +66,9 @@ Item {
                 textEditor.text = notesPage.centre.text || ""
                 notesPage.textSnapshot = textEditor.text
             }
-            if (notesPage.notes.error) notesPage.showToast("便笺", notesPage.notes.error)
+            if (notesPage.notes.error) notesPage.showToast(qsTr("便笺"), notesPage.notes.error)
         }
-        function onActionFinished(action, success, message) { notesPage.showToast(success ? "便笺" : "提示", message) }
+        function onActionFinished(action, success, message) { notesPage.showToast(success ? qsTr("便笺") : qsTr("提示"), message) }
     }
     Item { id: rootFocus; anchors.fill: parent; focus: true }
     Timer { id: textSave; interval: 450; onTriggered: notesPage.flushText() }
@@ -74,9 +77,9 @@ Item {
     Shortcut { sequence: "E"; enabled: notesPage.presented && !textEditor.activeFocus && !taskField.fieldFocused; onActivated: notesPage.selectTab("todo") }
     FileDialog {
         id: imageDialog
-        title: "选择图片"
+        title: qsTr("选择图片")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["图片文件 (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)", "所有文件 (*)"]
+        nameFilters: [qsTr("图片文件 (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"), qsTr("所有文件 (*)")]
         onAccepted: notesController.importImage(selectedFile, notesPage.importX, notesPage.importY)
     }
 
@@ -88,14 +91,14 @@ Item {
                 model: ["// HUD", "/", "NOTES"]
                 Text {
                     required property string modelData; required property int index
-                    text: modelData; color: index === 2 ? "#E6E6E6" : "#8A8A8A"
+                    text: modelData; color: index === 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A")
                     font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63
                     renderType: Text.CurveRendering
                 }
             }
         }
         Text {
-            x: 549 - width; y: 1.75; text: "MOD-01"; color: "#8A8A8A"
+            x: 549 - width; y: 1.75; text: "MOD-01"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63
             renderType: Text.CurveRendering
         }
@@ -107,31 +110,31 @@ Item {
             }
         }
         Text {
-            id: title; y: 20; height: 30; text: "便笺"; color: "#F4F4F4"
+            id: title; y: 20; height: 30; text: qsTr("便笺"); color: Appearance.tone("#F4F4F4")
             font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08
             renderType: Text.CurveRendering
         }
         Text {
-            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "NOTES"; color: "#8A8A8A"
+            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "NOTES"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyMedium.name; font.pixelSize: 13; font.letterSpacing: 2.6; font.weight: Font.Medium
             renderType: Text.CurveRendering
         }
         CalendarButton {
-            x: 510; y: 22; width: 80; title: notesPage.centre.folded ? "显示" : "隐藏"; kind: "secondary"
+            x: 510; y: 22; width: 80; title: notesPage.centre.folded ? qsTr("显示") : qsTr("隐藏"); kind: "secondary"
             reduceMotion: notesPage.reduceMotion
             onClicked: { notesPage.flushText(); notesController.setCentreFolded(!notesPage.centre.folded) }
         }
         Item {
             y: 60; width: 590; height: 9
             Rectangle { y: 4; width: 590; height: 1; color: "#38FFFFFF" }
-            Rectangle { y: 3; width: 56; height: 3; color: "#FFFA00" }
+            Rectangle { y: 3; width: 56; height: 3; color: Appearance.accent("#FFFA00") }
             Repeater { model: 10; Rectangle { required property int index; x: 454 + index * 9; width: 1; height: 9; color: "#59FFFFFF" } }
-            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: "#151515" }
+            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: Appearance.tone("#151515") }
             Text {
                 id: counter; x: 590 - width; y: -1.5
                 text: notesPage.centre.tab === "todo"
                     ? String(notesPage.centre.done).padStart(2, "0") + "/" + String(notesPage.tasks.length).padStart(2, "0") : "01"
-                color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold
+                color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold
                 renderType: Text.CurveRendering
             }
         }
@@ -148,14 +151,14 @@ Item {
         Item {
             id: tabs; width: 586; height: 34
             Repeater {
-                model: [{key: "text", title: "文字"}, {key: "todo", title: "待办"}]
+                model: [{key: "text", title: qsTr("文字")}, {key: "todo", title: qsTr("待办")}]
                 delegate: Item {
                     id: tabButton; required property var modelData; required property int index
                     x: index * 293; width: 293; height: 34
                     readonly property bool selected: notesPage.centre.tab === modelData.key
                     Rectangle { anchors.fill: parent; color: tabMouse.containsMouse ? "#12FFFFFF" : "transparent" }
-                    Rectangle { y: 32; width: parent.width; height: selected ? 2 : 1; color: selected ? "#FFFA00" : "#4A4A4A" }
-                    Text { anchors.centerIn: parent; text: modelData.title; color: selected ? "#EDEDED" : "#8A8A8A"; font.family: selected ? harmonyBold.name : harmonyMedium.name; font.pixelSize: 13; font.weight: selected ? Font.Bold : Font.Medium; font.letterSpacing: 0.52; renderType: Text.CurveRendering }
+                    Rectangle { y: 32; width: parent.width; height: selected ? 2 : 1; color: selected ? Appearance.accent("#FFFA00") : Appearance.tone("#4A4A4A") }
+                    Text { anchors.centerIn: parent; text: modelData.title; color: selected ? Appearance.tone("#EDEDED") : Appearance.tone("#8A8A8A"); font.family: selected ? harmonyBold.name : harmonyMedium.name; font.pixelSize: 13; font.weight: selected ? Font.Bold : Font.Medium; font.letterSpacing: 0.52; renderType: Text.CurveRendering }
                     Shape {
                         x: parent.width - 8; y: -3; width: 10; height: 10; visible: modelData.key === "todo" && notesPage.centre.hasDot
                         ShapePath { strokeWidth: -1; fillColor: "#F2A23A"; PathSvg { path: "M5 0L10 5L5 10L0 5Z" } }
@@ -167,18 +170,19 @@ Item {
 
         Item {
             id: textPanel; y: 44; width: 586; height: 243; visible: notesPage.centre.tab === "text"
-            Rectangle { anchors.fill: parent; color: "#1C1C1C"; border.color: "#4B4B4B" }
+            Rectangle { anchors.fill: parent; color: Appearance.tone("#1C1C1C"); border.color: Appearance.tone("#4B4B4B") }
             NotesFormatBar {
                 id: formatBar; x: 8; y: 8; style: notesPage.centre.style; reduceMotion: notesPage.reduceMotion
                 onChanged: (key, value) => notesController.setCentreStyle(key, value)
             }
-            Rectangle { y: 42; width: 586; height: 1; color: "#444444" }
+            Rectangle { y: 42; width: 586; height: 1; color: Appearance.tone("#444444") }
             TextEdit {
                 id: textEditor; objectName: "notesTextEditor"
+                visible: !notesPage.redacted; readOnly: notesPage.redacted
                 x: 12; y: 52; width: 562; height: 180; clip: true
                 wrapMode: TextEdit.Wrap; selectByMouse: true; persistentSelection: true
                 color: notesPage.centre.style.color
-                selectionColor: "#66FFFA00"; selectedTextColor: "#FFFFFF"
+                selectionColor: "#66FFFA00"; selectedTextColor: Appearance.tone("#FFFFFF")
                 font.family: notesPage.centre.style.family
                 font.pixelSize: notesPage.centre.style.size
                 font.bold: notesPage.centre.style.bold
@@ -190,7 +194,8 @@ Item {
                 onActiveFocusChanged: { if (!activeFocus) notesPage.flushText(); else formatBar.closeMenus() }
                 Keys.onEscapePressed: { focus = false; event.accepted = true }
             }
-            Text { x: 12; y: 54; visible: textEditor.text === "" && !textEditor.activeFocus; text: "开始书写"; color: "#737373"; font.family: harmonyRegular.name; font.pixelSize: 14; renderType: Text.CurveRendering }
+            Text { x: 12; y: 54; visible: !notesPage.redacted && textEditor.text === "" && !textEditor.activeFocus; text: qsTr("开始书写"); color: Appearance.tone("#737373"); font.family: harmonyRegular.name; font.pixelSize: 14; renderType: Text.CurveRendering }
+            RedactionBlock { y: 43; width: 586; height: 200; visible: notesPage.redacted; content: notesPage.centre.text || "" }
         }
 
         Item {
@@ -210,7 +215,7 @@ Item {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter; y: 47; visible: notesPage.tasks.length === 0
-                text: "NO TASKS\n待办为空"; color: "#777777"; horizontalAlignment: Text.AlignHCenter
+                text: qsTr("NO TASKS\n待办为空"); color: Appearance.tone("#777777"); horizontalAlignment: Text.AlignHCenter
                 font.family: harmonyMedium.name; font.pixelSize: 12; font.letterSpacing: 1.2; lineHeight: 1.8
                 renderType: Text.CurveRendering
             }
@@ -218,9 +223,9 @@ Item {
                 y: notesPage.todoListHeight + 8; width: 586; height: 32
                 CalendarTextField {
                     id: taskField; objectName: "notesTaskField"; width: 500; height: 32; maximumLength: 60
-                    placeholder: "+ 添加事项"; reduceMotion: notesPage.reduceMotion; onAccepted: notesPage.submitTask()
+                    placeholder: qsTr("+ 添加事项"); reduceMotion: notesPage.reduceMotion; onAccepted: notesPage.submitTask()
                 }
-                CalendarButton { x: 508; width: 78; height: 32; title: "添加"; kind: "primary"; reduceMotion: notesPage.reduceMotion; onClicked: notesPage.submitTask() }
+                CalendarButton { x: 508; width: 78; height: 32; title: qsTr("添加"); kind: "primary"; reduceMotion: notesPage.reduceMotion; onClicked: notesPage.submitTask() }
             }
         }
     }
@@ -229,7 +234,7 @@ Item {
         id: addBar; objectName: "notesAddBar"; x: 0; y: notesPage.addBarY; spacing: 8
         Behavior on y { NumberAnimation { duration: notesPage.reduceMotion ? 0 : 320; easing.type: Easing.OutCubic } }
         Repeater {
-            model: [{kind: "text", title: "文字"}, {kind: "todo", title: "待办"}, {kind: "image", title: "媒体"}, {kind: "pen", action: "drawing", title: "画画"}]
+            model: [{kind: "text", title: qsTr("文字")}, {kind: "todo", title: qsTr("待办")}, {kind: "image", title: qsTr("媒体")}, {kind: "pen", action: "drawing", title: qsTr("画画")}]
             delegate: NotesAddButton {
                 required property var modelData
                 width: 141.5; height: 40; title: modelData.title; kind: modelData.kind
@@ -243,9 +248,9 @@ Item {
         x: 320; y: 424; width: 270; height: 58; z: 300
         opacity: notesPage.toastOpen ? 1 : 0; visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: notesPage.reduceMotion ? 0 : 250 } }
-        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: "#505050" }
-        Rectangle { width: 4; height: parent.height; color: "#FFFA00" }
-        Text { x: 18; y: 10; width: 240; text: notesPage.toastTitle; color: "#F2F2F2"; elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
-        Text { x: 18; y: 33; width: 240; text: notesPage.toastDetail; color: "#A0A0A0"; elide: Text.ElideRight; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
+        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: Appearance.tone("#505050") }
+        Rectangle { width: 4; height: parent.height; color: Appearance.accent("#FFFA00") }
+        Text { x: 18; y: 10; width: 240; text: notesPage.toastTitle; color: Appearance.tone("#F2F2F2"); elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
+        Text { x: 18; y: 33; width: 240; text: notesPage.toastDetail; color: Appearance.tone("#A0A0A0"); elide: Text.ElideRight; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
     }
 }

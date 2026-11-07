@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import QtQuick.Effects
 
@@ -40,14 +41,14 @@ Item {
         if (highlighted >= 0 && highlighted < options.length) selected(options[highlighted].key);
         opened = false;
     }
-    Rectangle { anchors.fill: parent; color: "#212121"; border.width: 1; border.color: pointer.containsMouse || field.opened ? "#666666" : "#3A3A3A" }
+    Rectangle { anchors.fill: parent; color: Appearance.tone("#212121"); border.width: 1; border.color: pointer.containsMouse || field.opened ? Appearance.tone("#666666") : Appearance.tone("#3A3A3A") }
     Rectangle {
-        width: 2; height: field.opened || pointer.containsMouse ? 30 : 0; anchors.verticalCenter: parent.verticalCenter; color: "#FFFA00"
+        width: 2; height: field.opened || pointer.containsMouse ? 30 : 0; anchors.verticalCenter: parent.verticalCenter; color: Appearance.accent("#FFFA00")
         Behavior on height { NumberAnimation { duration: field.reduceMotion ? 0 : 140; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
     }
     Text {
         x: 12; width: 133; anchors.verticalCenter: parent.verticalCenter
-        text: field.text; color: "#EEEEEE"; elide: Text.ElideRight
+        text: field.text; color: Appearance.tone("#EEEEEE"); elide: Text.ElideRight
         font.family: harmonyMedium.name; font.pointSize: 12.5 * 0.75; font.weight: Font.Medium; renderType: Text.CurveRendering
     }
     Item {
@@ -57,7 +58,7 @@ Item {
         Shape {
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
-            ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M0 0H9L4.5 6Z" } }
+            ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M0 0H9L4.5 6Z" } }
         }
     }
     MouseArea { id: pointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: field.opened = !field.opened }
@@ -75,14 +76,14 @@ Item {
             y: field.menuPoint.y + 34 + height > field.overlayHost.height + 20 ? field.menuPoint.y - height - 4 : field.menuPoint.y + 34
             opacity: 0.4 + 0.6 * field.reveal
             Rectangle {
-                width: panel.width; height: panel.height * field.reveal; color: "#1A1A1A"
+                width: panel.width; height: panel.height * field.reveal; color: Appearance.tone("#1A1A1A")
                 layer.enabled: field.opened
                 layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(0, 0, 0, 0.6); shadowVerticalOffset: 18; shadowBlur: 1; blurMax: 20 }
             }
             Item {
                 width: panel.width; height: panel.height * field.reveal; clip: true
                 Rectangle {
-                    width: panel.width; height: panel.height; color: "#1A1A1A"; border.width: 1; border.color: "#3D3D3D"
+                    width: panel.width; height: panel.height; color: Appearance.tone("#1A1A1A"); border.width: 1; border.color: Appearance.tone("#3D3D3D")
                 }
                 Flickable {
                     id: menuScroll
@@ -95,17 +96,17 @@ Item {
                             required property var modelData
                             required property int index
                             y: index * 30; width: menuScroll.width; height: 30
-                            color: field.highlighted === index ? "#D6D7D2" : "transparent"
-                            Rectangle { visible: field.highlighted === parent.index; x: 0; y: 5; width: 3; height: 20; color: "#111111" }
+                            color: field.highlighted === index ? Appearance.tone("#D6D7D2") : "transparent"
+                            Rectangle { visible: field.highlighted === parent.index; x: 0; y: 5; width: 3; height: 20; color: Appearance.tone("#111111") }
                             Text {
                                 x: 14; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 50
-                                text: modelData.label; color: field.highlighted === parent.index ? "#111111" : "#D9D9D9"
+                                text: modelData.label; color: field.highlighted === parent.index ? Appearance.tone("#111111") : Appearance.tone("#D9D9D9")
                                 font.family: harmonyRegular.name; font.pointSize: 12.5 * 0.75; renderType: Text.CurveRendering
                             }
                             Rectangle {
                                 visible: modelData.key === field.selectedKey
-                                x: parent.width - 24; y: 9; width: 12; height: 12; color: "#1A1A1A"; border.width: 1; border.color: "#FFFA00"
-                                Rectangle { x: 3; y: 3; width: 6; height: 6; color: "#FFFA00" }
+                                x: parent.width - 24; y: 9; width: 12; height: 12; color: Appearance.tone("#1A1A1A"); border.width: 1; border.color: Appearance.accent("#FFFA00")
+                                Rectangle { x: 3; y: 3; width: 6; height: 6; color: Appearance.accent("#FFFA00") }
                             }
                             MouseArea {
                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -117,17 +118,17 @@ Item {
                 }
                 Rectangle {
                     visible: field.options.length > 7
-                    x: panel.width - 9; y: 8; width: 5; height: panel.height - 16; color: "#2C2C2C"
+                    x: panel.width - 9; y: 8; width: 5; height: panel.height - 16; color: Appearance.tone("#2C2C2C")
                     opacity: field.scrollActive || trackPointer.containsMouse || trackPointer.pressed ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: field.reduceMotion ? 0 : 220 } }
-                    Rectangle { width: 5; height: Math.max(18, parent.height * menuScroll.height / menuScroll.contentHeight); y: menuScroll.contentY / Math.max(1, menuScroll.contentHeight - menuScroll.height) * (parent.height - height); color: "#FFFA00" }
+                    Rectangle { width: 5; height: Math.max(18, parent.height * menuScroll.height / menuScroll.contentHeight); y: menuScroll.contentY / Math.max(1, menuScroll.contentHeight - menuScroll.height) * (parent.height - height); color: Appearance.accent("#FFFA00") }
                     MouseArea { id: trackPointer; anchors.fill: parent; hoverEnabled: true; onPressed: mouse => move(mouse.y); onPositionChanged: mouse => { if (pressed) move(mouse.y); }; function move(y) { menuScroll.contentY = Math.max(0, Math.min(1, y / height)) * (menuScroll.contentHeight - menuScroll.height); } }
                 }
             }
             Shape {
                 x: -1; y: -1; width: 10; height: 10
                 preferredRendererType: Shape.CurveRenderer
-                ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M0 0H10V2H2V10H0Z" } }
+                ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M0 0H10V2H2V10H0Z" } }
             }
         }
     }

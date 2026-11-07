@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "notescontroller.hpp"
 
 #include <QDir>
@@ -146,7 +147,7 @@ void NotesController::load()
     }
     auto reject = [this] {
         m_available = false;
-        m_error = QStringLiteral("无法读取已保存的便笺，原文件已保留。");
+        m_error = QCoreApplication::translate("HyprEndfield", "无法读取已保存的便笺，原文件已保留。");
     };
     if (!readable || bytes.size() > maximumFileBytes) {
         reject();
@@ -287,18 +288,18 @@ QJsonObject noteObject(const NotesController::Note &note)
 bool NotesController::persist(const Centre &centre, const QList<Note> &notes)
 {
     if (!m_available) {
-        fail(QStringLiteral("便笺存储不可用。"));
+        fail(QCoreApplication::translate("HyprEndfield", "便笺存储不可用。"));
         return false;
     }
     bool exists = false;
     bool readable = true;
     const QByteArray current = readBytes(m_path, &exists, &readable);
     if (!readable) {
-        fail(QStringLiteral("无法读取便笺数据，原文件已保留。"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法读取便笺数据，原文件已保留。"));
         return false;
     }
     if ((exists ? current : QByteArray()) != m_persisted) {
-        fail(QStringLiteral("便笺文件已被其他程序修改，请重启后再保存。"));
+        fail(QCoreApplication::translate("HyprEndfield", "便笺文件已被其他程序修改，请重启后再保存。"));
         return false;
     }
     QJsonArray noteValues;
@@ -312,12 +313,12 @@ bool NotesController::persist(const Centre &centre, const QList<Note> &notes)
         {QStringLiteral("centre"), centreValue}, {QStringLiteral("notes"), noteValues}})
         .toJson(QJsonDocument::Compact);
     if (bytes.size() > maximumFileBytes || !QDir().mkpath(m_directory)) {
-        fail(QStringLiteral("无法保存便笺数据。"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法保存便笺数据。"));
         return false;
     }
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
-        fail(QStringLiteral("无法保存便笺数据。"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法保存便笺数据。"));
         return false;
     }
     m_centre = centre;
@@ -530,7 +531,7 @@ QString NotesController::createNote(const QString &kind, double x, double y)
 {
     if (kind != QStringLiteral("text") && kind != QStringLiteral("todo") && kind != QStringLiteral("drawing")) return {};
     if (m_notes.size() >= maximumNotes) {
-        fail(QStringLiteral("便笺最多可保存 256 张。"), QStringLiteral("create"));
+        fail(QCoreApplication::translate("HyprEndfield", "便笺最多可保存 256 张。"), QStringLiteral("create"));
         return {};
     }
     QList<Note> next = m_notes;
@@ -548,21 +549,21 @@ QString NotesController::createNote(const QString &kind, double x, double y)
     next.append(note);
     if (!persist(m_centre, next)) return {};
     emit actionFinished(QStringLiteral("create"), true,
-                        kind == QStringLiteral("drawing") ? QStringLiteral("已创建画画便笺") : QStringLiteral("已创建便笺"));
+                        kind == QStringLiteral("drawing") ? QCoreApplication::translate("HyprEndfield", "已创建画画便笺") : QCoreApplication::translate("HyprEndfield", "已创建便笺"));
     return note.id;
 }
 
 QString NotesController::importImage(const QUrl &url, double x, double y)
 {
     if (m_notes.size() >= maximumNotes || !url.isLocalFile()) {
-        fail(QStringLiteral("无法将这个文件作为图片打开。"), QStringLiteral("import"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法将这个文件作为图片打开。"), QStringLiteral("import"));
         return {};
     }
     const QString sourcePath = url.toLocalFile();
     const QFileInfo info(sourcePath);
     if (!info.isFile() || !info.isReadable() || info.size() > maximumImageBytes) {
-        fail(info.size() > maximumImageBytes ? QStringLiteral("请选择小于 128 MB 的图片。")
-                                             : QStringLiteral("无法将这个文件作为图片打开。"),
+        fail(info.size() > maximumImageBytes ? QCoreApplication::translate("HyprEndfield", "请选择小于 128 MB 的图片。")
+                                             : QCoreApplication::translate("HyprEndfield", "无法将这个文件作为图片打开。"),
              QStringLiteral("import"));
         return {};
     }
@@ -570,25 +571,25 @@ QString NotesController::importImage(const QUrl &url, double x, double y)
     reader.setAutoTransform(true);
     const QSize sourceSize = reader.size();
     if (!sourceSize.isValid() || qint64(sourceSize.width()) * sourceSize.height() > maximumPixels) {
-        fail(QStringLiteral("图片尺寸过大。"), QStringLiteral("import"));
+        fail(QCoreApplication::translate("HyprEndfield", "图片尺寸过大。"), QStringLiteral("import"));
         return {};
     }
     if (std::max(sourceSize.width(), sourceSize.height()) > 1600)
         reader.setScaledSize(sourceSize.scaled(1600, 1600, Qt::KeepAspectRatio));
     const QImage image = reader.read();
     if (image.isNull()) {
-        fail(QStringLiteral("无法将这个文件作为图片打开。"), QStringLiteral("import"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法将这个文件作为图片打开。"), QStringLiteral("import"));
         return {};
     }
     if (!QDir().mkpath(m_imagesDirectory)) {
-        fail(QStringLiteral("无法保存图片便笺。"), QStringLiteral("import"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法保存图片便笺。"), QStringLiteral("import"));
         return {};
     }
     const QString imageName = newId().toLower() + QStringLiteral(".png");
     const QString destination = m_imagesDirectory + QLatin1Char('/') + imageName;
     QSaveFile output(destination);
     if (!output.open(QIODevice::WriteOnly) || !image.save(&output, "PNG") || !output.commit()) {
-        fail(QStringLiteral("无法保存图片便笺。"), QStringLiteral("import"));
+        fail(QCoreApplication::translate("HyprEndfield", "无法保存图片便笺。"), QStringLiteral("import"));
         return {};
     }
     QList<Note> next = m_notes;
@@ -609,7 +610,7 @@ QString NotesController::importImage(const QUrl &url, double x, double y)
         QFile::remove(destination);
         return {};
     }
-    emit actionFinished(QStringLiteral("import"), true, QStringLiteral("已创建图片便笺"));
+    emit actionFinished(QStringLiteral("import"), true, QCoreApplication::translate("HyprEndfield", "已创建图片便笺"));
     return note.id;
 }
 
@@ -655,7 +656,7 @@ bool NotesController::removeNote(const QString &id)
     next.removeAt(index);
     if (!persist(m_centre, next)) return false;
     if (!imageName.isEmpty()) QFile::remove(m_imagesDirectory + QLatin1Char('/') + imageName);
-    emit actionFinished(QStringLiteral("delete"), true, QStringLiteral("便笺已删除"));
+    emit actionFinished(QStringLiteral("delete"), true, QCoreApplication::translate("HyprEndfield", "便笺已删除"));
     return true;
 }
 
@@ -741,7 +742,7 @@ bool NotesController::appendStroke(const QString &id, const QVariantList &values
     qsizetype total = stroke.points.size();
     for (const auto &item : next[index].strokes) total += item.points.size();
     if (total > maximumPoints) {
-        fail(QStringLiteral("画画容量已满，请新建画画便笺。"), QStringLiteral("drawing"));
+        fail(QCoreApplication::translate("HyprEndfield", "画画容量已满，请新建画画便笺。"), QStringLiteral("drawing"));
         return false;
     }
     next[index].strokes.append(std::move(stroke));

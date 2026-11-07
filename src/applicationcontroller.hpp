@@ -6,6 +6,7 @@
 
 class QLocalServer;
 class QQuickWindow;
+class SettingsController;
 
 class ApplicationController final : public QObject
 {
@@ -22,6 +23,7 @@ public:
     [[nodiscard]] bool hudOpen() const;
     [[nodiscard]] QString localUserName() const { return qEnvironmentVariable("USER"); }
     void setWindow(QQuickWindow *window);
+    void setSettings(SettingsController *settings);
     bool listen(const QString &serverName);
     void executeCommand(const QString &command);
 
@@ -47,9 +49,13 @@ private:
     void setHudVisible(bool visible);
     void setHudOpen(bool open);
     void finishFileDrag();
+    void selectScreen();
+    void checkFocus();
 
     QPointer<QQuickWindow> m_window;
     QLocalServer *m_server = nullptr;
+    SettingsController *m_settings = nullptr;
+    bool m_receivedFocus = false;
     bool m_hudVisible = false;
     bool m_hudOpen = false;
     bool m_hyprlandSubmapActive = false;

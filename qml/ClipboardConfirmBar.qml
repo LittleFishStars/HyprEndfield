@@ -5,7 +5,10 @@ Item {
     id: confirm
     property string title: ""
     property string message: ""
-    property string confirmTitle: "清空"
+    property string confirmTitle: qsTr("清空")
+    property string cancelTitle: qsTr("取消")
+    property string confirmGlyph: "trash"
+    property color accentColor: "#E5383B"
     property bool reduceMotion: false
     signal accepted()
     signal cancelled()
@@ -26,8 +29,8 @@ Item {
     Rectangle { x: 31; y: 111; width: 558; height: 1; color: "#38FFFFFF" }
     Item {
         x: 46; y: 18; width: 370; height: 80
-        Rectangle { x: 0; y: 1.5; width: 4; height: 18; color: "#E5383B" }
-        Rectangle { x: 8; y: 1.5; width: 4; height: 18; color: "#E5383B" }
+        Rectangle { x: 0; y: 1.5; width: 4; height: 18; color: confirm.accentColor }
+        Rectangle { x: 8; y: 1.5; width: 4; height: 18; color: confirm.accentColor }
         Text {
             x: 22; width: 348; height: 22; text: confirm.title; color: "#F2F2F2"; elide: Text.ElideRight
             font.family: harmonyMedium.name; font.pixelSize: 17; font.weight: Font.Medium; renderType: Text.CurveRendering
@@ -41,15 +44,15 @@ Item {
     Column {
         x: 436; y: 18; spacing: 11
         Repeater {
-            model: [{title: "取消", danger: false, glyph: "x"}, {title: confirm.confirmTitle, danger: true, glyph: "trash"}]
+            model: [{title: confirm.cancelTitle, danger: false, glyph: "x"}, {title: confirm.confirmTitle, danger: true, glyph: confirm.confirmGlyph}]
             delegate: Rectangle {
                 required property var modelData
                 width: 150; height: 38; radius: 19
                 color: mouse.containsMouse ? (modelData.danger ? "#FFFFFF" : "#606060") : (modelData.danger ? "#E2E0E1" : "#4A4A4A")
-                border.width: modelData.danger ? 1 : 0; border.color: "#E5383B"
+                border.width: modelData.danger ? 1 : 0; border.color: confirm.accentColor
                 Rectangle {
                     x: parent.width - 33; y: 5; width: 28; height: 28; radius: 14
-                    color: modelData.danger ? "#E5383B" : "#EDEDED"
+                    color: modelData.danger ? confirm.accentColor : "#EDEDED"
                     ClipboardGlyph { anchors.centerIn: parent; width: 13; height: 13; kind: modelData.glyph; ink: modelData.danger ? "white" : "#2A2A2A" }
                 }
                 Text {

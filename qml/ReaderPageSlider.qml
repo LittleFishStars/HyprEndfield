@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 Item {
     id: slider
@@ -10,11 +11,11 @@ Item {
     width: 366; height: 30; opacity: enabled ? 1 : 0.35
     readonly property real fraction: maximum <= minimum ? 0 : (value - minimum) / (maximum - minimum)
 
-    Rectangle { x: 8; y: 14; width: slider.width - 16; height: 2; color: "#565656" }
-    Rectangle { x: 8; y: 14; width: Math.max(0, (slider.width - 16) * slider.fraction); height: 2; color: "#FFFA00" }
+    Rectangle { x: 8; y: 14; width: slider.width - 16; height: 2; color: Appearance.tone("#565656") }
+    Rectangle { x: 8; y: 14; width: Math.max(0, (slider.width - 16) * slider.fraction); height: 2; color: Appearance.accent("#FFFA00") }
     Rectangle {
         x: 8 + (slider.width - 16) * slider.fraction - 5; y: 10; width: 10; height: 10
-        color: "#FFFA00"; border.color: "#161616"; border.width: 2
+        color: Appearance.accent("#FFFA00"); border.color: Appearance.tone("#161616"); border.width: 2
     }
     MouseArea {
         anchors.fill: parent; enabled: slider.enabled; cursorShape: Qt.PointingHandCursor

@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD HUDRowPlate / HUDSheen, compact and application row variants.
@@ -34,9 +35,9 @@ Item {
             strokeWidth: -1
             fillGradient: LinearGradient {
                 x1: 0; y1: 0; x2: 0; y2: row.height
-                GradientStop { position: 0; color: "#E4E5E0" }
-                GradientStop { position: 0.55; color: "#D3D4CF" }
-                GradientStop { position: 1; color: "#C6C7C2" }
+                GradientStop { position: 0; color: Appearance.tone("#E4E5E0") }
+                GradientStop { position: 0.55; color: Appearance.tone("#D3D4CF") }
+                GradientStop { position: 1; color: Appearance.tone("#C6C7C2") }
             }
             PathSvg { path: "M0 0H" + (row.width - 11) + "L" + row.width + " 11V" + row.height + "H0Z" }
         }
@@ -66,7 +67,7 @@ Item {
     }
     Rectangle {
         y: (row.height - height) / 2; width: 3; height: hover.hovered ? row.height - 10 : row.height - 18
-        color: hover.hovered ? "#E9CF12" : "#2A2A2A"
+        color: hover.hovered ? Appearance.accent("#E9CF12") : Appearance.tone("#2A2A2A")
         Behavior on height { NumberAnimation { duration: row.reduceMotion ? 0 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
         Behavior on color { ColorAnimation { duration: row.reduceMotion ? 0 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 0.1, 0.25, 1, 1, 1] } }
     }
@@ -74,11 +75,11 @@ Item {
         x: 18; y: 4; width: tagLabel.width + 52; height: 7
         Rectangle {
             id: tagBlack
-            width: tagLabel.width + 8; height: 7; color: "#161616"
+            width: tagLabel.width + 8; height: 7; color: Appearance.tone("#161616")
             Text {
                 id: tagLabel
                 x: 4; anchors.verticalCenter: parent.verticalCenter
-                text: "ENDFIELD"; color: "#E9E9E9"
+                text: "ENDFIELD"; color: Appearance.tone("#E9E9E9")
                 font.family: harmonyBold.name; font.pointSize: 5.5 * 0.75; font.weight: Font.Bold; font.letterSpacing: 0.44
                 renderType: Text.CurveRendering
             }
@@ -97,20 +98,20 @@ Item {
     }
     Rectangle {
         visible: row.applicationRow
-        x: 18; y: 11.5; width: 18; height: 18; color: "#4A4A4A"
+        x: 18; y: 11.5; width: 18; height: 18; color: Appearance.tone("#4A4A4A")
         Image { anchors.fill: parent; source: row.icon ? "image://audio-icons/" + encodeURIComponent(row.icon) : ""; sourceSize: Qt.size(64, 64); mipmap: true; fillMode: Image.PreserveAspectFit }
     }
     Text {
         x: row.applicationRow ? 44 : 18; y: row.applicationRow ? 11.2 : 15.2
         width: row.applicationRow ? 144 : 170; height: 18.6
-        text: row.title; color: "#121212"; elide: Text.ElideRight
+        text: row.title; color: Appearance.tone("#121212"); elide: Text.ElideRight
         font.family: harmonyMedium.name; font.pointSize: 15.5 * 0.75; font.weight: Font.Medium
         renderType: Text.CurveRendering
     }
     Text {
         visible: row.subtitle !== ""
         x: 18; y: 32.7; width: 170; height: 13.2
-        text: row.subtitle; color: "#6C6D68"; elide: Text.ElideRight
+        text: row.subtitle; color: Appearance.tone("#6C6D68"); elide: Text.ElideRight
         font.family: harmonyRegular.name; font.pixelSize: 11; renderType: Text.CurveRendering
     }
 }

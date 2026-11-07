@@ -1,9 +1,13 @@
 import QtQuick
+import QtQuick.Dialogs
+import "Appearance.js" as Appearance
 
 Item {
     id: root
 
     required property var settings
+    property string section: "main"
+    property bool confirmFacility: false
     property string openMenu: ""
     property var menuItems: []
     property real menuX: 0
@@ -13,13 +17,21 @@ Item {
     property real bubbleX: 0
     property real bubbleY: 0
     property bool scrollBarShown: false
+    onVisibleChanged: if (!visible) { openMenu = ""; confirmFacility = false; logoPicker.close(); colorPicker.close(); }
+    onConfirmFacilityChanged: if (confirmFacility) forceActiveFocus()
+    onOpenMenuChanged: if (openMenu) forceActiveFocus()
+    Keys.onEscapePressed: event => {
+        if (confirmFacility || openMenu || settings.layoutRemaining) { confirmFacility = false; openMenu = ""; settings.revertLayout(); event.accepted = true; }
+        else event.accepted = false;
+    }
+    Connections { target: root.settings; function onLayoutChanged() { if (root.visible && root.settings.layoutRemaining) root.forceActiveFocus(); } }
 
     signal pageRequested(string page)
 
     readonly property var rows: [
         {
             key: "uiScale",
-            title: "界面缩放",
+            title: qsTr("界面缩放"),
             mode: "slider",
             minimum: 0.2,
             maximum: 2,
@@ -28,7 +40,7 @@ Item {
         },
         {
             key: "positionX",
-            title: "界面位置 X",
+            title: qsTr("界面位置 X"),
             mode: "slider",
             minimum: -50,
             maximum: 50,
@@ -38,7 +50,7 @@ Item {
         },
         {
             key: "positionY",
-            title: "界面位置 Y",
+            title: qsTr("界面位置 Y"),
             mode: "slider",
             minimum: -50,
             maximum: 50,
@@ -48,7 +60,7 @@ Item {
         },
         {
             key: "parallax",
-            title: "视差强度",
+            title: qsTr("视差强度"),
             mode: "slider",
             minimum: 0,
             maximum: 200,
@@ -57,7 +69,7 @@ Item {
         },
         {
             key: "perspective",
-            title: "透视强度",
+            title: qsTr("透视强度"),
             mode: "slider",
             minimum: 0,
             maximum: 200,
@@ -66,7 +78,7 @@ Item {
         },
         {
             key: "brightness",
-            title: "背景亮度",
+            title: qsTr("背景亮度"),
             mode: "slider",
             minimum: 0,
             maximum: 100,
@@ -75,7 +87,7 @@ Item {
         },
         {
             key: "blur",
-            title: "模糊程度",
+            title: qsTr("模糊程度"),
             mode: "slider",
             minimum: 0,
             maximum: 100,
@@ -84,75 +96,75 @@ Item {
         },
         {
             key: "theme",
-            title: "主题",
+            title: qsTr("主题"),
             mode: "dropdown"
         },
         {
             key: "clockFormat",
-            title: "时间格式",
+            title: qsTr("时间格式"),
             mode: "segmented"
         },
         {
             key: "clockStyle",
-            title: "时钟样式",
+            title: qsTr("时钟样式"),
             mode: "dropdown"
         },
         {
             key: "centerLogo",
-            title: "中心标志",
+            title: qsTr("中心标志"),
             mode: "dropdown"
         },
         {
             key: "appIcon",
-            title: "应用 / 菜单栏图标",
+            title: qsTr("应用 / 菜单栏图标"),
             mode: "nav"
         },
         {
             key: "palette",
-            title: "主题颜色",
+            title: qsTr("主题颜色"),
             mode: "swatches"
         },
         {
             key: "battery",
-            title: "电池提醒",
+            title: qsTr("电池提醒"),
             mode: "nav",
-            chip: "电池"
+            chip: qsTr("电池")
         },
         {
             key: "ambient",
-            title: "持续环境动画",
+            title: qsTr("持续环境动画"),
             mode: "toggle"
         },
         {
             key: "reduceMotion",
-            title: "减少动态效果",
+            title: qsTr("减少动态效果"),
             mode: "toggle"
         },
         {
             key: "lowPower",
-            title: "低功耗视觉模式",
+            title: qsTr("低功耗视觉模式"),
             mode: "toggle"
         },
         {
             key: "recording",
-            title: "录制模式",
+            title: qsTr("录制模式"),
             mode: "toggle"
         },
         {
             key: "bootLog",
-            title: "每日启动日志",
+            title: qsTr("每日启动日志"),
             mode: "toggle"
         },
         {
             key: "facility",
-            title: "设施警报",
+            title: qsTr("设施警报"),
             mode: "toggle"
         }
     ]
 
-    readonly property var themes: ["深色", "浅色", "跟随系统"]
-    readonly property var clockStyles: ["01  数字", "02  分栏", "03  表盘", "04  轨道", "05  堆叠"]
-    readonly property var centerLogos: ["Endfield", "Rhodes Island", "Babel", "Rhine Lab", "自定"]
+    readonly property var themes: [qsTr("深色"), qsTr("浅色"), qsTr("跟随系统")]
+    readonly property var clockStyles: [qsTr("01  数字"), qsTr("02  分栏"), qsTr("03  表盘"), qsTr("04  轨道"), qsTr("05  堆叠")]
+    readonly property var centerLogos: ["Endfield", "Rhodes Island", "Babel", "Rhine Lab", qsTr("自定")]
 
     width: 590
     height: 510
@@ -177,7 +189,11 @@ Item {
         return 0;
     }
 
-    function writeSlider(key, value) {
+    function writeSlider(key, value, final) {
+        if (["uiScale", "positionX", "positionY"].includes(key)) {
+            if (final) settings.previewLayout(key === "positionX" ? "hudOffsetX" : key === "positionY" ? "hudOffsetY" : key, key === "uiScale" ? value : value / 100);
+            return;
+        }
         switch (key) {
         case "uiScale":
             settings.uiScale = value;
@@ -239,7 +255,8 @@ Item {
             settings.dailyBootLog = value;
             break;
         case "facility":
-            settings.facilityAlerts = value;
+            if (!value) confirmFacility = true;
+            else settings.facilityAlerts = true;
             break;
         }
     }
@@ -279,14 +296,16 @@ Item {
             settings.themeIndex = index;
         else if (openMenu === "clockStyle")
             settings.clockStyleIndex = index;
-        else if (openMenu === "centerLogo")
-            settings.centerLogoIndex = index;
+        else if (openMenu === "centerLogo") {
+            if (index === 4) logoPicker.open();
+            else settings.centerLogoIndex = index;
+        }
         openMenu = "";
     }
 
     function activate(key, point) {
         if (key === "appIcon" || key === "battery") {
-            pageRequested(key);
+            section = key;
             return;
         }
         const options = optionsFor(key);
@@ -297,8 +316,8 @@ Item {
             return;
         }
         menuItems = options;
-        menuX = Math.min(width - 178, point.x);
-        const menuHeight = options.length * 30 + 8;
+        menuX = Math.min(width - (key === "centerLogo" ? 264 : 178), point.x);
+        const menuHeight = key === "centerLogo" ? 142 : options.length * 30 + 8;
         const below = point.y + 34;
         menuY = below + menuHeight > height + 20 ? point.y - 4 - menuHeight : below;
         openMenu = key;
@@ -311,14 +330,16 @@ Item {
         bubbleY = y;
     }
 
+    Item {
+    anchors.fill: parent
+    visible: root.section === "main"
     Text {
-        id: displayTitle
         renderType: Text.CurveRendering
         x: 0
         y: 0
         height: 14
         text: "// HUD  /  "
-        color: "#8A8A8A"
+        color: Appearance.tone("#8A8A8A")
         font.family: harmonyRegular.name
         font.pixelSize: 11
         font.letterSpacing: 0.06
@@ -331,7 +352,7 @@ Item {
         y: 0
         height: 14
         text: "DISPLAY"
-        color: "#E6E6E6"
+        color: Appearance.tone("#E6E6E6")
         font.family: harmonyRegular.name
         font.pixelSize: 11
         font.letterSpacing: 0.06
@@ -345,7 +366,7 @@ Item {
         width: 49
         height: 14
         text: "SYS-02"
-        color: "#8A8A8A"
+        color: Appearance.tone("#8A8A8A")
         font.family: harmonyRegular.name
         font.pixelSize: 11
         font.letterSpacing: 0.06
@@ -369,7 +390,7 @@ Item {
                 width: 1
                 height: 18
                 rotation: 45
-                color: "#777777"
+                color: Appearance.tone("#777777")
             }
         }
     }
@@ -378,10 +399,11 @@ Item {
         renderType: Text.CurveRendering
         x: 0
         y: 18
+        id: displayTitle
         width: 140
         height: 34
-        text: "显示"
-        color: "#F4F4F4"
+        text: qsTr("显示").toUpperCase()
+        color: Appearance.tone("#F4F4F4")
         font.family: harmonyBold.name
         font.pixelSize: 26
         font.weight: Font.Bold
@@ -396,7 +418,8 @@ Item {
         width: 100
         height: 29
         text: "DISPLAY"
-        color: "#8A8A8A"
+        visible: displayTitle.text !== "DISPLAY"
+        color: Appearance.tone("#8A8A8A")
         font.family: harmonyMedium.name
         font.pixelSize: 13
         font.weight: Font.Medium
@@ -409,14 +432,14 @@ Item {
         y: 64
         width: 590
         height: 1
-        color: "#38FFFFFF"
+        color: Appearance.tone("#38FFFFFF")
     }
     Rectangle {
         x: 0
         y: 63
         width: 56
         height: 3
-        color: "#FFFA00"
+        color: Appearance.accent("#FFFA00")
     }
 
     Repeater {
@@ -427,7 +450,7 @@ Item {
             y: 60
             width: 1
             height: 9
-            color: "#59FFFFFF"
+            color: Appearance.tone("#59FFFFFF")
         }
     }
 
@@ -441,7 +464,7 @@ Item {
             renderType: Text.CurveRendering
             anchors.fill: parent
             text: "20"
-            color: "#FFFA00"
+            color: Appearance.accent("#FFFA00")
             font.family: harmonyBold.name
             font.pixelSize: 11
             font.weight: Font.Bold
@@ -479,8 +502,11 @@ Item {
                 y: index * 56
                 width: 580
                 title: modelData.title
+                enabled: modelData.key !== "blur"
+                sublabel: modelData.key === "blur" ? qsTr("暂不支持单独调整，沿用 Hyprland 设置") : modelData.key === "facility" ? qsTr("监测磁盘和内存状态") : modelData.key === "recording" ? qsTr("隐藏便笺、剪贴板和文件名称等隐私内容") : ""
                 mode: modelData.mode
                 value: root.dropdownValue(modelData.key)
+                artwork: modelData.key === "centerLogo" ? "image://settings-logos/" + (root.settings.centerLogoIndex === 4 ? "custom/" + encodeURIComponent(root.settings.customLogo) : root.settings.centerLogoIndex) : ""
                 switched: root.toggleValue(modelData.key)
                 dropdownOpened: root.openMenu === modelData.key
                 chipText: modelData.chip || ""
@@ -496,10 +522,10 @@ Item {
 
                 onActivated: root.activate(modelData.key, mapToItem(root, 400, 10))
                 onToggleRequested: value => root.writeToggle(modelData.key, value)
-                onSliderMoved: (value, final) => root.writeSlider(modelData.key, value)
+                onSliderMoved: (value, final) => root.writeSlider(modelData.key, value, final)
                 onSliderBubbleRequested: (shown, text, x, y) => root.showBubble(shown, text, x, y)
                 onSegmentRequested: index => root.settings.clock24Hour = index === 0
-                onSwatchRequested: index => root.settings.accentIndex = index
+                onSwatchRequested: index => { if (index === 5) colorPicker.open(); else root.settings.accentIndex = index }
             }
         }
 
@@ -509,7 +535,7 @@ Item {
             y: rowsViewport.contentY
             width: 4
             height: rowsViewport.height
-            color: "#222222"
+            color: Appearance.tone("#222222")
             opacity: root.scrollBarShown || scrollBarHover.hovered ? 1 : 0
 
             Behavior on opacity {
@@ -519,15 +545,23 @@ Item {
             }
 
             Rectangle {
+                id: scrollThumb
                 x: 0
                 y: rowsViewport.visibleArea.yPosition * parent.height
                 width: 4
                 height: Math.max(18, rowsViewport.visibleArea.heightRatio * parent.height)
-                color: "#D7BC18"
+                color: Appearance.accent("#D7BC18")
             }
 
             HoverHandler {
                 id: scrollBarHover
+            }
+            MouseArea {
+                anchors.fill: parent; anchors.leftMargin: -4; anchors.rightMargin: -4; preventStealing: true
+                property real grab: 0
+                function move(y) { const fraction = Math.max(0, Math.min(1, (y - grab) / Math.max(1, height - scrollThumb.height))); rowsViewport.contentY = fraction * Math.max(0, rowsViewport.contentHeight - rowsViewport.height); }
+                onPressed: mouse => { grab = mouse.y >= scrollThumb.y && mouse.y <= scrollThumb.y + scrollThumb.height ? mouse.y - scrollThumb.y : scrollThumb.height / 2; move(mouse.y); }
+                onPositionChanged: mouse => { if (pressed) move(mouse.y); }
             }
         }
     }
@@ -548,7 +582,7 @@ Item {
 
     Item {
         id: menuPanel
-        visible: root.openMenu.length > 0
+        visible: root.openMenu.length > 0 && root.openMenu !== "centerLogo"
         x: root.menuX
         y: root.menuY
         width: 178
@@ -557,23 +591,23 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "#1A1A1A"
+            color: Appearance.tone("#1A1A1A")
             border.width: 1
-            border.color: "#3D3D3D"
+            border.color: Appearance.tone("#3D3D3D")
         }
         Rectangle {
             x: 0
             y: 0
             width: 10
             height: 2
-            color: "#D7BC18"
+            color: Appearance.accent("#D7BC18")
         }
         Rectangle {
             x: 0
             y: 0
             width: 2
             height: 10
-            color: "#D7BC18"
+            color: Appearance.accent("#D7BC18")
         }
 
         Repeater {
@@ -589,16 +623,16 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    color: menuPointer.containsMouse ? "#D3D4CF" : "transparent"
+                    color: menuPointer.containsMouse ? Appearance.tone("#D3D4CF") : "transparent"
                 }
                 Rectangle {
                     x: 9
                     y: 11
                     width: 8
                     height: 8
-                    color: index === root.selectedOption(root.openMenu) ? "#FFFA00" : "transparent"
+                    color: index === root.selectedOption(root.openMenu) ? Appearance.accent("#FFFA00") : "transparent"
                     border.width: index === root.selectedOption(root.openMenu) ? 0 : 1
-                    border.color: "#555555"
+                    border.color: Appearance.tone("#555555")
                 }
                 Rectangle {
                     visible: menuPointer.containsMouse
@@ -606,7 +640,7 @@ Item {
                     y: 0
                     width: 3
                     height: 30
-                    color: "#111111"
+                    color: Appearance.tone("#111111")
                 }
                 Text {
                     renderType: Text.CurveRendering
@@ -615,7 +649,7 @@ Item {
                     width: 132
                     height: 30
                     text: modelData
-                    color: menuPointer.containsMouse ? "#111111" : "#D9D9D9"
+                    color: menuPointer.containsMouse ? Appearance.tone("#111111") : Appearance.tone("#D9D9D9")
                     font.family: harmonyRegular.name
                     font.pixelSize: 13
                     verticalAlignment: Text.AlignVCenter
@@ -632,6 +666,25 @@ Item {
         }
     }
 
+    Rectangle {
+        x: root.menuX; y: root.menuY; width: 264; height: 142; visible: root.openMenu === "centerLogo"; z: 21
+        color: Appearance.tone("#1A1A1A"); border.color: Appearance.tone("#3D3D3D")
+        Repeater {
+            model: 4
+            Rectangle {
+                required property int index
+                x: 8 + (index % 2) * 128; y: 8 + Math.floor(index / 2) * 52; width: 120; height: 44
+                color: Appearance.tone("#212121"); border.color: Appearance.tone("#4B4B4B")
+                scale: pointer.pressed ? .965 : 1
+                Behavior on scale { NumberAnimation { duration: root.settings.reduceMotion ? 0 : 120 } }
+                Image { x: 8; y: 8; width: 104; height: 28; source: "image://settings-logos/" + index; fillMode: Image.PreserveAspectFit; mipmap: true }
+                Rectangle { x: -3; y: -3; width: 126; height: 50; color: "transparent"; border.width: 1.5; border.color: index === root.settings.centerLogoIndex ? Appearance.accent("#FFFA00") : Appearance.tone("#D9D9D9"); opacity: index === root.settings.centerLogoIndex ? 1 : pointer.containsMouse ? .7 : 0 }
+                MouseArea { id: pointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.pickOption(index) }
+            }
+        }
+        Text { x: 16; y: 113; height: 25; text: qsTr("选择自定义图标"); color: Appearance.tone("#D9D9D9"); font.family: harmonyRegular.name; font.pointSize: 12.5 * 0.75; renderType: Text.CurveRendering }
+        MouseArea { x: 4; y: 108; width: 256; height: 30; cursorShape: Qt.PointingHandCursor; onClicked: root.pickOption(4) }
+    }
     Item {
         id: bubbleLayer
         anchors.fill: parent
@@ -664,7 +717,7 @@ Item {
                 width: parent.width
                 height: 21
                 radius: 10
-                color: "#FAFAFA"
+                color: Appearance.tone("#FAFAFA")
             }
             Text {
                 id: bubbleLabel
@@ -673,7 +726,7 @@ Item {
                 y: 0
                 height: 21
                 text: root.bubbleText
-                color: "#111111"
+                color: Appearance.tone("#111111")
                 font.family: harmonyBold.name
                 font.pixelSize: 11
                 font.weight: Font.Bold
@@ -692,10 +745,37 @@ Item {
                     context.lineTo(8, 0);
                     context.lineTo(4, 4);
                     context.closePath();
-                    context.fillStyle = "#FAFAFA";
+                    context.fillStyle = Appearance.tone("#FAFAFA");
                     context.fill();
                 }
             }
         }
+    }
+    }
+    DisplayExtras {
+        anchors.fill: parent; visible: root.section !== "main"; section: root.section; settings: root.settings
+        onBackRequested: root.section = "main"
+    }
+    FileDialog {
+        id: logoPicker; title: qsTr("中心标志"); fileMode: FileDialog.OpenFile
+        options: FileDialog.DontUseNativeDialog; nameFilters: [qsTr("图片") + " (*.png *.jpg *.jpeg *.webp *.bmp *.svg)"]
+        onAccepted: root.settings.importLogo(selectedFile)
+    }
+    ColorDialog {
+        id: colorPicker; title: qsTr("主题颜色"); selectedColor: root.settings.accent
+        options: ColorDialog.DontUseNativeDialog
+        onAccepted: { root.settings.set("customAccent", selectedColor.toString()); root.settings.set("accentIndex", 5) }
+    }
+    MouseArea { anchors.fill: parent; z: 24; visible: root.settings.layoutRemaining > 0 || root.confirmFacility; onClicked: { root.settings.revertLayout(); root.confirmFacility = false } }
+    ClipboardConfirmBar {
+        x: -15; y: 200; z: 25; visible: root.settings.layoutRemaining > 0 || root.confirmFacility
+        title: root.confirmFacility ? qsTr("是否关闭全舰防御系统？") : qsTr("保留此界面布局？") + "  " + root.settings.layoutRemaining
+        message: root.confirmFacility ? "" : qsTr("倒计时结束后恢复原来的缩放与位置。")
+        confirmTitle: root.confirmFacility ? qsTr("关闭全舰防御系统") : qsTr("保留")
+        cancelTitle: root.confirmFacility ? qsTr("关闭全舰防御系统") : qsTr("恢复")
+        confirmGlyph: "check"; accentColor: root.confirmFacility ? "#E5383B" : Appearance.accent("#FFFA00")
+        reduceMotion: root.settings.reduceMotion
+        onAccepted: { if (root.confirmFacility) root.settings.set("facilityAlerts", false); else root.settings.confirmLayout(); root.confirmFacility = false }
+        onCancelled: { if (root.confirmFacility) root.settings.set("facilityAlerts", false); else root.settings.revertLayout(); root.confirmFacility = false }
     }
 }

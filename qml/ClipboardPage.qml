@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD ClipboardCanvas, MOD-03, backed by Hyprland's Wayland clipboard.
@@ -20,7 +21,7 @@ Item {
     property real contextX: 0
     property real contextY: 0
     readonly property var filterKinds: ["all", "text", "url", "image", "files"]
-    readonly property var filterTitles: ["全部", "文字", "链接", "图片", "文件"]
+    readonly property var filterTitles: [qsTr("全部"), qsTr("文字"), qsTr("链接"), qsTr("图片"), qsTr("文件")]
     readonly property var filteredItems: {
         const kind = filterKinds[selectedFilter]
         const values = clipboard.items.filter(item => kind === "all" || item.kind === kind)
@@ -33,12 +34,12 @@ Item {
     function age(createdAt) {
         if (!createdAt) return ""
         const seconds = Math.max(0, Math.floor((now - createdAt) / 1000))
-        if (seconds < 60) return "刚刚"
+        if (seconds < 60) return qsTr("刚刚")
         const minutes = Math.floor(seconds / 60)
-        if (minutes < 60) return minutes + " 分钟"
+        if (minutes < 60) return minutes + qsTr(" 分钟")
         const hours = Math.floor(minutes / 60)
-        if (hours < 24) return hours + " 小时"
-        return Math.floor(hours / 24) + " 天"
+        if (hours < 24) return hours + qsTr(" 小时")
+        return Math.floor(hours / 24) + qsTr(" 天")
     }
     function selectFilter(index) {
         if (index === selectedFilter || motionPhase !== "idle") return
@@ -81,9 +82,9 @@ Item {
     Connections {
         target: clipboardController
         function onActionFinished(action, success, message) {
-            if (!success) { clipboardPage.showToast("提示", message); return }
-            if (action === "copy") clipboardPage.showToast("已复制到剪贴板", "")
-            else if (action === "clear") clipboardPage.showToast("剪贴板记录已清空", "")
+            if (!success) { clipboardPage.showToast(qsTr("提示"), message); return }
+            if (action === "copy") clipboardPage.showToast(qsTr("已复制到剪贴板"), "")
+            else if (action === "clear") clipboardPage.showToast(qsTr("剪贴板记录已清空"), "")
         }
     }
     Item { id: rootFocus; anchors.fill: parent; focus: true }
@@ -116,13 +117,13 @@ Item {
                 model: ["// HUD", "/", "CLIPBOARD"]
                 Text {
                     required property string modelData; required property int index
-                    text: modelData; color: index === 2 ? "#E6E6E6" : "#8A8A8A"
+                    text: modelData; color: index === 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A")
                     font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
                 }
             }
         }
         Text {
-            x: 549 - width; y: 1.75; text: "MOD-03"; color: "#8A8A8A"
+            x: 549 - width; y: 1.75; text: "MOD-03"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
         }
         Item {
@@ -133,11 +134,11 @@ Item {
             }
         }
         Text {
-            id: title; y: 20; height: 30; text: "剪贴板缓存"; color: "#F4F4F4"
+            id: title; y: 20; height: 30; text: qsTr("剪贴板缓存"); color: Appearance.tone("#F4F4F4")
             font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08; renderType: Text.CurveRendering
         }
         Text {
-            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "CLIPBOARD"; color: "#8A8A8A"
+            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "CLIPBOARD"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyMedium.name; font.pixelSize: 13; font.letterSpacing: 2.6; font.weight: Font.Medium; renderType: Text.CurveRendering
         }
         Item {
@@ -145,43 +146,43 @@ Item {
             transform: [Translate { y: clearMouse.containsMouse && clearMouse.enabled ? -1 : 0 }, Scale {
                 origin.x: clearButton.width / 2; origin.y: clearButton.height / 2; xScale: clearMouse.pressed ? 0.965 : 1; yScale: xScale
             }]
-            Rectangle { anchors.fill: parent; color: clearMouse.containsMouse ? "#343434" : "#242424" }
-            Rectangle { x: 8; y: 7; width: clearMouse.containsMouse ? 7 : 4; height: 12; color: "#FFFA00" }
+            Rectangle { anchors.fill: parent; color: clearMouse.containsMouse ? Appearance.tone("#343434") : Appearance.tone("#242424") }
+            Rectangle { x: 8; y: 7; width: clearMouse.containsMouse ? 7 : 4; height: 12; color: Appearance.accent("#FFFA00") }
             ClipboardGlyph { x: 22; y: 5.5; width: 15; height: 15; kind: "trash" }
-            Text { x: 45; height: 26; verticalAlignment: Text.AlignVCenter; text: "清空"; color: "#EDEDED"; font.family: harmonyBold.name; font.pointSize: 10.5 * 0.75; font.weight: Font.Bold; renderType: Text.CurveRendering }
+            Text { x: 45; height: 26; verticalAlignment: Text.AlignVCenter; text: qsTr("清空"); color: Appearance.tone("#EDEDED"); font.family: harmonyBold.name; font.pointSize: 10.5 * 0.75; font.weight: Font.Bold; renderType: Text.CurveRendering }
             MouseArea { id: clearMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: clipboardPage.clipboard.removable > 0; onClicked: clipboardPage.askClear() }
         }
         Item {
             y: 60; width: 590; height: 9
             Rectangle { y: 4; width: 590; height: 1; color: "#38FFFFFF" }
-            Rectangle { y: 3; width: 56; height: 3; color: "#FFFA00" }
+            Rectangle { y: 3; width: 56; height: 3; color: Appearance.accent("#FFFA00") }
             Repeater { model: 10; Rectangle { required property int index; x: 454 + index * 9; width: 1; height: 9; color: "#59FFFFFF" } }
-            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: "#151515" }
+            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: Appearance.tone("#151515") }
             Text {
                 id: counter; x: 590 - width; y: -1.5; text: clipboardPage.pad(clipboardPage.clipboard.total) + "/" + clipboardPage.pad(clipboardPage.clipboard.capacity)
-                color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering
+                color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering
             }
         }
     }
 
     Item {
         id: tabs; y: 81; width: 590; height: 44
-        Rectangle { width: 590; height: 34; color: "#1E1E1E"; border.color: "#343434" }
+        Rectangle { width: 590; height: 34; color: Appearance.tone("#1E1E1E"); border.color: Appearance.tone("#343434") }
         Repeater {
             model: 4
             Rectangle {
                 required property int index
                 x: 28 + (index + 1) * 106.8; y: 10; width: 1; height: 14
                 visible: index + 1 !== clipboardPage.selectedFilter && index !== clipboardPage.selectedFilter
-                color: "#4A4A4A"
+                color: Appearance.tone("#4A4A4A")
             }
         }
         Repeater {
             model: ["Q", "E"]
             delegate: Rectangle {
                 required property string modelData; required property int index
-                x: index === 0 ? 6.5 : 568.5; y: 9.5; width: 15; height: 15; color: "transparent"; border.color: "#6A6A6A"
-                Text { anchors.centerIn: parent; text: modelData; color: "#8A8A8A"; font.family: harmonyBold.name; font.pixelSize: 9; font.weight: Font.Bold; renderType: Text.CurveRendering }
+                x: index === 0 ? 6.5 : 568.5; y: 9.5; width: 15; height: 15; color: "transparent"; border.color: Appearance.tone("#6A6A6A")
+                Text { anchors.centerIn: parent; text: modelData; color: Appearance.tone("#8A8A8A"); font.family: harmonyBold.name; font.pixelSize: 9; font.weight: Font.Bold; renderType: Text.CurveRendering }
             }
         }
         Repeater {
@@ -195,13 +196,13 @@ Item {
                 Rectangle { anchors.fill: parent; color: "white"; opacity: tabHover.hovered && !tab.selected ? 0.06 : 0 }
                 Rectangle {
                     anchors.fill: parent; visible: tab.selected
-                    gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: "#FFFC6B" } GradientStop { position: 0.45; color: "#FFFA00" } GradientStop { position: 1; color: "#FFFA00" } }
+                    gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: Appearance.accent("#FFFC6B") } GradientStop { position: 0.45; color: Appearance.accent("#FFFA00") } GradientStop { position: 1; color: Appearance.accent("#FFFA00") } }
                 }
                 Text {
-                    anchors.centerIn: parent; text: tab.modelData; color: tab.selected ? "#111111" : tabHover.hovered ? "#F2F2F2" : "#A0A0A0"
+                    anchors.centerIn: parent; text: tab.modelData; color: tab.selected ? Appearance.tone("#111111") : tabHover.hovered ? Appearance.tone("#F2F2F2") : Appearance.tone("#A0A0A0")
                     font.family: tab.selected ? harmonyBold.name : harmonyMedium.name; font.pixelSize: 13; font.weight: tab.selected ? Font.Bold : Font.Medium; font.letterSpacing: 0.52; renderType: Text.CurveRendering
                 }
-                Rectangle { x: width * 0.32; y: height + 3; width: width * 0.36; height: 3; visible: tab.selected; color: "#FFFA00" }
+                Rectangle { x: width * 0.32; y: height + 3; width: width * 0.36; height: 3; visible: tab.selected; color: Appearance.accent("#FFFA00") }
                 HoverHandler { id: tabHover }
                 MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: clipboardPage.selectFilter(tab.index) }
             }
@@ -224,14 +225,14 @@ Item {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter; y: 104; visible: rows.count === 0
-                text: clipboardPage.clipboard.ready ? "NO RECORDS\n剪贴板为空" : "WAYLAND OFFLINE\n无法监视系统剪贴板"
-                color: "#777777"; horizontalAlignment: Text.AlignHCenter; font.family: harmonyMedium.name; font.pixelSize: 12; font.letterSpacing: 1.2; lineHeight: 1.8; renderType: Text.CurveRendering
+                text: clipboardPage.clipboard.ready ? qsTr("NO RECORDS\n剪贴板为空") : qsTr("WAYLAND OFFLINE\n无法监视系统剪贴板")
+                color: Appearance.tone("#777777"); horizontalAlignment: Text.AlignHCenter; font.family: harmonyMedium.name; font.pixelSize: 12; font.letterSpacing: 1.2; lineHeight: 1.8; renderType: Text.CurveRendering
             }
         }
         Rectangle {
-            x: 586; width: 4; height: 350; visible: rows.contentHeight > rows.height; color: "#222222"
+            x: 586; width: 4; height: 350; visible: rows.contentHeight > rows.height; color: Appearance.tone("#222222")
             Rectangle {
-                width: 4; color: "#FFFA00"; height: Math.max(18, rows.height * rows.height / rows.contentHeight)
+                width: 4; color: Appearance.accent("#FFFA00"); height: Math.max(18, rows.height * rows.height / rows.contentHeight)
                 y: rows.contentHeight > rows.height ? rows.contentY / (rows.contentHeight - rows.height) * (rows.height - height) : 0
             }
         }
@@ -243,19 +244,19 @@ Item {
     }
     Rectangle {
         id: contextMenu; x: clipboardPage.contextX; y: clipboardPage.contextY; z: 81; width: 150; height: 96
-        visible: clipboardPage.contextId !== ""; color: "#F51B1B1B"; border.color: "#555555"
+        visible: clipboardPage.contextId !== ""; color: "#F51B1B1B"; border.color: Appearance.tone("#555555")
         Column {
             anchors.fill: parent
             Repeater {
-                model: [{title: "复制", action: "copy"}, {title: clipboardPage.contextEntry && clipboardPage.contextEntry.pinned ? "取消固定" : "固定", action: "pin"}, {title: "删除", action: "remove"}]
+                model: [{title: qsTr("复制"), action: "copy"}, {title: clipboardPage.contextEntry && clipboardPage.contextEntry.pinned ? qsTr("取消固定") : qsTr("固定"), action: "pin"}, {title: qsTr("删除"), action: "remove"}]
                 delegate: Item {
                     required property var modelData; required property int index
                     width: 150; height: 32
                     readonly property bool available: index !== 2 || !(clipboardPage.contextEntry && clipboardPage.contextEntry.pinned)
                     opacity: available ? 1 : 0.35
-                    Rectangle { anchors.fill: parent; color: menuMouse.containsMouse && parent.available ? "#333333" : "transparent" }
-                    Rectangle { x: 0; y: 31; width: 150; height: 1; color: index === 1 ? "#444444" : "transparent" }
-                    Text { x: 14; height: 32; verticalAlignment: Text.AlignVCenter; text: modelData.title; color: index === 2 ? "#E35B5D" : "#EEEEEE"; font.family: harmonyMedium.name; font.pixelSize: 12; renderType: Text.CurveRendering }
+                    Rectangle { anchors.fill: parent; color: menuMouse.containsMouse && parent.available ? Appearance.tone("#333333") : "transparent" }
+                    Rectangle { x: 0; y: 31; width: 150; height: 1; color: index === 1 ? Appearance.tone("#444444") : "transparent" }
+                    Text { x: 14; height: 32; verticalAlignment: Text.AlignVCenter; text: modelData.title; color: index === 2 ? "#E35B5D" : Appearance.tone("#EEEEEE"); font.family: harmonyMedium.name; font.pixelSize: 12; renderType: Text.CurveRendering }
                     MouseArea {
                         id: menuMouse; anchors.fill: parent; hoverEnabled: true; enabled: parent.available; cursorShape: Qt.PointingHandCursor
                         onClicked: {
@@ -275,9 +276,9 @@ Item {
         Rectangle { anchors.fill: parent; color: "#99000000" }
         MouseArea { anchors.fill: parent; onClicked: confirmLayer.visible = false }
         ClipboardConfirmBar {
-            x: -15; y: 370; title: "清空剪贴板记录？"
-            message: clipboardPage.clipboard.removable + " 条记录 / 保留 " + (clipboardPage.clipboard.total - clipboardPage.clipboard.removable) + " 条固定记录"
-            confirmTitle: "清空"; reduceMotion: clipboardPage.reduceMotion
+            x: -15; y: 370; title: qsTr("清空剪贴板记录？")
+            message: clipboardPage.clipboard.removable + qsTr(" 条记录 / 保留 ") + (clipboardPage.clipboard.total - clipboardPage.clipboard.removable) + qsTr(" 条固定记录")
+            confirmTitle: qsTr("清空"); reduceMotion: clipboardPage.reduceMotion
             onCancelled: confirmLayer.visible = false
             onAccepted: { confirmLayer.visible = false; clipboardController.clearUnpinned() }
         }
@@ -285,9 +286,9 @@ Item {
     Item {
         x: 320; y: 424; width: 270; height: 58; z: 300; opacity: clipboardPage.toastOpen ? 1 : 0; visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: clipboardPage.reduceMotion ? 0 : 250 } }
-        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: "#505050" }
-        Rectangle { width: 4; height: parent.height; color: "#FFFA00" }
-        Text { x: 18; y: 10; width: 240; text: clipboardPage.toastTitle; color: "#F2F2F2"; elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
-        Text { x: 18; y: 33; width: 240; text: clipboardPage.toastDetail; color: "#A0A0A0"; elide: Text.ElideRight; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
+        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: Appearance.tone("#505050") }
+        Rectangle { width: 4; height: parent.height; color: Appearance.accent("#FFFA00") }
+        Text { x: 18; y: 10; width: 240; text: clipboardPage.toastTitle; color: Appearance.tone("#F2F2F2"); elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
+        Text { x: 18; y: 33; width: 240; text: clipboardPage.toastDetail; color: Appearance.tone("#A0A0A0"); elide: Text.ElideRight; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
     }
 }

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick OpenGL ShaderTools Concurrent Sql Multimedia Pdf)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network DBus WebSockets Qml Quick OpenGL ShaderTools Concurrent Sql Multimedia Pdf)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
@@ -41,6 +41,12 @@ qt_add_executable(hyprendfield
     src/main.cpp
     src/applicationcontroller.cpp
     src/applicationcontroller.hpp
+    src/settingscontroller.cpp
+    src/settingscontroller.hpp
+    src/centerlogo.cpp
+    src/centerlogo.hpp
+    src/facilitycontroller.cpp
+    src/facilitycontroller.hpp
     src/watchanimationcontroller.cpp
     src/watchanimationcontroller.hpp
     src/sourcedial.cpp
@@ -81,6 +87,7 @@ qt_add_executable(hyprendfield
 
 target_include_directories(hyprendfield PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
+set_source_files_properties(qml/Appearance.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TRUE)
 qt_add_qml_module(hyprendfield
     URI HyprEndfield
     VERSION 1.0
@@ -89,6 +96,19 @@ qt_add_qml_module(hyprendfield
         qml/WatchShell.qml
         qml/SystemPage.qml
         qml/DisplayPage.qml
+        qml/AboutPage.qml
+        qml/SettingsHeader.qml
+        qml/SettingsMenu.qml
+        qml/DisplayExtras.qml
+        qml/ClockInstrument.qml
+        qml/BatteryAlertWindow.qml
+        qml/Appearance.js
+        qml/Redaction.qml
+        qml/RedactionBlock.qml
+        qml/BootLog.qml
+        qml/FacilityBanner.qml
+        qml/FacilityTags.qml
+        qml/HazardStripes.qml
         qml/NowPlayingPage.qml
         qml/NowPlayingButton.qml
         qml/NowPlayingSection.qml
@@ -152,6 +172,14 @@ qt_add_qml_module(hyprendfield
         qml/BatteryBadge.qml
 )
 
+execute_process(COMMAND git rev-parse --short=8 HEAD WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE HYPR_BUILD_ID OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT HYPR_BUILD_ID)
+    set(HYPR_BUILD_ID "source")
+endif()
+target_compile_definitions(hyprendfield PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="${HYPR_BUILD_ID}")
+file(GLOB_RECURSE SETTINGS_ASSETS CONFIGURE_DEPENDS "assets/settings/*")
+qt_add_resources(hyprendfield "settings_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS})
 file(GLOB MENU_VECTOR_ASSETS CONFIGURE_DEPENDS "assets/menu/*.svg" "assets/menu/*.png")
 qt_add_resources(hyprendfield "menu_vectors"
     PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MENU_VECTOR_ASSETS})
@@ -197,6 +225,7 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
 target_link_libraries(hyprendfield PRIVATE
     Qt6::Core
     Qt6::Gui
+    Qt6::Widgets
     Qt6::Network
     Qt6::DBus
     Qt6::WebSockets
@@ -230,6 +259,20 @@ set_target_properties(hyprendfield PROPERTIES
 
 include(GNUInstallDirs)
 include(CTest)
+if(BUILD_TESTING)
+    qt_add_executable(hyprendfield_settings_tests tests/settings.cpp
+        src/settingscontroller.cpp src/settingscontroller.hpp src/centerlogo.cpp src/centerlogo.hpp
+        src/facilitycontroller.cpp src/facilitycontroller.hpp)
+    target_include_directories(hyprendfield_settings_tests PRIVATE src)
+    target_link_libraries(hyprendfield_settings_tests PRIVATE Qt6::Quick Qt6::Test Qt6::Network Qt6::Concurrent LayerShellQt::Interface)
+    target_compile_definitions(hyprendfield_settings_tests PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="test"
+        SETTINGS_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" SETTINGS_PREVIEW_DIR="${CMAKE_CURRENT_BINARY_DIR}/settings-preview")
+    qt_add_resources(hyprendfield_settings_tests "settings_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS}
+        assets/icons/notes.png assets/icons/file-shelf.png assets/icons/clipboard.png assets/icons/archive.png
+        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png)
+    add_test(NAME settings COMMAND hyprendfield_settings_tests)
+    set_tests_properties(settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 45)
+endif()
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     pkg_check_modules(WAYLAND_SERVER REQUIRED IMPORTED_TARGET wayland-server)
@@ -324,10 +367,11 @@ if(BUILD_TESTING)
     set_tests_properties(notes PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     qt_add_executable(hyprendfield_shelf_tests tests/file_shelf.cpp
         src/fileshelfcontroller.cpp src/fileshelfcontroller.hpp
+        src/settingscontroller.cpp src/settingscontroller.hpp
         src/applicationcontroller.cpp src/applicationcontroller.hpp)
     target_include_directories(hyprendfield_shelf_tests PRIVATE src)
-    target_link_libraries(hyprendfield_shelf_tests PRIVATE Qt6::Quick Qt6::DBus Qt6::Concurrent Qt6::Test)
-    target_compile_definitions(hyprendfield_shelf_tests PRIVATE SHELF_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    target_link_libraries(hyprendfield_shelf_tests PRIVATE Qt6::Quick Qt6::DBus Qt6::Concurrent Qt6::Test Qt6::Network LayerShellQt::Interface)
+    target_compile_definitions(hyprendfield_shelf_tests PRIVATE SHELF_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="test")
     add_test(NAME file_shelf COMMAND hyprendfield_shelf_tests)
     set_tests_properties(file_shelf PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     qt_add_executable(hyprendfield_archive_tests tests/archive.cpp

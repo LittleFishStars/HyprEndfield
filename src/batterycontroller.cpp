@@ -24,7 +24,7 @@ BatteryController::BatteryController(QObject* parent, QString root)
     : QObject(parent)
     , m_root(std::move(root))
 {
-    m_timer.setInterval(15000);
+    m_timer.setInterval(5000);
     connect(&m_timer, &QTimer::timeout, this, &BatteryController::refresh);
     refresh();
 }
@@ -34,7 +34,7 @@ void BatteryController::setPresented(bool presented)
         return;
     m_presented = presented;
     emit presentedChanged();
-    if (presented)
+    if (presented || m_monitoring)
     {
         refresh();
         m_timer.start();
@@ -46,6 +46,10 @@ void BatteryController::refresh()
 {
     QVariantMap next { { "available", false }, { "current", "—" }, { "full", "—" }, { "percentage", -1 },
         { "progress", 0.0 }, { "estimated", false }, { "unit", "mAh" }, { "status", "未检测到电池" } };
+    bool plugged = false;
+    for (const auto &name : QDir(m_root).entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+        if (read(m_root + '/' + name + "/type") != "Battery" && read(m_root + '/' + name + "/online") == "1") plugged = true;
+    next["plugged"] = plugged;
     for (const auto& name : QDir(m_root).entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
     {
         const auto path = m_root + '/' + name + '/';
@@ -105,4 +109,12 @@ void BatteryController::refresh()
         m_state = next;
         emit stateChanged();
     }
+}
+
+void BatteryController::setMonitoring(bool monitoring)
+{
+    if (m_monitoring == monitoring) return;
+    m_monitoring = monitoring; emit monitoringChanged();
+    if (m_monitoring || m_presented) { refresh(); m_timer.start(); }
+    else m_timer.stop();
 }

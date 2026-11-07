@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import "CalendarFormat.js" as Format
 
@@ -88,14 +89,14 @@ Item {
         if (!title) { titleField.invalid = true; titleField.edit(); return }
         if (calendarController.saveEvent(title, detailsField.text, selectedDay, "")) {
             draftTitle = ""; draftDetails = ""; titleField.text = ""; detailsField.text = ""
-            showToast("事项已添加", title)
+            showToast(qsTr("事项已添加"), title)
         }
     }
     function saveEvent() {
         const entry = eventById(editingId); if (!entry) return
         const title = titleField.text.trim() || entry.title
         if (calendarController.saveEvent(title, detailsField.text, entry.day, entry.id)) {
-            stopEditing(); showToast("事项已保存", title)
+            stopEditing(); showToast(qsTr("事项已保存"), title)
         }
     }
     function requestDelete() {
@@ -106,7 +107,7 @@ Item {
         const entry = eventById(confirmTarget)
         if (calendarController.removeEvent(confirmTarget)) {
             if (editingId === confirmTarget) stopEditing()
-            showToast("提醒已取消", entry ? entry.title : "")
+            showToast(qsTr("提醒已取消"), entry ? entry.title : "")
         }
         confirmTarget = ""; confirmLayer.visible = false
     }
@@ -119,7 +120,7 @@ Item {
         function onStateChanged() {
             if (calendarPage.calendar.error && calendarPage.calendar.error !== calendarPage.lastError) {
                 calendarPage.lastError = calendarPage.calendar.error
-                calendarPage.showToast("日历", calendarPage.calendar.error)
+                calendarPage.showToast(qsTr("日历"), calendarPage.calendar.error)
             }
             if (calendarPage.editingId && !calendarPage.eventById(calendarPage.editingId)) calendarPage.stopEditing()
         }
@@ -142,13 +143,13 @@ Item {
                 model: ["// HUD", "/", "CALENDAR"]
                 Text {
                     required property string modelData; required property int index
-                    text: modelData; color: index === 2 ? "#E6E6E6" : "#8A8A8A"
+                    text: modelData; color: index === 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A")
                     font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
                 }
             }
         }
         Text {
-            x: 549 - width; y: 1.75; text: "MOD-12"; color: "#8A8A8A"
+            x: 549 - width; y: 1.75; text: "MOD-12"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
         }
         Item {
@@ -159,27 +160,27 @@ Item {
             }
         }
         Text {
-            id: title; y: 20; height: 30; text: "日历"; color: "#F4F4F4"
+            id: title; y: 20; height: 30; text: qsTr("日历"); color: Appearance.tone("#F4F4F4")
             font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08; renderType: Text.CurveRendering
         }
         Text {
-            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "CALENDAR"; color: "#8A8A8A"
+            x: title.width + 12; y: title.y + title.baselineOffset - baselineOffset; text: "CALENDAR"; color: Appearance.tone("#8A8A8A")
             font.family: harmonyMedium.name; font.pixelSize: 13; font.letterSpacing: 2.6; font.weight: Font.Medium; renderType: Text.CurveRendering
         }
-        CalendarButton { x: 497; y: 22; width: 55; title: "今天"; kind: "secondary"; reduceMotion: calendarPage.reduceMotion; onClicked: calendarPage.goToday() }
+        CalendarButton { x: 497; y: 22; width: 55; title: qsTr("今天"); kind: "secondary"; reduceMotion: calendarPage.reduceMotion; onClicked: calendarPage.goToday() }
         CalendarButton {
             x: 560; y: 20; width: 30; kind: "icon"; glyph: "↻"; reduceMotion: calendarPage.reduceMotion
-            onClicked: calendarPage.showToast(calendarController.refreshReminders() ? "提醒已安排" : "提醒已关闭", calendarController.state.reminderStatus)
+            onClicked: calendarPage.showToast(calendarController.refreshReminders() ? qsTr("提醒已安排") : qsTr("提醒已关闭"), calendarController.state.reminderStatus)
         }
         Item {
             y: 60; width: 590; height: 9
             Rectangle { y: 4; width: 590; height: 1; color: "#38FFFFFF" }
-            Rectangle { y: 3; width: 56; height: 3; color: "#FFFA00" }
+            Rectangle { y: 3; width: 56; height: 3; color: Appearance.accent("#FFFA00") }
             Repeater { model: 10; Rectangle { required property int index; x: 454 + index * 9; width: 1; height: 9; color: "#59FFFFFF" } }
-            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: "#151515" }
+            Rectangle { x: 590 - width; y: -2; width: counter.width + 7; height: 12; color: Appearance.tone("#151515") }
             Text {
-                id: counter; x: 590 - width; y: -1.5; text: String(calendarPage.calendar.total).padStart(2, "0") + " 个事项"
-                color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering
+                id: counter; x: 590 - width; y: -1.5; text: String(calendarPage.calendar.total).padStart(2, "0") + qsTr(" 个事项")
+                color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering
             }
         }
     }
@@ -191,10 +192,10 @@ Item {
             id: monthTitle; x: 41; width: 240; height: 30; transform: Translate { y: monthHover.hovered ? -1 : 0 }
             Rectangle { anchors.fill: parent; color: "white"; opacity: monthHover.hovered ? 0.06 : 0 }
             Text {
-                anchors.centerIn: parent; anchors.horizontalCenterOffset: -7; text: Format.monthName(calendarPage.shownYear, calendarPage.shownMonth); color: "#EDEDED"
+                anchors.centerIn: parent; anchors.horizontalCenterOffset: -7; text: Format.monthName(calendarPage.shownYear, calendarPage.shownMonth); color: Appearance.tone("#EDEDED")
                 font.family: harmonyMedium.name; font.pixelSize: 17; font.weight: Font.Medium; font.letterSpacing: 0.68; renderType: Text.CurveRendering
             }
-            Text { anchors.centerIn: parent; anchors.horizontalCenterOffset: 73; text: "▾"; color: monthHover.hovered ? "#EDEDED" : "#8A8A8A"; font.pixelSize: 12 }
+            Text { anchors.centerIn: parent; anchors.horizontalCenterOffset: 73; text: "▾"; color: monthHover.hovered ? Appearance.tone("#EDEDED") : Appearance.tone("#8A8A8A"); font.pixelSize: 12 }
             HoverHandler { id: monthHover }
             MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { picker.year = calendarPage.shownYear; picker.visible = !picker.visible } }
         }
@@ -202,10 +203,10 @@ Item {
         Row {
             y: 39.5; spacing: 4
             Repeater {
-                model: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+                model: [qsTr("周日"), qsTr("周一"), qsTr("周二"), qsTr("周三"), qsTr("周四"), qsTr("周五"), qsTr("周六")]
                 Text {
                     required property string modelData; width: 42.57; height: 10; horizontalAlignment: Text.AlignHCenter
-                    text: modelData; color: "#8A8A8A"; font.family: harmonyRegular.name; font.pointSize: 9.5 * 0.75; font.letterSpacing: 0.95; renderType: Text.CurveRendering
+                    text: modelData; color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pointSize: 9.5 * 0.75; font.letterSpacing: 0.95; renderType: Text.CurveRendering
                 }
             }
         }
@@ -228,12 +229,12 @@ Item {
         page: calendarPage; sectionIndex: 1; x: 336; y: 81; width: 254; height: 314
         readonly property var selectedParts: Format.parts(calendarPage.selectedDay)
         Text {
-            id: dayNumber; width: implicitWidth + 1; height: 49; text: Format.pad2(parent.selectedParts.day); color: "#F4F4F4"
+            id: dayNumber; width: implicitWidth + 1; height: 49; text: Format.pad2(parent.selectedParts.day); color: Appearance.tone("#F4F4F4")
             font.family: harmonyBold.name; font.pixelSize: 54; font.weight: Font.Bold; font.features: { "tnum": 1 }; renderType: Text.CurveRendering
         }
         Text {
             x: dayNumber.width + 10; y: 33; width: 254 - x; height: 10; text: Format.weekdayName(parent.selectedParts.year, parent.selectedParts.month, parent.selectedParts.day)
-            color: "#8A8A8A"; font.family: harmonyRegular.name; font.pixelSize: 10; font.letterSpacing: 1; renderType: Text.CurveRendering
+            color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 10; font.letterSpacing: 1; renderType: Text.CurveRendering
         }
         Flickable {
             id: eventList; objectName: "calendarEvents"; x: 0; y: 55; width: 254; height: calendarPage.listHeight; contentWidth: width; contentHeight: eventStack.height; clip: true
@@ -249,31 +250,31 @@ Item {
                 }
             }
             Text {
-                y: 10; width: 254; height: 10; visible: calendarPage.selectedEvents.length === 0; text: "暂无事项"; color: "#8A8A8A"
+                y: 10; width: 254; height: 10; visible: calendarPage.selectedEvents.length === 0; text: qsTr("暂无事项"); color: Appearance.tone("#8A8A8A")
                 font.family: harmonyRegular.name; font.pixelSize: 10; font.letterSpacing: 1; renderType: Text.CurveRendering
             }
             Rectangle {
-                x: 250; width: 4; visible: eventList.contentHeight > eventList.height; color: "#222222"; height: eventList.height
+                x: 250; width: 4; visible: eventList.contentHeight > eventList.height; color: Appearance.tone("#222222"); height: eventList.height
                 Rectangle {
-                    width: 4; color: "#FFFA00"; height: Math.max(18, eventList.height * eventList.height / eventList.contentHeight)
+                    width: 4; color: Appearance.accent("#FFFA00"); height: Math.max(18, eventList.height * eventList.height / eventList.contentHeight)
                     y: eventList.contentHeight > eventList.height ? eventList.contentY / (eventList.contentHeight - eventList.height) * (eventList.height - height) : 0
                 }
             }
         }
         CalendarTextField {
-            id: titleField; objectName: "calendarTitle"; y: calendarPage.fieldTop; placeholder: calendarPage.editingId ? "标题" : "新事项"; maximumLength: 120; reduceMotion: calendarPage.reduceMotion
+            id: titleField; objectName: "calendarTitle"; y: calendarPage.fieldTop; placeholder: calendarPage.editingId ? qsTr("标题") : qsTr("新事项"); maximumLength: 120; reduceMotion: calendarPage.reduceMotion
             onAccepted: calendarPage.editingId ? calendarPage.saveEvent() : calendarPage.addEvent()
         }
         CalendarTextField {
-            id: detailsField; objectName: "calendarDetails"; y: calendarPage.fieldTop + 38; placeholder: "详情"; maximumLength: 2000; reduceMotion: calendarPage.reduceMotion
+            id: detailsField; objectName: "calendarDetails"; y: calendarPage.fieldTop + 38; placeholder: qsTr("详情"); maximumLength: 2000; reduceMotion: calendarPage.reduceMotion
             onAccepted: calendarPage.editingId ? calendarPage.saveEvent() : calendarPage.addEvent()
         }
         CalendarButton {
-            y: calendarPage.fieldTop + 76; width: calendarPage.editingId ? 177 : 254; title: calendarPage.editingId ? "保存" : "添加事项"; kind: "primary"; reduceMotion: calendarPage.reduceMotion
+            y: calendarPage.fieldTop + 76; width: calendarPage.editingId ? 177 : 254; title: calendarPage.editingId ? qsTr("保存") : qsTr("添加事项"); kind: "primary"; reduceMotion: calendarPage.reduceMotion
             onClicked: calendarPage.editingId ? calendarPage.saveEvent() : calendarPage.addEvent()
         }
         CalendarButton {
-            x: 183; y: calendarPage.fieldTop + 76; width: 71; visible: calendarPage.editingId !== ""; title: "删除"; kind: "secondary"; reduceMotion: calendarPage.reduceMotion
+            x: 183; y: calendarPage.fieldTop + 76; width: 71; visible: calendarPage.editingId !== ""; title: qsTr("删除"); kind: "secondary"; reduceMotion: calendarPage.reduceMotion
             onClicked: calendarPage.requestDelete()
         }
     }
@@ -300,9 +301,9 @@ Item {
     Item {
         x: 320; y: 424; width: 270; height: 58; z: 300; opacity: calendarPage.toastOpen ? 1 : 0; visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: calendarPage.reduceMotion ? 0 : 250 } }
-        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: "#505050" }
-        Rectangle { width: 4; height: parent.height; color: "#FFFA00" }
-        Text { x: 18; y: 10; width: 240; text: calendarPage.toastTitle; color: "#F2F2F2"; elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
-        Text { x: 18; y: 33; width: 240; text: calendarPage.toastDetail; color: "#A0A0A0"; elide: Text.ElideRight; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
+        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: Appearance.tone("#505050") }
+        Rectangle { width: 4; height: parent.height; color: Appearance.accent("#FFFA00") }
+        Text { x: 18; y: 10; width: 240; text: calendarPage.toastTitle; color: Appearance.tone("#F2F2F2"); elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
+        Text { x: 18; y: 33; width: 240; text: calendarPage.toastDetail; color: Appearance.tone("#A0A0A0"); elide: Text.ElideRight; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; renderType: Text.CurveRendering }
     }
 }

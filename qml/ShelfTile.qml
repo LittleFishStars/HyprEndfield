@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 // EndfieldHUD HUDArchiveTile / ShelfTile, including the original hover and
 // selection motion. The surrounding grid owns selection and native transfer.
@@ -72,7 +73,8 @@ Item {
         y: 100; width: parent.width; height: 24; color: tile.selected ? "#151515" : "#C4C4C6"
         Text {
             x: 6; width: parent.width - 12; height: 24; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-            text: tile.entry.name; elide: Text.ElideRight; color: tile.selected ? "#FFFA00" : "#111111"
+            text: tile.entry.name; elide: Text.ElideRight; color: tile.selected ? Appearance.accent("#FFFA00") : "#111111"
+            visible: !Appearance.recording()
             font.family: harmonyMedium.name; font.pointSize: 11.5 * 0.75; font.weight: Font.Medium; renderType: Text.CurveRendering
         }
     }
@@ -86,12 +88,13 @@ Item {
             model: 2
             Item {
                 required property int index; x: index === 0 ? 0 : parent.width - 9; width: 9; height: parent.height
-                Rectangle { width: 9; height: 2; color: "#FFFA00" }
-                Rectangle { y: parent.height - 2; width: 9; height: 2; color: "#FFFA00" }
-                Rectangle { x: index === 0 ? 0 : 7; width: 2; height: parent.height; color: "#FFFA00" }
+                Rectangle { width: 9; height: 2; color: Appearance.accent("#FFFA00") }
+                Rectangle { y: parent.height - 2; width: 9; height: 2; color: Appearance.accent("#FFFA00") }
+                Rectangle { x: index === 0 ? 0 : 7; width: 2; height: parent.height; color: Appearance.accent("#FFFA00") }
             }
         }
     }
+    Redaction { x: (tile.width - 84) / 2; y: 106; width: 84; height: 13; visible: Appearance.recording() }
     MouseArea {
         id: pointer; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor; preventStealing: true

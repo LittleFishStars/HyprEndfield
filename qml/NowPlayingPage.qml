@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import QtQuick.Effects
 
@@ -127,7 +128,7 @@ Item {
         Rectangle {
             id: cover
             anchors.fill: parent
-            color: "#151515"
+            color: Appearance.tone("#151515")
             clip: true
             property url frontArt: ""
             property url backArt: ""
@@ -196,8 +197,8 @@ Item {
             Text {
                 visible: !playerPage.viewState.hasTrack
                 x: 0; y: 238; width: 400; height: 10
-                text: "未在播放音乐"
-                color: "#8A8A8A"
+                text: qsTr("未在播放音乐")
+                color: Appearance.tone("#8A8A8A")
                 font.family: harmonyRegular.name
                 font.pixelSize: 10
                 font.letterSpacing: 1
@@ -267,7 +268,7 @@ Item {
                     opacity: distance === 0 ? 1 : distance === 1 ? 0.36 : 0
                     text: modelData.text
                     textFormat: Text.PlainText
-                    color: "#F0F0F0"
+                    color: Appearance.tone("#F0F0F0")
                     font.family: distance === 0 ? harmonyMedium.name : harmonyRegular.name
                     font.pointSize: (distance === 0 ? 14 : 12.5) * 0.75
                     renderType: Text.CurveRendering
@@ -286,23 +287,23 @@ Item {
         page: playerPage
         sectionIndex: 2
         x: 95; y: 424; width: 400; height: 34
-        Rectangle { x: 0; y: 8; width: 400; height: 3; color: "#3A3A3A" }
+        Rectangle { x: 0; y: 8; width: 400; height: 3; color: Appearance.tone("#3A3A3A") }
         Rectangle {
             x: 0; y: 8; width: playerPage.fraction * 400; height: 3
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: "#E9CF12" }
-                GradientStop { position: 1; color: "#FFFA00" }
+                GradientStop { position: 0; color: Appearance.accent("#E9CF12") }
+                GradientStop { position: 1; color: Appearance.accent("#FFFA00") }
             }
         }
         Rectangle {
-            x: playerPage.fraction * 400 - 4.5; y: 3; width: 9; height: 13; color: "#EDEDED"
-            Rectangle { x: 3.5; y: 3; width: 2; height: 7; color: "#111111" }
+            x: playerPage.fraction * 400 - 4.5; y: 3; width: 9; height: 13; color: Appearance.tone("#EDEDED")
+            Rectangle { x: 3.5; y: 3; width: 2; height: 7; color: Appearance.tone("#111111") }
         }
         Text {
             x: 0; y: 20; width: 200; height: 12.6
             text: playerPage.time(playerPage.displaySeconds)
-            color: "#999999"
+            color: Appearance.tone("#999999")
             font.family: harmonyMedium.name
             font.pointSize: 7.875
             font.features: { "tnum": 1 }
@@ -311,7 +312,7 @@ Item {
         Text {
             x: 200; y: 20; width: 200; height: 12.6
             text: playerPage.time(playerPage.viewState.duration > 0 ? playerPage.viewState.duration : -1)
-            color: "#999999"
+            color: Appearance.tone("#999999")
             font.family: harmonyMedium.name
             font.pointSize: 7.875
             font.features: { "tnum": 1 }
@@ -341,7 +342,7 @@ Item {
         sectionIndex: 3
         x: 95; y: 470; width: 162; height: 54
         NowPlayingButton {
-            x: 0; y: 5; kind: "previous"; label: "上一首"
+            x: 0; y: 5; kind: "previous"; label: qsTr("上一首")
             enabled: playerPage.viewState.canPrevious && playerPage.motionPhase !== "leave"
             reduceMotion: playerPage.reduceMotion
             onTriggered: {
@@ -353,13 +354,13 @@ Item {
         }
         NowPlayingButton {
             x: 54; y: 0; kind: playerPage.viewState.playing ? "pause" : "play"
-            label: playerPage.viewState.playing ? "暂停" : "播放"
+            label: playerPage.viewState.playing ? qsTr("暂停") : qsTr("播放")
             enabled: playerPage.viewState.canToggle && playerPage.motionPhase !== "leave"
             reduceMotion: playerPage.reduceMotion
             onTriggered: nowPlayingController.playPause()
         }
         NowPlayingButton {
-            x: 118; y: 5; kind: "next"; label: "下一首"
+            x: 118; y: 5; kind: "next"; label: qsTr("下一首")
             enabled: playerPage.viewState.canNext && playerPage.motionPhase !== "leave"
             reduceMotion: playerPage.reduceMotion
             onTriggered: {
@@ -373,14 +374,14 @@ Item {
         sectionIndex: 4
         x: 427; y: 481; width: 68; height: 30
         NowPlayingButton {
-            kind: "volume"; label: "SPlayer 应用音量"
+            kind: "volume"; label: qsTr("SPlayer 应用音量")
             enabled: playerPage.viewState.canVolume && playerPage.motionPhase !== "leave"
             selected: playerPage.volumeOpen
             reduceMotion: playerPage.reduceMotion
             onTriggered: playerPage.volumeOpen = !playerPage.volumeOpen
         }
         NowPlayingButton {
-            x: 38; kind: "lyrics"; label: "歌词"
+            x: 38; kind: "lyrics"; label: qsTr("歌词")
             enabled: playerPage.viewState.hasTrack
             selected: playerPage.showsLyrics
             reduceMotion: playerPage.reduceMotion
@@ -412,7 +413,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             visible: volumePopup.reveal >= 1
-            color: "#1A1A1A"
+            color: Appearance.tone("#1A1A1A")
             layer.enabled: playerPage.volumeOpen
             layer.effect: MultiEffect {
                 shadowEnabled: true
@@ -426,27 +427,27 @@ Item {
             width: 44; height: 150 * volumePopup.reveal; clip: true
             Rectangle {
                 width: 44; height: 150
-                color: "#1A1A1A"
-                border.width: 1; border.color: "#3D3D3D"
+                color: Appearance.tone("#1A1A1A")
+                border.width: 1; border.color: Appearance.tone("#3D3D3D")
                 Text {
                     x: 0; y: 9; width: 44; height: 10
                     text: Math.round((volumePointer.pressed ? volumePopup.preview : playerPage.viewState.volume) * 100) + "%"
                     font.family: harmonyBold.name
                     font.pixelSize: 10
                     font.weight: Font.Bold
-                    color: "#EEEEEE"
+                    color: Appearance.tone("#EEEEEE")
                     horizontalAlignment: Text.AlignHCenter
                     renderType: Text.CurveRendering
                 }
-                Rectangle { x: 19; y: 30; width: 6; height: 106; color: "#333333" }
+                Rectangle { x: 19; y: 30; width: 6; height: 106; color: Appearance.tone("#333333") }
                 Rectangle {
                     readonly property real fraction: volumePointer.pressed ? volumePopup.preview : playerPage.viewState.volume
                     x: 19; y: 136 - fraction * 106; width: 6; height: fraction * 106
-                    color: "#FFFA00"
+                    color: Appearance.accent("#FFFA00")
                 }
                 Rectangle {
                     x: 14; y: 133 - (volumePointer.pressed ? volumePopup.preview : playerPage.viewState.volume) * 106
-                    width: 16; height: 6; color: "#EEEEEE"
+                    width: 16; height: 6; color: Appearance.tone("#EEEEEE")
                 }
                 MouseArea {
                     id: volumePointer
@@ -474,9 +475,9 @@ Item {
         transformOrigin: Item.Bottom
         Behavior on opacity { NumberAnimation { duration: playerPage.reduceMotion ? 0 : 140; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 0.1, 0.25, 1, 1, 1] } }
         Behavior on scale { NumberAnimation { duration: playerPage.reduceMotion ? 0 : 180; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.9, 0.1, 1, 1, 1] } }
-        Rectangle { y: 2; width: parent.width; height: 21; radius: 10; color: "#111111" }
+        Rectangle { y: 2; width: parent.width; height: 21; radius: 10; color: Appearance.tone("#111111") }
         Rectangle {
-            width: parent.width; height: 21; radius: 10; color: "#FAFAFA"
+            width: parent.width; height: 21; radius: 10; color: Appearance.tone("#FAFAFA")
             layer.enabled: playerPage.dragging
             layer.effect: MultiEffect {
                 shadowEnabled: true
@@ -489,7 +490,7 @@ Item {
         Shape {
             x: seekBubble.width / 2 - 4; y: 21
             preferredRendererType: Shape.CurveRenderer
-            ShapePath { fillColor: "#FAFAFA"; strokeWidth: -1; PathSvg { path: "M0 0L8 0L4 4Z" } }
+            ShapePath { fillColor: Appearance.tone("#FAFAFA"); strokeWidth: -1; PathSvg { path: "M0 0L8 0L4 4Z" } }
         }
         Text {
             id: bubbleText
@@ -499,7 +500,7 @@ Item {
             font.family: harmonyBold.name
             font.pixelSize: 11
             font.weight: Font.Bold
-            color: "#111111"
+            color: Appearance.tone("#111111")
             renderType: Text.CurveRendering
         }
     }

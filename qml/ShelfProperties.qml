@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // FileShelfCanvas.buildCard, 186 px wide, 12 px padding and an 84 px preview.
@@ -33,20 +34,23 @@ Item {
     }
     Text {
         id: name; x: 12; y: 106; width: 162; text: card.entry.name; maximumLineCount: 3; wrapMode: Text.WrapAnywhere; elide: Text.ElideRight
+        visible: !Appearance.recording()
         color: "#111111"; font.family: harmonyBold.name; font.pixelSize: 13; font.weight: Font.Bold; lineHeight: 1.25; renderType: Text.CurveRendering
     }
+    Redaction { x: 12; y: 107; width: 150; height: 14; visible: Appearance.recording() }
     Column {
-        id: rows; x: 12; y: name.y + name.height + 8; spacing: 5
+        id: rows; x: 12; y: name.y + (Appearance.recording() ? 16.25 : name.height) + 8; spacing: 5
         Repeater {
             model: [
-                {term: "类型", value: card.entry.kindText},
-                {term: card.entry.directory ? "项目" : "大小", value: card.entry.directory ? (card.details.count || "—") : card.entry.size},
-                {term: "位置", value: card.entry.location, multiline: true},
-                {term: "创建", value: card.details.created || "—"},
-                {term: "修改", value: card.details.modified || "—"}
+                {term: qsTr("类型"), value: card.entry.kindText},
+                {term: card.entry.directory ? qsTr("项目") : qsTr("大小"), value: card.entry.directory ? (card.details.count || "—") : card.entry.size},
+                {term: qsTr("位置"), value: Appearance.recording() ? "" : card.entry.location, multiline: true},
+                {term: qsTr("创建"), value: card.details.created || "—"},
+                {term: qsTr("修改"), value: card.details.modified || "—"}
             ]
             Item {
                 required property var modelData; width: 162; height: Math.max(14.4, value.height)
+                Redaction { x: 32; y: 1; width: 96; height: 12; visible: modelData.multiline === true && Appearance.recording() }
                 Text { width: 24; height: 14.4; text: modelData.term; color: "#666666"; font.family: harmonyBold.name; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 0.72; renderType: Text.CurveRendering }
                 Text { id: value; x: 32; width: 130; text: modelData.value; color: "#111111"; font.family: harmonyRegular.name; font.pixelSize: 11; wrapMode: Text.WrapAnywhere; maximumLineCount: modelData.multiline ? 3 : 1; elide: Text.ElideRight; lineHeight: 1.3; renderType: Text.CurveRendering }
             }
@@ -54,7 +58,7 @@ Item {
     }
     Row {
         id: actions; x: 12; y: rows.y + rows.height + 10; spacing: 6
-        CalendarButton { objectName: "shelfOpen"; width: 62; height: 26; title: "打开"; enabled: card.entry.available; reduceMotion: card.reduceMotion; onClicked: card.opened() }
+        CalendarButton { objectName: "shelfOpen"; width: 62; height: 26; title: qsTr("打开"); enabled: card.entry.available; reduceMotion: card.reduceMotion; onClicked: card.opened() }
         Item {
             width: 30; height: 30; enabled: card.entry.available; opacity: enabled ? 1 : 0.35
             Rectangle { anchors.fill: parent; color: revealMouse.containsMouse ? "#2E2E2E" : "#202020"; border.color: "#555555" }

@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "readercontroller.hpp"
 
 #include <QBuffer>
@@ -53,12 +54,12 @@ constexpr int imageHeight = 748;
 constexpr double logicalWidth = 420.0;
 constexpr double logicalHeight = 349.0 / 1.4;
 
-QString unsupportedMessage() { return QStringLiteral("请选择 PDF、EPUB 或 TXT 书籍。"); }
-QString invalidArchiveMessage() { return QStringLiteral("此 EPUB 压缩包已损坏或不安全。"); }
-QString tooLargeMessage() { return QStringLiteral("此书籍超过阅读器的容量限制。"); }
-QString invalidBookMessage() { return QStringLiteral("无法读取此书籍。"); }
-QString unavailableMessage() { return QStringLiteral("原始书籍不可用，请重新选择。"); }
-QString encryptedMessage() { return QStringLiteral("暂不支持加密书籍。"); }
+QString unsupportedMessage() { return QCoreApplication::translate("HyprEndfield", "请选择 PDF、EPUB 或 TXT 书籍。"); }
+QString invalidArchiveMessage() { return QCoreApplication::translate("HyprEndfield", "此 EPUB 压缩包已损坏或不安全。"); }
+QString tooLargeMessage() { return QCoreApplication::translate("HyprEndfield", "此书籍超过阅读器的容量限制。"); }
+QString invalidBookMessage() { return QCoreApplication::translate("HyprEndfield", "无法读取此书籍。"); }
+QString unavailableMessage() { return QCoreApplication::translate("HyprEndfield", "原始书籍不可用，请重新选择。"); }
+QString encryptedMessage() { return QCoreApplication::translate("HyprEndfield", "暂不支持加密书籍。"); }
 
 bool finiteFraction(double value)
 {
@@ -230,7 +231,7 @@ void ReaderController::loadLibrary()
         m_ready = false;
         m_books.clear();
         m_selected.clear();
-        m_error = QStringLiteral("无法读取阅读器书库，原始数据已保留。");
+        m_error = QCoreApplication::translate("HyprEndfield", "无法读取阅读器书库，原始数据已保留。");
     };
     if (!file.open(QIODevice::ReadOnly) || file.size() > maximumLibraryBytes) { invalidate(); return; }
     m_persisted = file.readAll();
@@ -300,11 +301,11 @@ void ReaderController::loadLibrary()
 
 bool ReaderController::saveLibrary()
 {
-    if (!m_ready) { m_error = QStringLiteral("阅读器书库存储不可用。"); return false; }
+    if (!m_ready) { m_error = QCoreApplication::translate("HyprEndfield", "阅读器书库存储不可用。"); return false; }
     QFile current(m_path);
     if (current.exists() != m_fileExisted || (m_fileExisted
         && (!current.open(QIODevice::ReadOnly) || current.size() > maximumLibraryBytes || current.readAll() != m_persisted))) {
-        m_error = QStringLiteral("阅读器书库已被其他程序修改，请重新启动应用后保存。");
+        m_error = QCoreApplication::translate("HyprEndfield", "阅读器书库已被其他程序修改，请重新启动应用后保存。");
         return false;
     }
     QJsonArray books;
@@ -327,10 +328,10 @@ bool ReaderController::saveLibrary()
     if (m_reading) root.insert(QStringLiteral("reading"), true);
     const QByteArray bytes = QJsonDocument(root).toJson(QJsonDocument::Compact);
     if (bytes.size() > maximumLibraryBytes) { m_error = tooLargeMessage(); return false; }
-    if (!QDir().mkpath(m_directory)) { m_error = QStringLiteral("无法创建阅读器数据目录。"); return false; }
+    if (!QDir().mkpath(m_directory)) { m_error = QCoreApplication::translate("HyprEndfield", "无法创建阅读器数据目录。"); return false; }
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
-        m_error = QStringLiteral("无法保存阅读器书库。"); return false;
+        m_error = QCoreApplication::translate("HyprEndfield", "无法保存阅读器书库。"); return false;
     }
     m_persisted = bytes;
     m_fileExisted = true;
@@ -460,7 +461,7 @@ bool ReaderController::importUrl(const QUrl &url)
             return book.device == device && book.inode == inode;
         });
         if (found == m_books.end()) {
-            if (m_books.size() >= 50) { fail(QStringLiteral("import"), QStringLiteral("书库最多保存 50 本书。")); return; }
+            if (m_books.size() >= 50) { fail(QStringLiteral("import"), QCoreApplication::translate("HyprEndfield", "书库最多保存 50 本书。")); return; }
             Book book;
             book.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
             book.path = path; book.title = result.document->title; book.format = QFileInfo(path).suffix().toLower();
@@ -478,7 +479,7 @@ bool ReaderController::importUrl(const QUrl &url)
         resetImageViewInternal();
         m_pageBook.clear();
         m_pages.clear();
-        emit actionFinished(QStringLiteral("import"), true, QStringLiteral("已加入书库"));
+        emit actionFinished(QStringLiteral("import"), true, QCoreApplication::translate("HyprEndfield", "已加入书库"));
         const auto *book = selectedBook();
         requestRender(book ? std::optional<Location>(book->location) : std::nullopt);
     });
@@ -516,7 +517,7 @@ bool ReaderController::removeBook(const QString &id)
         if (m_active && !m_selected.isEmpty()) openSelected();
     }
     emit stateChanged();
-    emit actionFinished(QStringLiteral("remove"), true, QStringLiteral("已从书库移除"));
+    emit actionFinished(QStringLiteral("remove"), true, QCoreApplication::translate("HyprEndfield", "已从书库移除"));
     return true;
 }
 
@@ -543,7 +544,7 @@ bool ReaderController::relinkBook(const QString &id, const QUrl &url)
         const Book previous = *book;
         book->path = path; book->format = QFileInfo(path).suffix().toLower(); book->device = device; book->inode = inode;
         if (!saveLibrary()) { *book = previous; fail(QStringLiteral("relink"), m_error); return; }
-        emit actionFinished(QStringLiteral("relink"), true, QStringLiteral("已重新链接"));
+        emit actionFinished(QStringLiteral("relink"), true, QCoreApplication::translate("HyprEndfield", "已重新链接"));
         if (m_active && m_selected == id) {
             m_document = result.document; resetImageViewInternal(); m_pages.clear(); m_pageBook.clear(); requestRender(book->location);
         } else emit stateChanged();
@@ -675,13 +676,13 @@ void ReaderController::toggleBookmark()
     bool added = false;
     if (found != book->bookmarks.end()) book->bookmarks.erase(found);
     else {
-        if (book->bookmarks.size() >= 128) { fail(QStringLiteral("bookmark"), QStringLiteral("每本书最多保存 128 个书签。")); return; }
+        if (book->bookmarks.size() >= 128) { fail(QStringLiteral("bookmark"), QCoreApplication::translate("HyprEndfield", "每本书最多保存 128 个书签。")); return; }
         book->bookmarks.append({QUuid::createUuid().toString(QUuid::WithoutBraces), page.location, page.progress});
         added = true;
     }
     if (!saveLibrary()) { book->bookmarks = previous; fail(QStringLiteral("bookmark"), m_error); return; }
     emit stateChanged();
-    emit actionFinished(QStringLiteral("bookmark"), true, added ? QStringLiteral("已添加书签") : QStringLiteral("已移除书签"));
+    emit actionFinished(QStringLiteral("bookmark"), true, added ? QCoreApplication::translate("HyprEndfield", "已添加书签") : QCoreApplication::translate("HyprEndfield", "已移除书签"));
 }
 
 void ReaderController::removeBookmark(const QString &id)
@@ -694,7 +695,7 @@ void ReaderController::removeBookmark(const QString &id)
     if (book->bookmarks.size() == previousSize) return;
     if (!saveLibrary()) { book->bookmarks = previous; fail(QStringLiteral("bookmark"), m_error); return; }
     emit stateChanged();
-    emit actionFinished(QStringLiteral("bookmark"), true, QStringLiteral("已移除书签"));
+    emit actionFinished(QStringLiteral("bookmark"), true, QCoreApplication::translate("HyprEndfield", "已移除书签"));
 }
 
 void ReaderController::goBookmark(const QString &id)
@@ -839,7 +840,7 @@ bool readIdentity(const QString &path, QString *device, QString *inode, QString 
     const QString foundInode = QString::number(qulonglong(info.st_ino));
     if ((!expectedDevice.isEmpty() && foundDevice != expectedDevice)
         || (!expectedInode.isEmpty() && foundInode != expectedInode)) {
-        if (error) *error = QStringLiteral("原始书籍路径已被其他文件占用，请重新选择。");
+        if (error) *error = QCoreApplication::translate("HyprEndfield", "原始书籍路径已被其他文件占用，请重新选择。");
         return false;
     }
     if (device) *device = foundDevice;

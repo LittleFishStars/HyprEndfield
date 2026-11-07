@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD ArchiveCategoryPlate: 48 px chamfered category tab.
@@ -24,7 +25,7 @@ Item {
             PathSvg { path: "M0 0H" + (plate.width - 10) + "L" + plate.width + " 10V" + plate.height + "H0Z" }
         }
     }
-    Rectangle { visible: plate.selected; x: 6; y: 10; width: 3; height: 28; color: "#FFFA00" }
+    Rectangle { visible: plate.selected; x: 6; y: 10; width: 3; height: 28; color: Appearance.accent("#FFFA00") }
     Text {
         x: 16; y: 7; width: plate.width - 28; height: 18; text: plate.entry.name
         color: plate.selected ? "#F2F2F2" : "#191919"; elide: Text.ElideRight
@@ -38,7 +39,7 @@ Item {
         renderType: Text.CurveRendering
     }
     Rectangle {
-        visible: plate.entry.isNew; x: plate.width - 39; y: 5; width: 25; height: 13; color: "#FFFA00"
+        visible: plate.entry.isNew; x: plate.width - 39; y: 5; width: 25; height: 13; color: Appearance.accent("#FFFA00")
         Text { anchors.centerIn: parent; text: "NEW"; color: "#171717"; font.family: harmonyBold.name; font.pixelSize: 7; font.weight: Font.Bold; renderType: Text.CurveRendering }
     }
     Behavior on opacity { NumberAnimation { duration: plate.reduceMotion ? 0 : 140 } }

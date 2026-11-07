@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 // EndfieldHUD/Sources/HUDNavigation.swift, iconPath(for:).
@@ -6,7 +7,7 @@ import QtQuick.Shapes
 Item {
     id: root
     property string kind: ""
-    property color ink: "#202020"
+    property color ink: Appearance.tone("#202020")
     function box(x, y, w, h) {
         return "M" + x + " " + y + "h" + w + "v" + h + "h" + (-w) + "Z";
     }

@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import HyprEndfield.Source 1.0
 import "WatchSurfaces.js" as Source
@@ -6,6 +7,23 @@ import "WatchSurfaces.js" as Source
 Item {
     id: menu
     required property var shell
+    property bool bootPending: false
+    readonly property bool bootActive: bootPending || boot.playing
+    property real afterBoot: 1
+    Connections {
+        target: appController
+        function onHudOpenChanged() {
+            if (appController.hudOpen) { menu.bootPending = settingsController.beginBootLog(); menu.afterBoot = 1; }
+            else { menu.bootPending = false; boot.cancel(); }
+        }
+    }
+    Connections {
+        target: menu.shell
+        function onTransitioningChanged() {
+            if (!menu.shell.transitioning && menu.bootPending && appController.hudOpen) { boot.play(); menu.bootPending = false; }
+        }
+    }
+    NumberAnimation { id: restoreCentre; target: menu; property: "afterBoot"; from: 0; to: 1; duration: 380; easing.type: Easing.BezierSpline; easing.bezierCurve: [.2, .8, .2, 1, 1, 1] }
     width: 1920
     height: 1080
     enabled: !shell.transitioning
@@ -16,6 +34,7 @@ Item {
         height: 1080
         z: -200
         animation: sourceWatchAnimation
+        logo: settingsController.centerLogo
         pose: ({phase: menu.shell.animationPhase, time: menu.shell.sourceAnimationTime,
                 ambient: menu.shell.sourceAmbientSampleTime, gyro: menu.shell.sourceGyro})
     }
@@ -36,8 +55,10 @@ Item {
     MenuPlane {
         scene: menu.shell
         elevation: 0
-        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1)
+        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1) * (menu.bootActive ? 0 : Math.min(1, menu.afterBoot / .6))
+        localMatrix: Qt.matrix4x4(1, 0, 0, 0, 0, 1, 0, 44 * (1 - menu.afterBoot), 0, 0, 1, 0, 0, 0, 0, 1)
         SystemPage {
+            settings: settingsController
             x: 630
             y: 238
             scale: 1.12
@@ -52,11 +73,17 @@ Item {
             visible: menu.shell.selectedModule === "display"
             settings: menu.shell.displaySettings
         }
+        AboutPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "about"
+            settings: settingsController
+        }
     }
     MenuPlane {
         scene: menu.shell
         elevation: 0
-        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1)
+        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1) * (menu.bootActive ? 0 : Math.min(1, menu.afterBoot / .6))
+        localMatrix: Qt.matrix4x4(1, 0, 0, 0, 0, 1, 0, 44 * (1 - menu.afterBoot), 0, 0, 1, 0, 0, 0, 0, 1)
         NowPlayingPage {
             x: 630
             y: 238
@@ -263,7 +290,7 @@ Item {
                 Shape {
                     preferredRendererType: Shape.CurveRenderer
                     ShapePath {
-                        strokeColor: "#e5e5e5"
+                        strokeColor: Appearance.tone("#e5e5e5")
                         strokeWidth: 4
                         fillColor: "transparent"
                         PathSvg {
@@ -293,7 +320,7 @@ Item {
             shell: menu.shell
             spec: modelData
             z: 26
-            label: index === 0 ? "存储" : "活动监视器"
+            label: index === 0 ? qsTr("存储") : qsTr("活动监视器")
             opacity: menu.shell.remainingContentFrameValue(index === 0 ? "storageOpacity" : "activityOpacity", 1)
             onTriggered: menu.shell.selectedModule = index === 0 ? "storage" : "activity"
         }
@@ -309,6 +336,10 @@ Item {
             dateText: menu.shell.dateText
             seconds: menu.shell.clockSeconds
             focusActive: focusModeController.state.running
+            styleIndex: settingsController.clockStyleIndex
+            recordingMode: settingsController.recordingMode
+            reduceMotion: settingsController.reduceMotion
+            onStyleRequested: index => settingsController.set("clockStyleIndex", index)
             transform: Matrix4x4 {
                 matrix: Qt.matrix4x4(.9995, .0739, 0, 0, -.0306, .9972, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
             }
@@ -365,9 +396,10 @@ Item {
             text: "HYPRENDFIELD"
             font.family: harmonyBold.name
             font.pixelSize: 32
-            color: "#f2f2f2"
+            color: Appearance.tone("#f2f2f2")
             renderType: Text.CurveRendering
         }
+        FacilityTags { x: 340; y: 162; visible: appController.hudOpen && !menu.bootActive; onOpenModule: module => menu.shell.selectedModule = module }
         Text {
             x: 620
             y: 114
@@ -375,7 +407,7 @@ Item {
             font.family: harmonyMedium.name
             font.pixelSize: 14
             font.letterSpacing: 1.4
-            color: "#8f9496"
+            color: Appearance.tone("#8f9496")
             renderType: Text.CurveRendering
         }
     }
@@ -413,11 +445,26 @@ Item {
         width: 400
         height: 30
         text: "SUPER + ESC TO CLOSE"
-        color: "#8a8d8e"
+        color: Appearance.tone("#8a8d8e")
         font.family: harmonyRegular.name
         font.pixelSize: 14
         horizontalAlignment: Text.AlignHCenter
         renderType: Text.CurveRendering
         opacity: menu.shell.contentFrameValue("nativeOpacity", 1)
+    }
+    MenuPlane {
+        scene: menu.shell; elevation: 0; z: 1100
+        BootLog { id: boot; x: 641.2; y: 271.6; scale: 1.12; transformOrigin: Item.TopLeft; onFinished: { if (settingsController.reduceMotion) menu.afterBoot = 1; else restoreCentre.restart(); } }
+    }
+    MenuPlane {
+        scene: menu.shell; elevation: 0; z: 1200
+        Rectangle {
+            x: 990; y: 745; width: 302.4; height: 65; visible: settingsController.notice !== "" && appController.hudOpen; color: "#F21A1A1A"; border.color: Appearance.tone("#444444")
+            Rectangle { width: 3; height: parent.height; color: Appearance.accent("#FFFA00") }
+            Text { x: 20; y: 10; width: 270; height: 45; text: settingsController.notice; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; color: Appearance.tone("#F2F2F2"); font.family: harmonyMedium.name; font.pixelSize: 13; renderType: Text.CurveRendering }
+            MouseArea { anchors.fill: parent; onClicked: settingsController.clearNotice() }
+        }
+        Timer { id: noticeTimer; interval: 6000; onTriggered: settingsController.clearNotice() }
+        Connections { target: settingsController; function onNoticeChanged() { if (settingsController.notice) noticeTimer.restart() } }
     }
 }

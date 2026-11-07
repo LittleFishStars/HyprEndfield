@@ -10,21 +10,23 @@ Item {
     property bool expanded: false
     property bool reduceMotion: false
     property bool presented: false
-    readonly property var reading: batteryController.state
+    property var reading: batteryController.state
+    property bool alwaysExpanded: false
+    property bool manageMonitoring: true
     readonly property color foreground: "#f2f2f2"
     readonly property color level: reading.percentage < 0 ? "#737373" : reading.percentage < 20 ? "#fa5957" : reading.percentage <= 70 ? "#f5cc40" : "#40de6e"
-    property real morph: expanded ? 1 : 0
+    property real morph: expanded || alwaysExpanded ? 1 : 0
 
     width: 300
     height: 84
     onPresentedChanged: {
-        batteryController.presented = presented;
+        if (manageMonitoring) batteryController.presented = presented;
         if (!presented)
             expanded = false;
 
     }
     Accessible.role: Accessible.Button
-    Accessible.name: "电池容量，" + reading.status + (reading.estimated ? "，容量为按标称电压换算的估计值" : "")
+    Accessible.name: qsTr("电池容量，") + reading.status + (reading.estimated ? qsTr("，容量为按标称电压换算的估计值") : "")
     Accessible.onPressAction: {
         if (reading.available)
             expanded = !expanded;
@@ -85,7 +87,7 @@ Item {
 
         ShapePath {
             strokeWidth: -1
-            fillColor: badge.expanded ? badge.foreground : "#1b1b1b"
+            fillColor: badge.expanded || badge.alwaysExpanded ? badge.foreground : "#1b1b1b"
 
             PathSvg {
                 path: "M14 2.8L5.5 13.3H11L9.5 21.2L18.5 10.2H13Z"
@@ -110,7 +112,7 @@ Item {
 
         Text {
             anchors.baseline: parent.children[0].baseline
-            text: "/" + badge.reading.full
+            text: badge.reading.full ? "/" + badge.reading.full : ""
             color: "#78f2f2f2"
             font.family: harmonyMedium.name
             font.pointSize: 9.5 * 72 / (Screen.logicalPixelDensity * 25.4)
@@ -134,7 +136,7 @@ Item {
         width: 40
         height: 20
         opacity: badge.morph
-        text: badge.reading.percentage < 0 ? "—" : badge.reading.percentage + "%"
+        text: badge.reading.trailing !== undefined ? badge.reading.trailing : badge.reading.percentage < 0 ? "—" : badge.reading.percentage + "%"
         horizontalAlignment: Text.AlignRight
         color: badge.foreground
         font.family: harmonyBold.name

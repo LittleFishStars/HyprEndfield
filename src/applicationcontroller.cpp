@@ -1,4 +1,8 @@
 #include "applicationcontroller.hpp"
+#include "settingscontroller.hpp"
+#include <LayerShellQt/Window>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <QCoreApplication>
 #include <QDrag>
@@ -58,7 +62,44 @@ void ApplicationController::setWindow(QQuickWindow *window)
     m_window = window;
     if (m_window) {
         m_window->setVisible(m_hudVisible);
+        LayerShellQt::Window::get(m_window)->setCloseOnDismissed(false);
+        connect(m_window, &QWindow::activeChanged, this, [this] {
+            if (m_window->isActive()) m_receivedFocus = true;
+            else QTimer::singleShot(250, this, &ApplicationController::checkFocus);
+        });
     }
+}
+
+void ApplicationController::setSettings(SettingsController *settings)
+{
+    m_settings = settings;
+    connect(settings, &SettingsController::preferenceChanged, this, [this](const QString &key, const QVariant &) {
+        if (key != "displayChoice" || !m_window || !m_hudOpen) return;
+        m_receivedFocus = false; m_window->hide(); selectScreen(); m_window->show(); m_window->requestActivate();
+    });
+    connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] {
+        QTimer::singleShot(0, this, [this] { if (m_hudOpen && m_window) { selectScreen(); m_window->show(); } });
+    });
+}
+
+void ApplicationController::selectScreen()
+{
+    if (!m_settings || !m_window) return;
+    auto *layer = LayerShellQt::Window::get(m_window);
+    const auto choice = m_settings->value("displayChoice").toString();
+    if (choice == "pointer") { layer->setScreen(nullptr); layer->setWantsToBeOnActiveScreen(true); return; }
+    layer->setWantsToBeOnActiveScreen(false);
+    QScreen *selected = QGuiApplication::primaryScreen();
+    for (auto *screen : QGuiApplication::screens()) if (screen->name() == choice) selected = screen;
+    if (selected) { layer->setScreen(selected); m_window->setScreen(selected); }
+}
+
+void ApplicationController::checkFocus()
+{
+    if (!m_settings || !m_settings->value("closeOnFocusLost").toBool() || !m_receivedFocus || !m_hudOpen || m_fileDragActive) return;
+    for (auto *window = QGuiApplication::focusWindow(); window; window = window->transientParent())
+        if (window == m_window) return;
+    hideHud();
 }
 
 bool ApplicationController::listen(const QString &serverName)
@@ -71,6 +112,7 @@ bool ApplicationController::listen(const QString &serverName)
 void ApplicationController::executeCommand(const QString &command)
 {
     const QString normalized = command.trimmed().toLower();
+    if (normalized == QStringLiteral("background")) return;
     if (normalized == QStringLiteral("show")) {
         showHud();
     } else if (normalized == QStringLiteral("hide")) {
@@ -85,6 +127,7 @@ void ApplicationController::executeCommand(const QString &command)
 void ApplicationController::showHud()
 {
     if (m_fileDragActive) return;
+    if (!m_hudVisible) { selectScreen(); m_receivedFocus = false; }
     setHudVisible(true);
     if (m_window) {
         m_window->show();
@@ -97,6 +140,7 @@ void ApplicationController::showHud()
 
 void ApplicationController::hideHud()
 {
+    if (m_settings) { m_settings->revertLayout(); m_settings->cancelBatteryPosition(); }
     resetHyprlandSubmap();
     setHudOpen(false);
 }

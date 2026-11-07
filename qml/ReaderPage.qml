@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import QtQuick.Dialogs
 import QtQuick.Controls as Controls
@@ -34,7 +35,7 @@ FocusScope {
     function tabKey(index) { return ["open", "library", "reading", "marks"][Math.max(0, Math.min(3, index))] }
     function notify(title, message) { toastTitle = title; toastMessage = message || ""; toastOpen = true; toastTimer.restart() }
     function coverColor(id) {
-        const colors = ["#2A5D7A", "#7A2A2A", "#555555", "#6B5A12", "#3D5A2A", "#4A3A6B", "#2A4A4A", "#6B3A1E"]
+        const colors = ["#2A5D7A", "#7A2A2A", Appearance.tone("#555555"), "#6B5A12", "#3D5A2A", "#4A3A6B", "#2A4A4A", "#6B3A1E"]
         const hex = String(id || "").split("-").join(""); let sum = 0
         for (let i = 0; i + 1 < hex.length; i += 2) sum = (sum + parseInt(hex.slice(i, i + 2), 16)) & 255
         return colors[sum % colors.length]
@@ -79,21 +80,21 @@ FocusScope {
         property bool reduceMotion: false
         signal clicked()
         width: 30; height: 30; opacity: enabled ? 1 : 0.3
-        Rectangle { anchors.fill: parent; color: pointer.containsMouse && iconButton.enabled ? "#303030" : iconButton.checked ? "#FFFA00" : "#202020"; border.color: pointer.containsMouse ? "#8A8A8A" : "#555555" }
-        ReaderGlyph { anchors.centerIn: parent; width: 15; height: 15; name: iconButton.icon; color: iconButton.checked ? "#171717" : "#E8E8E8" }
+        Rectangle { anchors.fill: parent; color: pointer.containsMouse && iconButton.enabled ? Appearance.tone("#303030") : iconButton.checked ? Appearance.accent("#FFFA00") : Appearance.tone("#202020"); border.color: pointer.containsMouse ? Appearance.tone("#8A8A8A") : Appearance.tone("#555555") }
+        ReaderGlyph { anchors.centerIn: parent; width: 15; height: 15; name: iconButton.icon; color: iconButton.checked ? Appearance.tone("#171717") : Appearance.tone("#E8E8E8") }
         MouseArea { id: pointer; anchors.fill: parent; hoverEnabled: true; enabled: iconButton.enabled; cursorShape: Qt.PointingHandCursor; onClicked: iconButton.clicked() }
     }
     component EmptyState: Item {
         property string title: "EMPTY"
         property string subtitle: ""
-        Rectangle { anchors.fill: parent; color: "transparent"; border.color: "#4B4B4B" }
+        Rectangle { anchors.fill: parent; color: "transparent"; border.color: Appearance.tone("#4B4B4B") }
         Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: "#0AFFFFFF"; PathSvg { path: { let p = ""; for (let x = -300; x < parent.parent.width; x += 7) p += "M" + x + " " + parent.parent.height + "h1.414l" + parent.parent.height + " -" + parent.parent.height + "h-1.414Z"; return p } } } }
         Row { anchors.horizontalCenter: parent.horizontalCenter; y: (parent.height - 42) / 2; spacing: 4
-            Text { text: "[ "; color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering }
-            Text { text: parent.parent.title; color: "#E9E9E9"; font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering }
-            Text { text: " ]"; color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering }
+            Text { text: "[ "; color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering }
+            Text { text: parent.parent.title; color: Appearance.tone("#E9E9E9"); font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering }
+            Text { text: " ]"; color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 4.8; renderType: Text.CurveRendering }
         }
-        Text { anchors.horizontalCenter: parent.horizontalCenter; y: (parent.height - 42) / 2 + 30; text: parent.subtitle; visible: text.length > 0; color: "#8A8A8A"; font.family: harmonyRegular.name; font.pixelSize: 9; font.letterSpacing: 1.38; renderType: Text.CurveRendering }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; y: (parent.height - 42) / 2 + 30; text: parent.subtitle; visible: text.length > 0; color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 9; font.letterSpacing: 1.38; renderType: Text.CurveRendering }
     }
 
     onPresentedChanged: {
@@ -111,20 +112,20 @@ FocusScope {
         target: readerController
         function onStateChanged() {
             const next = readerController.state
-            if (next.error && next.error !== readerPage.lastError) { readerPage.lastError = next.error; readerPage.notify("阅读器", next.error) }
+            if (next.error && next.error !== readerPage.lastError) { readerPage.lastError = next.error; readerPage.notify(qsTr("阅读器"), next.error) }
             paper.syncPage()
         }
         function onActionFinished(action, success, message) {
             if (success && action === "import") readerPage.selectTab(2, 1)
-            readerPage.notify(success ? "阅读器" : "提示", message)
+            readerPage.notify(success ? qsTr("阅读器") : qsTr("提示"), message)
         }
     }
 
     FileDialog {
         id: bookDialog
-        title: readerPage.relinkBookId ? "重新链接书籍" : "选择书籍"
+        title: readerPage.relinkBookId ? qsTr("重新链接书籍") : qsTr("选择书籍")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["电子书 (*.pdf *.epub *.txt)"]
+        nameFilters: [qsTr("电子书 (*.pdf *.epub *.txt)")]
         options: FileDialog.DontUseNativeDialog | FileDialog.DontResolveSymlinks
         Component.onCompleted: { if ("popupType" in bookDialog) bookDialog.popupType = Controls.Popup.Item }
         onAccepted: {
@@ -156,20 +157,20 @@ FocusScope {
                 model: readerPage.tab === 2 && readerPage.currentPage.key && readerPage.currentBook.title
                     ? ["// HUD", "/", "E-READER", "/", String(readerPage.currentBook.title).length > 44 ? String(readerPage.currentBook.title).slice(0, 43) + "…" : readerPage.currentBook.title]
                     : ["// HUD", "/", "E-READER"]
-                Text { required property string modelData; required property int index; text: modelData; color: index >= 2 ? "#E6E6E6" : "#8A8A8A"; font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
+                Text { required property string modelData; required property int index; text: modelData; color: index >= 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
             }
         }
-        Text { x: 549 - width; y: 1.75; text: "MOD-10"; color: "#8A8A8A"; font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
+        Text { x: 549 - width; y: 1.75; text: "MOD-10"; color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
         Item { x: 556; y: 3.5; width: 34; height: 7; clip: true; Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: "#24FFFFFF"; PathSvg { path: { let p = ""; for (let x = -7; x < 41; x += 3.5 * Math.SQRT2) p += "M" + x + " 7h1.414l7 -7h-1.414Z"; return p } } } } }
-        Text { id: heading; x: 0; y: 20; height: 30; text: "阅读器"; color: "#F4F4F4"; font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08; renderType: Text.CurveRendering }
-        Text { x: heading.width + 12; y: heading.y + heading.baselineOffset - baselineOffset; text: "E-READER"; color: "#8A8A8A"; font.family: harmonyMedium.name; font.pixelSize: 13; font.weight: Font.Medium; font.letterSpacing: 2.6; renderType: Text.CurveRendering }
+        Text { id: heading; x: 0; y: 20; height: 30; text: qsTr("阅读器"); color: Appearance.tone("#F4F4F4"); font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08; renderType: Text.CurveRendering }
+        Text { x: heading.width + 12; y: heading.y + heading.baselineOffset - baselineOffset; text: "E-READER"; color: Appearance.tone("#8A8A8A"); font.family: harmonyMedium.name; font.pixelSize: 13; font.weight: Font.Medium; font.letterSpacing: 2.6; renderType: Text.CurveRendering }
         Item {
             y: 60; width: 590; height: 9
             Rectangle { y: 4; width: 590; height: 1; color: "#38FFFFFF" }
-            Rectangle { y: 3; width: 56; height: 3; color: "#FFFA00" }
+            Rectangle { y: 3; width: 56; height: 3; color: Appearance.accent("#FFFA00") }
             Repeater { model: 10; Rectangle { required property int index; x: 454 + index * 9; width: 1; height: 9; color: "#59FFFFFF" } }
-            Rectangle { x: 590 - counter.width - 8; y: -1; width: counter.width + 8; height: 12; color: "#151515" }
-            Text { id: counter; x: 590 - width; y: -1.5; text: readerPage.tab === 2 && readerPage.currentPage.number ? "P. " + readerPage.currentPage.number : String(readerPage.books.length).padStart(2, "0"); color: "#FFFA00"; font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering }
+            Rectangle { x: 590 - counter.width - 8; y: -1; width: counter.width + 8; height: 12; color: Appearance.tone("#151515") }
+            Text { id: counter; x: 590 - width; y: -1.5; text: readerPage.tab === 2 && readerPage.currentPage.number ? "P. " + readerPage.currentPage.number : String(readerPage.books.length).padStart(2, "0"); color: Appearance.accent("#FFFA00"); font.family: harmonyBold.name; font.pixelSize: 11; font.weight: Font.Bold; renderType: Text.CurveRendering }
         }
     }
 
@@ -183,8 +184,8 @@ FocusScope {
             EmptyState { anchors.fill: parent; title: "OPEN A BOOK"; subtitle: "PDF / EPUB / TXT" }
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter; y: 190; spacing: 8
-                CalendarButton { width: 104; height: 26; title: "选择文件"; reduceMotion: readerPage.reduceMotion; onClicked: { readerPage.relinkBookId = ""; bookDialog.open() } }
-                CalendarButton { width: 112; height: 26; title: "从暂存架"; kind: "secondary"; enabled: fileShelfController.readerChoices().length > 0; reduceMotion: readerPage.reduceMotion; onClicked: { readerPage.shelfMenuOpen = !readerPage.shelfMenuOpen } }
+                CalendarButton { width: 104; height: 26; title: qsTr("选择文件"); reduceMotion: readerPage.reduceMotion; onClicked: { readerPage.relinkBookId = ""; bookDialog.open() } }
+                CalendarButton { width: 112; height: 26; title: qsTr("从暂存架"); kind: "secondary"; enabled: fileShelfController.readerChoices().length > 0; reduceMotion: readerPage.reduceMotion; onClicked: { readerPage.shelfMenuOpen = !readerPage.shelfMenuOpen } }
             }
         }
 
@@ -225,7 +226,7 @@ FocusScope {
             }
             Rectangle {
                 id: paper; objectName: "readerPaper"; x: 0; y: 121; width: 590; height: 351
-                visible: !!readerPage.currentPage.key; color: "#EFEDE6"; border.color: "#C9C7BF"; clip: true
+                visible: !!readerPage.currentPage.key; color: Appearance.tone("#EFEDE6"); border.color: Appearance.tone("#C9C7BF"); clip: true
                 readonly property bool verticalMode: readerPage.preferences.vertical && readerPage.readerState.zoom <= 1.0001
                 property string shownKey: ""
                 property string shownSource: ""
@@ -370,7 +371,7 @@ FocusScope {
 
                 Rectangle {
                     x: width - 24 - 16; y: 0; width: 16; height: 26; visible: !!readerPage.currentPage.bookmarked; color: "transparent"
-                    Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M0 0h16v26l-8-6.5L0 26z" } } }
+                    Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: Appearance.accent("#FFFA00"); PathSvg { path: "M0 0h16v26l-8-6.5L0 26z" } } }
                 }
                 MouseArea {
                     id: pagePointer; x: 1; y: 1; width: 588; height: 349; enabled: !paper.verticalMode
@@ -405,7 +406,7 @@ FocusScope {
                 IconButton { x: 0; icon: "left"; enabled: !!readerPage.currentPage.canPrevious; reduceMotion: readerPage.reduceMotion; onClicked: readerPage.turn(-1) }
                 ReaderPageSlider { id: pageSlider; x: 38; width: 328; value: Number(readerPage.currentPage.number || 1); maximum: Math.max(2, Number(readerPage.currentPage.total || 100)); enabled: !!readerPage.currentPage.key; reduceMotion: readerPage.reduceMotion; onChanged: (value, final) => { if (final) readerController.jump(Math.round(value)) } }
                 IconButton { x: 374; icon: "right"; enabled: !!readerPage.currentPage.canNext; reduceMotion: readerPage.reduceMotion; onClicked: readerPage.turn(1) }
-                Text { x: 412; y: 10; width: 64; text: readerPage.currentPage.number ? readerPage.currentPage.number + " / " + readerPage.currentPage.total : ""; color: "#9A9A9A"; horizontalAlignment: Text.AlignRight; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Bold; font.preferShaping: false; renderType: Text.CurveRendering }
+                Text { x: 412; y: 10; width: 64; text: readerPage.currentPage.number ? readerPage.currentPage.number + " / " + readerPage.currentPage.total : ""; color: Appearance.tone("#9A9A9A"); horizontalAlignment: Text.AlignRight; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Bold; font.preferShaping: false; renderType: Text.CurveRendering }
                 IconButton { x: 484; icon: "bookmark"; checked: !!readerPage.currentPage.bookmarked; reduceMotion: readerPage.reduceMotion; onClicked: readerController.toggleBookmark() }
                 IconButton { objectName: "readerResetZoom"; x: 522; icon: "reset"; checked: readerPage.readerState.zoom > 1; enabled: readerPage.readerState.zoom > 1; reduceMotion: readerPage.reduceMotion; onClicked: readerController.resetZoom() }
                 IconButton { x: 560; icon: "gear"; reduceMotion: readerPage.reduceMotion; onClicked: { readerPage.settingsOpen = !readerPage.settingsOpen; readerPage.fontMenuOpen = false } }
@@ -419,11 +420,11 @@ FocusScope {
                 anchors.fill: parent; model: marksPage.marks; spacing: 6; clip: true; boundsBehavior: Flickable.StopAtBounds
                 delegate: Rectangle {
                     required property var modelData; required property int index
-                    width: 590; height: 48; color: index % 2 ? "#1D1D1D" : "#222222"; border.color: "#3D3D3D"
-                    Rectangle { width: 4; height: parent.height; color: "#FFFA00" }
-                    Text { x: 16; y: 8; text: "书签 " + String(index + 1).padStart(2, "0"); color: "#EEEEEE"; font.family: harmonyBold.name; font.pixelSize: 13; font.weight: Font.Bold; renderType: Text.CurveRendering }
-                    Text { x: 16; y: 28; text: "P. " + modelData.page; color: "#8A8A8A"; font.family: harmonyRegular.name; font.pixelSize: 9; renderType: Text.CurveRendering }
-                    CalendarButton { x: 486; y: 11; width: 56; height: 26; title: "前往"; kind: "secondary"; reduceMotion: readerPage.reduceMotion; onClicked: { readerController.goBookmark(modelData.id); readerPage.selectTab(2, -1) } }
+                    width: 590; height: 48; color: index % 2 ? Appearance.tone("#1D1D1D") : Appearance.tone("#222222"); border.color: Appearance.tone("#3D3D3D")
+                    Rectangle { width: 4; height: parent.height; color: Appearance.accent("#FFFA00") }
+                    Text { x: 16; y: 8; text: qsTr("书签 ") + String(index + 1).padStart(2, "0"); color: Appearance.tone("#EEEEEE"); font.family: harmonyBold.name; font.pixelSize: 13; font.weight: Font.Bold; renderType: Text.CurveRendering }
+                    Text { x: 16; y: 28; text: "P. " + modelData.page; color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 9; renderType: Text.CurveRendering }
+                    CalendarButton { x: 486; y: 11; width: 56; height: 26; title: qsTr("前往"); kind: "secondary"; reduceMotion: readerPage.reduceMotion; onClicked: { readerController.goBookmark(modelData.id); readerPage.selectTab(2, -1) } }
                     IconButton { x: 550; y: 9; icon: "x"; reduceMotion: readerPage.reduceMotion; onClicked: readerController.removeBookmark(modelData.id) }
                 }
             }
@@ -434,37 +435,37 @@ FocusScope {
     Item {
         id: settings; objectName: "readerSettings"; x: 320; y: 302; width: 270; height: 168; z: 100
         visible: readerPage.settingsOpen && readerPage.tab === 2
-        Rectangle { anchors.fill: parent; color: "#F51B1B1B"; border.color: "#5A5A5A" }
-        Text { x: 12; y: 8; text: "阅读方向"; color: "#DDDDDD"; font.family: harmonyRegular.name; font.pixelSize: 10; renderType: Text.CurveRendering }
+        Rectangle { anchors.fill: parent; color: "#F51B1B1B"; border.color: Appearance.tone("#5A5A5A") }
+        Text { x: 12; y: 8; text: qsTr("阅读方向"); color: Appearance.tone("#DDDDDD"); font.family: harmonyRegular.name; font.pixelSize: 10; renderType: Text.CurveRendering }
         Row {
             x: 96; y: 6
             Repeater {
-                model: [{title: "从左到右", value: false}, {title: "从上到下", value: true}]
+                model: [{title: qsTr("从左到右"), value: false}, {title: qsTr("从上到下"), value: true}]
                 delegate: Rectangle {
-                    required property var modelData; width: 81; height: 26; color: readerPage.preferences.vertical === modelData.value ? "#FFFA00" : "#292929"; border.color: "#555555"
-                    Text { anchors.centerIn: parent; text: parent.modelData.title; color: readerPage.preferences.vertical === parent.modelData.value ? "#171717" : "#EEEEEE"; font.family: harmonyMedium.name; font.pixelSize: 9; renderType: Text.CurveRendering }
+                    required property var modelData; width: 81; height: 26; color: readerPage.preferences.vertical === modelData.value ? Appearance.accent("#FFFA00") : Appearance.tone("#292929"); border.color: Appearance.tone("#555555")
+                    Text { anchors.centerIn: parent; text: parent.modelData.title; color: readerPage.preferences.vertical === parent.modelData.value ? Appearance.tone("#171717") : Appearance.tone("#EEEEEE"); font.family: harmonyMedium.name; font.pixelSize: 9; renderType: Text.CurveRendering }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: readerController.setPreference("vertical", parent.modelData.value) }
                 }
             }
         }
-        Text { x: 12; y: 48; text: "字体"; color: "#DDDDDD"; font.family: harmonyRegular.name; font.pointSize: 12.5 * 0.75; renderType: Text.CurveRendering }
+        Text { x: 12; y: 48; text: qsTr("字体"); color: Appearance.tone("#DDDDDD"); font.family: harmonyRegular.name; font.pointSize: 12.5 * 0.75; renderType: Text.CurveRendering }
         Rectangle {
-            x: 108; y: 40; width: 150; height: 26; color: "#292929"; border.color: "#555555"
-            Text { x: 8; width: 128; height: 26; verticalAlignment: Text.AlignVCenter; text: readerPage.preferences.fontName || "Georgia"; color: "#EEEEEE"; elide: Text.ElideRight; font.family: harmonyRegular.name; font.pixelSize: 10; renderType: Text.CurveRendering }
-            Text { x: 136; y: 6; text: "⌄"; color: "#AAAAAA"; font.pixelSize: 11 }
+            x: 108; y: 40; width: 150; height: 26; color: Appearance.tone("#292929"); border.color: Appearance.tone("#555555")
+            Text { x: 8; width: 128; height: 26; verticalAlignment: Text.AlignVCenter; text: readerPage.preferences.fontName || "Georgia"; color: Appearance.tone("#EEEEEE"); elide: Text.ElideRight; font.family: harmonyRegular.name; font.pixelSize: 10; renderType: Text.CurveRendering }
+            Text { x: 136; y: 6; text: "⌄"; color: Appearance.tone("#AAAAAA"); font.pixelSize: 11 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { if (!readerPage.fontMenuOpen) readerPage.fonts = readerController.fontFamilies(); readerPage.fontMenuOpen = !readerPage.fontMenuOpen } }
         }
         Repeater {
             model: [
-                { key: "fontSize", title: "字号", min: 10, max: 32, value: Number(readerPage.preferences.fontSize || 10) },
-                { key: "lineSpacing", title: "行间距", min: 0, max: 18, value: Number(readerPage.preferences.lineSpacing || 0) },
-                { key: "margin", title: "页边距", min: 6, max: 48, value: Number(readerPage.preferences.margin || 16) }
+                { key: "fontSize", title: qsTr("字号"), min: 10, max: 32, value: Number(readerPage.preferences.fontSize || 10) },
+                { key: "lineSpacing", title: qsTr("行间距"), min: 0, max: 18, value: Number(readerPage.preferences.lineSpacing || 0) },
+                { key: "margin", title: qsTr("页边距"), min: 6, max: 48, value: Number(readerPage.preferences.margin || 16) }
             ]
             delegate: Item {
                 required property var modelData; required property int index; x: 12; y: 74 + index * 34; width: 246; height: 26
-                Text { y: 6; text: parent.modelData.title; color: "#DDDDDD"; font.family: harmonyRegular.name; font.pointSize: 12.5 * 0.75; renderType: Text.CurveRendering }
+                Text { y: 6; text: parent.modelData.title; color: Appearance.tone("#DDDDDD"); font.family: harmonyRegular.name; font.pointSize: 12.5 * 0.75; renderType: Text.CurveRendering }
                 IconButton { x: 158; width: 26; height: 26; icon: "minus"; enabled: parent.modelData.value > parent.modelData.min; reduceMotion: readerPage.reduceMotion; onClicked: readerController.setPreference(parent.modelData.key, parent.modelData.value - 1) }
-                Text { x: 184; y: 7; width: 36; text: Math.round(parent.modelData.value); color: "#EEEEEE"; horizontalAlignment: Text.AlignHCenter; font.family: harmonyBold.name; font.pixelSize: 12; font.weight: Font.Bold; renderType: Text.CurveRendering }
+                Text { x: 184; y: 7; width: 36; text: Math.round(parent.modelData.value); color: Appearance.tone("#EEEEEE"); horizontalAlignment: Text.AlignHCenter; font.family: harmonyBold.name; font.pixelSize: 12; font.weight: Font.Bold; renderType: Text.CurveRendering }
                 IconButton { x: 220; width: 26; height: 26; icon: "plus"; enabled: parent.modelData.value < parent.modelData.max; reduceMotion: readerPage.reduceMotion; onClicked: readerController.setPreference(parent.modelData.key, parent.modelData.value + 1) }
             }
         }
@@ -472,12 +473,12 @@ FocusScope {
 
     Rectangle {
         x: 378; y: 180; width: 200; height: Math.min(260, fontList.contentHeight + 2); z: 180
-        visible: readerPage.fontMenuOpen; color: "#FA1A1A1A"; border.color: "#5A5A5A"; clip: true
+        visible: readerPage.fontMenuOpen; color: "#FA1A1A1A"; border.color: Appearance.tone("#5A5A5A"); clip: true
         ListView {
             id: fontList; anchors.fill: parent; model: readerPage.fonts; clip: true; boundsBehavior: Flickable.StopAtBounds
             delegate: Rectangle {
-                required property string modelData; width: 198; height: 28; color: fontHover.hovered ? "#343434" : modelData === readerPage.preferences.fontName ? "#282800" : "transparent"
-                Text { x: 10; width: 178; height: 28; verticalAlignment: Text.AlignVCenter; text: parent.modelData; color: parent.modelData === readerPage.preferences.fontName ? "#FFFA00" : "#EEEEEE"; elide: Text.ElideRight; font.family: parent.modelData; font.pixelSize: 10; renderType: Text.CurveRendering }
+                required property string modelData; width: 198; height: 28; color: fontHover.hovered ? Appearance.tone("#343434") : modelData === readerPage.preferences.fontName ? "#282800" : "transparent"
+                Text { x: 10; width: 178; height: 28; verticalAlignment: Text.AlignVCenter; text: parent.modelData; color: parent.modelData === readerPage.preferences.fontName ? Appearance.accent("#FFFA00") : Appearance.tone("#EEEEEE"); elide: Text.ElideRight; font.family: parent.modelData; font.pixelSize: 10; renderType: Text.CurveRendering }
                 HoverHandler { id: fontHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: { readerController.setPreference("fontName", parent.modelData); readerPage.fontMenuOpen = false } }
             }
@@ -489,14 +490,14 @@ FocusScope {
         anchors.fill: parent; z: 150; visible: readerPage.menuBookId.length > 0
         MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; onClicked: readerPage.menuBookId = "" }
         Rectangle {
-            x: readerPage.menuPoint.x; y: readerPage.menuPoint.y; width: 170; height: 98; color: "#F51B1B1B"; border.color: "#555555"
+            x: readerPage.menuPoint.x; y: readerPage.menuPoint.y; width: 170; height: 98; color: "#F51B1B1B"; border.color: Appearance.tone("#555555")
             Column {
                 Repeater {
-                    model: [{title: "打开", action: "open"}, {title: "重新链接…", action: "relink"}, {title: "从书库移除", action: "remove"}]
+                    model: [{title: qsTr("打开"), action: "open"}, {title: qsTr("重新链接…"), action: "relink"}, {title: qsTr("从书库移除"), action: "remove"}]
                     delegate: Rectangle {
-                        required property var modelData; required property int index; width: 168; height: 32; color: menuHover.hovered ? "#333333" : "transparent"
-                        Rectangle { visible: index === 2; y: 0; width: parent.width; height: 1; color: "#444444" }
-                        Text { x: 14; height: 32; verticalAlignment: Text.AlignVCenter; text: parent.modelData.title; color: index === 2 ? "#E35B5D" : "#EEEEEE"; font.family: harmonyMedium.name; font.pixelSize: 12; renderType: Text.CurveRendering }
+                        required property var modelData; required property int index; width: 168; height: 32; color: menuHover.hovered ? Appearance.tone("#333333") : "transparent"
+                        Rectangle { visible: index === 2; y: 0; width: parent.width; height: 1; color: Appearance.tone("#444444") }
+                        Text { x: 14; height: 32; verticalAlignment: Text.AlignVCenter; text: parent.modelData.title; color: index === 2 ? "#E35B5D" : Appearance.tone("#EEEEEE"); font.family: harmonyMedium.name; font.pixelSize: 12; renderType: Text.CurveRendering }
                         HoverHandler { id: menuHover; cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: {
                             const id = readerPage.menuBookId; const book = readerPage.books.find(value => value.id === id); readerPage.menuBookId = ""
@@ -514,12 +515,12 @@ FocusScope {
         anchors.fill: parent; z: 160; visible: readerPage.shelfMenuOpen
         MouseArea { anchors.fill: parent; onClicked: readerPage.shelfMenuOpen = false }
         Rectangle {
-            x: 352; y: 340; width: 220; height: Math.min(168, shelfList.contentHeight + 2); color: "#F51B1B1B"; border.color: "#555555"; clip: true
+            x: 352; y: 340; width: 220; height: Math.min(168, shelfList.contentHeight + 2); color: "#F51B1B1B"; border.color: Appearance.tone("#555555"); clip: true
             ListView {
                 id: shelfList; anchors.fill: parent; model: fileShelfController.readerChoices(); boundsBehavior: Flickable.StopAtBounds
                 delegate: Rectangle {
-                    required property var modelData; width: 218; height: 32; color: shelfHover.hovered ? "#333333" : "transparent"
-                    Text { x: 12; width: 194; height: 32; verticalAlignment: Text.AlignVCenter; text: parent.modelData.title; color: "#EEEEEE"; elide: Text.ElideRight; font.family: harmonyMedium.name; font.pixelSize: 11; renderType: Text.CurveRendering }
+                    required property var modelData; width: 218; height: 32; color: shelfHover.hovered ? Appearance.tone("#333333") : "transparent"
+                    Text { x: 12; width: 194; height: 32; verticalAlignment: Text.AlignVCenter; text: parent.modelData.title; color: Appearance.tone("#EEEEEE"); elide: Text.ElideRight; font.family: harmonyMedium.name; font.pixelSize: 11; renderType: Text.CurveRendering }
                     HoverHandler { id: shelfHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: { const url = fileShelfController.readerUrl(parent.modelData.id); readerPage.shelfMenuOpen = false; if (url) readerController.importUrl(url) } }
                 }
@@ -533,8 +534,8 @@ FocusScope {
         MouseArea { anchors.fill: parent; onClicked: readerPage.confirmBookId = "" }
         ClipboardConfirmBar {
             x: -15; y: 370
-            title: { const book = readerPage.books.find(value => value.id === readerPage.confirmBookId); return "从书库移除 " + (book ? book.title : "书籍") + "？" }
-            message: "文件本身仍保留在磁盘上。"; confirmTitle: "移除"; reduceMotion: readerPage.reduceMotion
+            title: { const book = readerPage.books.find(value => value.id === readerPage.confirmBookId); return qsTr("从书库移除 ") + (book ? book.title : qsTr("书籍")) + "？" }
+            message: qsTr("文件本身仍保留在磁盘上。"); confirmTitle: qsTr("移除"); reduceMotion: readerPage.reduceMotion
             onCancelled: readerPage.confirmBookId = ""
             onAccepted: { const id = readerPage.confirmBookId; readerPage.confirmBookId = ""; readerController.removeBook(id) }
         }
@@ -543,10 +544,10 @@ FocusScope {
     Item {
         x: 320; y: 424; width: 270; height: 58; z: 300; opacity: readerPage.toastOpen ? 1 : 0; visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: readerPage.reduceMotion ? 0 : 250 } }
-        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: "#505050" }
-        Rectangle { width: 4; height: parent.height; color: "#FFFA00" }
-        Text { x: 18; y: 10; width: 240; text: readerPage.toastTitle; color: "#F2F2F2"; elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
-        Text { x: 18; y: 33; width: 240; text: readerPage.toastMessage; color: "#A0A0A0"; elide: Text.ElideRight; font.family: harmonyRegular.name; font.pixelSize: 9; renderType: Text.CurveRendering }
+        Rectangle { anchors.fill: parent; color: "#F0181818"; border.color: Appearance.tone("#505050") }
+        Rectangle { width: 4; height: parent.height; color: Appearance.accent("#FFFA00") }
+        Text { x: 18; y: 10; width: 240; text: readerPage.toastTitle; color: Appearance.tone("#F2F2F2"); elide: Text.ElideRight; font.family: harmonyBold.name; font.pixelSize: 14; font.weight: Font.Bold; renderType: Text.CurveRendering }
+        Text { x: 18; y: 33; width: 240; text: readerPage.toastMessage; color: Appearance.tone("#A0A0A0"); elide: Text.ElideRight; font.family: harmonyRegular.name; font.pixelSize: 9; renderType: Text.CurveRendering }
         Timer { id: toastTimer; interval: 2600; onTriggered: readerPage.toastOpen = false }
     }
 

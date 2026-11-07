@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "calendarcontroller.hpp"
 
 #include <QDBusConnection>
@@ -76,15 +77,15 @@ void CalendarController::load()
     bool exists = false, readable = true;
     const QByteArray bytes = readFile(m_path, &exists, &readable);
     if (!exists) { m_persisted.clear(); return; }
-    if (!readable) { setError(QStringLiteral("无法读取日历数据，原文件已保留。")); return; }
-    if (bytes.size() > maximumBytes) { setError(QStringLiteral("日历最多可保存 256 个事项。")); return; }
+    if (!readable) { setError(QCoreApplication::translate("HyprEndfield", "无法读取日历数据，原文件已保留。")); return; }
+    if (bytes.size() > maximumBytes) { setError(QCoreApplication::translate("HyprEndfield", "日历最多可保存 256 个事项。")); return; }
 
     QJsonParseError parseError;
     const QJsonDocument document = QJsonDocument::fromJson(bytes, &parseError);
     if (parseError.error != QJsonParseError::NoError || !document.isObject()
         || document.object().value("version").toInt() != 1
         || !document.object().value("events").isArray()) {
-        setError(QStringLiteral("无法读取日历数据，原文件已保留。"));
+        setError(QCoreApplication::translate("HyprEndfield", "无法读取日历数据，原文件已保留。"));
         return;
     }
 
@@ -108,10 +109,10 @@ void CalendarController::load()
             && event.details.size() <= 2000 && event.day.isValid()
             && event.day.year() >= 1900 && event.day.year() <= 9999
             && event.created.isValid() && event.modified.isValid();
-        if (!valid) { setError(QStringLiteral("无法读取日历数据，原文件已保留。")); return; }
+        if (!valid) { setError(QCoreApplication::translate("HyprEndfield", "无法读取日历数据，原文件已保留。")); return; }
         ids.insert(event.id); values.append(std::move(event));
     }
-    if (values.size() > maximumEvents) { setError(QStringLiteral("无法读取日历数据，原文件已保留。")); return; }
+    if (values.size() > maximumEvents) { setError(QCoreApplication::translate("HyprEndfield", "无法读取日历数据，原文件已保留。")); return; }
     m_events = std::move(values);
     m_persisted = bytes;
 }
@@ -120,9 +121,9 @@ bool CalendarController::persist(const QList<Event> &events)
 {
     bool exists = false, readable = true;
     const QByteArray current = readFile(m_path, &exists, &readable);
-    if (!readable) { setError(QStringLiteral("无法读取日历数据，原文件已保留。")); return false; }
+    if (!readable) { setError(QCoreApplication::translate("HyprEndfield", "无法读取日历数据，原文件已保留。")); return false; }
     if ((exists ? current : QByteArray()) != m_persisted) {
-        setError(QStringLiteral("日历文件已被其他程序修改，请重启后再保存。"));
+        setError(QCoreApplication::translate("HyprEndfield", "日历文件已被其他程序修改，请重启后再保存。"));
         return false;
     }
 
@@ -137,11 +138,11 @@ bool CalendarController::persist(const QList<Event> &events)
         list.append(object);
     }
     const QByteArray bytes = QJsonDocument(QJsonObject{{"version", 1}, {"events", list}}).toJson(QJsonDocument::Compact);
-    if (bytes.size() > maximumBytes) { setError(QStringLiteral("日历最多可保存 256 个事项。")); return false; }
-    if (!QDir().mkpath(m_directory)) { setError(QStringLiteral("无法保存日历数据。")); return false; }
+    if (bytes.size() > maximumBytes) { setError(QCoreApplication::translate("HyprEndfield", "日历最多可保存 256 个事项。")); return false; }
+    if (!QDir().mkpath(m_directory)) { setError(QCoreApplication::translate("HyprEndfield", "无法保存日历数据。")); return false; }
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
-        setError(QStringLiteral("无法保存日历数据。")); return false;
+        setError(QCoreApplication::translate("HyprEndfield", "无法保存日历数据。")); return false;
     }
     m_events = events;
     m_persisted = bytes;
@@ -171,8 +172,8 @@ QVariantMap CalendarController::state() const
             {"day", dayString(event.day)}, {"created", event.created.toMSecsSinceEpoch()}});
     }
     const QString reminderStatus = m_notificationAvailable
-        ? QStringLiteral("提醒：前一天及当天 09:00")
-        : QStringLiteral("桌面通知暂不可用");
+        ? QCoreApplication::translate("HyprEndfield", "提醒：前一天及当天 09:00")
+        : QCoreApplication::translate("HyprEndfield", "桌面通知暂不可用");
     return {{"events", values}, {"total", values.size()}, {"today", dayString(m_today)},
         {"error", m_error}, {"reminderStatus", reminderStatus},
         {"notificationsAvailable", m_notificationAvailable}};
@@ -195,10 +196,10 @@ bool CalendarController::saveEvent(const QString &rawTitle, const QString &detai
     QList<Event> next = m_events;
     const QDateTime timestamp = QDateTime::currentDateTime();
     auto found = std::find_if(next.begin(), next.end(), [&](const Event &event) { return event.id == id.toUpper(); });
-    if (!id.isEmpty() && found == next.end()) { setError(QStringLiteral("此事项已不存在。")); return false; }
+    if (!id.isEmpty() && found == next.end()) { setError(QCoreApplication::translate("HyprEndfield", "此事项已不存在。")); return false; }
     const bool creating = found == next.end();
     if (creating) {
-        if (next.size() >= maximumEvents) { setError(QStringLiteral("日历最多可保存 256 个事项。")); return false; }
+        if (next.size() >= maximumEvents) { setError(QCoreApplication::translate("HyprEndfield", "日历最多可保存 256 个事项。")); return false; }
         Event event;
         event.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toUpper();
         event.created = timestamp;
@@ -217,7 +218,7 @@ bool CalendarController::saveEvent(const QString &rawTitle, const QString &detai
         found->catchUpAt = found->catchUpPending ? timestamp.addSecs(3) : QDateTime();
     }
     const qsizetype upcoming = std::count_if(next.cbegin(), next.cend(), [&](const Event &event) { return event.day >= timestamp.date(); });
-    if (upcoming > maximumUpcoming) { setError(QStringLiteral("最多保留 30 个待办日期事项，以确保每条提醒都能安排。")); return false; }
+    if (upcoming > maximumUpcoming) { setError(QCoreApplication::translate("HyprEndfield", "最多保留 30 个待办日期事项，以确保每条提醒都能安排。")); return false; }
     return persist(next);
 }
 
@@ -299,6 +300,6 @@ void CalendarController::notify(const Event &event, bool previousDay)
         QStringLiteral("org.freedesktop.Notifications"), QDBusConnection::sessionBus());
     interface.asyncCall(QStringLiteral("Notify"), QStringLiteral("HyprEndfield"), uint(0),
         QStringLiteral("calendar"), event.title,
-        (previousDay ? QStringLiteral("明天 ") : QStringLiteral("今天 ")) + dayString(event.day),
+        (previousDay ? QCoreApplication::translate("HyprEndfield", "明天 ") : QCoreApplication::translate("HyprEndfield", "今天 ")) + dayString(event.day),
         QStringList(), QVariantMap{{"urgency", uchar(1)}}, 10'000);
 }

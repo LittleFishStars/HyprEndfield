@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 Item {
     id: notesWorkspace
@@ -12,7 +13,7 @@ Item {
     property string drawingColor: "#FAD40A"
     property bool drawingErasing: false
     readonly property var notes: notesController.state.notes || []
-    readonly property var drawingColors: ["#EEEEEE", "#FFFA00", "#22A6F2", "#E5383B", "#8CE03C"]
+    readonly property var drawingColors: [Appearance.tone("#EEEEEE"), Appearance.accent("#FFFA00"), "#22A6F2", "#E5383B", "#8CE03C"]
 
     function cycleDrawingColor() {
         const index = drawingColors.indexOf(drawingColor.toUpperCase())

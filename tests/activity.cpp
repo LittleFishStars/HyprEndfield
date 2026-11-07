@@ -46,7 +46,7 @@ class ActivityTests final : public QObject
         for (int i = 0; i < count; ++i) {
             const QString id = QString::number(i);
             reading.apps[id] = {id, QString("测试应用 %1").arg(i + 1), {}, {100 + i}};
-            reading.processes[100 + i] = {100 + i, 1, 7 + i, 500, quint64(reading.seconds * (i + 1) * 20), quint64((i + 1) * 240'000'000), "test", "/usr/bin/test"};
+            reading.processes[100 + i] = {100 + i, 1, 7 + i, 500, quint64(reading.seconds * (i + 1) * 20), quint64(i + 1) * 240'000'000, "test", "/usr/bin/test"};
         }
     }
 private slots:

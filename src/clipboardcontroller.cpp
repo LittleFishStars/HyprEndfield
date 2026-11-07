@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "clipboardcontroller.hpp"
 
 #include "wlr-data-control-unstable-v1-client-protocol.h"
@@ -78,11 +79,11 @@ QString filePreview(const QVariantList &uris)
 QString fileMeta(const QVariantList &uris)
 {
     if (uris.isEmpty()) return {};
-    if (uris.size() > 1) return QStringLiteral("%1 项").arg(uris.size());
+    if (uris.size() > 1) return QCoreApplication::translate("HyprEndfield", "%1 项").arg(uris.size());
     const QFileInfo info(QUrl(uris.constFirst().toString()).toLocalFile());
-    if (info.isDir()) return QStringLiteral("文件夹");
+    if (info.isDir()) return QCoreApplication::translate("HyprEndfield", "文件夹");
     const qint64 bytes = info.size();
-    if (bytes < 1000) return QStringLiteral("%1 字节").arg(bytes);
+    if (bytes < 1000) return QCoreApplication::translate("HyprEndfield", "%1 字节").arg(bytes);
     static const QStringList units{QStringLiteral("KB"), QStringLiteral("MB"),
                                    QStringLiteral("GB"), QStringLiteral("TB")};
     double value = bytes;
@@ -227,7 +228,7 @@ struct ClipboardController::Backend : QObject
         if (failed) {
             connected = false;
             displayNotifier.reset();
-            reportReady(false, QStringLiteral("无法连接系统剪贴板"));
+            reportReady(false, QCoreApplication::translate("HyprEndfield", "无法连接系统剪贴板"));
             return;
         }
         wl_display_flush(display);
@@ -374,7 +375,7 @@ struct ClipboardController::Backend : QObject
     {
         auto *self = static_cast<Backend *>(data);
         self->connected = false;
-        self->reportReady(false, QStringLiteral("系统剪贴板监视已终止"));
+        self->reportReady(false, QCoreApplication::translate("HyprEndfield", "系统剪贴板监视已终止"));
     }
     static void primarySelected(void *data, zwlr_data_control_device_v1 *, zwlr_data_control_offer_v1 *object)
     {
@@ -419,7 +420,7 @@ struct ClipboardController::Backend : QObject
 };
 
 ClipboardController::ClipboardController(QObject *parent, bool automatic, int capacity)
-    : QObject(parent), m_capacity(std::max(1, capacity)), m_status(QStringLiteral("正在连接系统剪贴板"))
+    : QObject(parent), m_capacity(std::max(1, capacity)), m_status(QCoreApplication::translate("HyprEndfield", "正在连接系统剪贴板"))
 {
     if (!automatic) {
         m_ready = true;
@@ -431,7 +432,7 @@ ClipboardController::ClipboardController(QObject *parent, bool automatic, int ca
     connect(&m_backendThread, &QThread::started, m_backend, [backend = m_backend] {
         const bool ready = backend->start();
         if (!ready) backend->shutdown();
-        backend->reportReady(ready, ready ? QString() : QStringLiteral("无法连接系统剪贴板"));
+        backend->reportReady(ready, ready ? QString() : QCoreApplication::translate("HyprEndfield", "无法连接系统剪贴板"));
     });
     connect(&m_backendThread, &QThread::finished, m_backend, &QObject::deleteLater);
     m_backendThread.setObjectName(QStringLiteral("WaylandClipboard"));
@@ -502,7 +503,7 @@ bool ClipboardController::capture(const QString &mime, const QByteArray &data, b
         const QImage thumb = reader.read();
         if (thumb.isNull()) return false;
         entry.kind = QStringLiteral("image");
-        entry.preview = QStringLiteral("图片");
+        entry.preview = QCoreApplication::translate("HyprEndfield", "图片");
         entry.meta = QStringLiteral("%1   %2 × %3").arg(imageFormat(mime))
             .arg(dimensions.width()).arg(dimensions.height());
         QByteArray bytes;
@@ -515,7 +516,7 @@ bool ClipboardController::capture(const QString &mime, const QByteArray &data, b
         entry.kind = looksLikeLink(text) ? QStringLiteral("url") : QStringLiteral("text");
         entry.preview = compactText(text);
         entry.meta = entry.kind == QStringLiteral("url") ? QUrl(text.trimmed()).host()
-            : QStringLiteral("%1 字符").arg(text.size());
+            : QCoreApplication::translate("HyprEndfield", "%1 字符").arg(text.size());
     }
     const QByteArray digestInput = entry.kind.toUtf8() + '\0' + entry.payload;
     entry.id = QString::fromLatin1(QCryptographicHash::hash(digestInput, QCryptographicHash::Sha256).toHex());
@@ -534,7 +535,7 @@ bool ClipboardController::capture(const QString &mime, const QByteArray &data, b
         const auto removable = std::find_if(m_entries.rbegin(), m_entries.rend(),
             [](const Entry &candidate) { return !candidate.pinned; });
         if (removable == m_entries.rend()) {
-            m_status = QStringLiteral("缓存已被固定项目占满");
+            m_status = QCoreApplication::translate("HyprEndfield", "缓存已被固定项目占满");
             publishState();
             return false;
         }
@@ -551,7 +552,7 @@ bool ClipboardController::copyItem(const QString &id)
 {
     const Entry *entry = findEntry(id);
     if (!entry || !m_backend || !m_ready) {
-        emit actionFinished(QStringLiteral("copy"), false, QStringLiteral("无法写入系统剪贴板"));
+        emit actionFinished(QStringLiteral("copy"), false, QCoreApplication::translate("HyprEndfield", "无法写入系统剪贴板"));
         return false;
     }
     // Qt's own clipboard consumer may synchronously wait for this source.
@@ -561,7 +562,7 @@ bool ClipboardController::copyItem(const QString &id)
         const bool success = backend->publish(snapshot);
         QMetaObject::invokeMethod(controller, [controller, success] {
             emit controller->actionFinished(QStringLiteral("copy"), success,
-                success ? QString() : QStringLiteral("无法写入系统剪贴板"));
+                success ? QString() : QCoreApplication::translate("HyprEndfield", "无法写入系统剪贴板"));
         }, Qt::QueuedConnection);
     }, Qt::QueuedConnection);
     return true;
@@ -595,7 +596,7 @@ bool ClipboardController::clearUnpinned()
     const bool changed = oldSize != m_entries.size();
     if (changed) publishState();
     emit actionFinished(QStringLiteral("clear"), changed,
-        changed ? QString() : QStringLiteral("没有可以清空的记录"));
+        changed ? QString() : QCoreApplication::translate("HyprEndfield", "没有可以清空的记录"));
     return changed;
 }
 

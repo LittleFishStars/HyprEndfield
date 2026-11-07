@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "audiocontroller.hpp"
 
 #include <QMap>
@@ -69,17 +70,17 @@ void AudioController::connectServer()
 {
     if (!m_active || m_context) return;
     m_loop = pa_threaded_mainloop_new();
-    if (!m_loop) { failed(QStringLiteral("无法创建音频连接")); return; }
+    if (!m_loop) { failed(QCoreApplication::translate("HyprEndfield", "无法创建音频连接")); return; }
     m_context = pa_context_new(pa_threaded_mainloop_get_api(m_loop), "HyprEndfield");
     if (!m_context || pa_threaded_mainloop_start(m_loop) < 0) {
-        failed(QStringLiteral("无法启动音频连接")); return;
+        failed(QCoreApplication::translate("HyprEndfield", "无法启动音频连接")); return;
     }
     pa_threaded_mainloop_lock(m_loop);
     pa_context_set_state_callback(m_context, contextState, this);
     const auto server = m_server.toUtf8();
     const int result = pa_context_connect(m_context, server.isEmpty() ? nullptr : server.constData(), PA_CONTEXT_NOAUTOSPAWN, nullptr);
     pa_threaded_mainloop_unlock(m_loop);
-    if (result < 0) failed(QStringLiteral("无法连接音频服务"));
+    if (result < 0) failed(QCoreApplication::translate("HyprEndfield", "无法连接音频服务"));
 }
 void AudioController::disconnectServer()
 {
@@ -105,7 +106,7 @@ void AudioController::contextState(pa_context *context, void *data)
     case PA_CONTEXT_FAILED:
     case PA_CONTEXT_TERMINATED: {
         const QString error = string(pa_strerror(pa_context_errno(context)));
-        self->deliver([self, error] { self->failed(QStringLiteral("音频连接已断开：") + error); });
+        self->deliver([self, error] { self->failed(QCoreApplication::translate("HyprEndfield", "音频连接已断开：") + error); });
         break;
     }
     default: break;
@@ -209,7 +210,7 @@ void AudioController::finishPart(bool success)
         publish();
     } else {
         m_state["ready"] = false;
-        m_state["status"] = QStringLiteral("暂时无法读取音频设备");
+        m_state["status"] = QCoreApplication::translate("HyprEndfield", "暂时无法读取音频设备");
         emit stateChanged();
         m_refreshAgain = true;
     }
@@ -272,7 +273,7 @@ void AudioController::commandDone(pa_context *context, int success, void *data)
     const QString error = success ? QString() : string(pa_strerror(pa_context_errno(context)));
     self->deliver([self, success, error] {
         if (!success) {
-            const QString message = QStringLiteral("音频设置未生效：") + error;
+            const QString message = QCoreApplication::translate("HyprEndfield", "音频设置未生效：") + error;
             self->m_state["status"] = message;
             emit self->stateChanged(); emit self->commandFailed(message);
         }

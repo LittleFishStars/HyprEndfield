@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 Item {
@@ -27,8 +28,8 @@ Item {
             strokeWidth: -1
             fillGradient: LinearGradient {
                 x1: 0; y1: 0; x2: button.width; y2: button.height
-                GradientStop { position: 0; color: "#E4E5E0" }
-                GradientStop { position: 1; color: "#C7C8C3" }
+                GradientStop { position: 0; color: Appearance.tone("#E4E5E0") }
+                GradientStop { position: 1; color: Appearance.tone("#C7C8C3") }
             }
             PathSvg { path: "M0 0H" + (button.width - 8) + "L" + button.width + " 8V" + button.height + "H0Z" }
         }
@@ -41,14 +42,14 @@ Item {
     Row {
         anchors.centerIn: parent
         spacing: 8
-        NotesGlyph { width: 16; height: 16; kind: button.kind; ink: "#181818" }
+        NotesGlyph { width: 16; height: 16; kind: button.kind; ink: Appearance.tone("#181818") }
         Text {
-            text: button.title; color: "#181818"
+            text: button.title; color: Appearance.tone("#181818")
             font.family: harmonyMedium.name; font.pixelSize: 13; font.weight: Font.Medium
             renderType: Text.CurveRendering
         }
     }
-    Rectangle { x: button.width - 10; y: button.height - 9; width: 4; height: 4; color: "#1A1A1A" }
+    Rectangle { x: button.width - 10; y: button.height - 9; width: 4; height: 4; color: Appearance.tone("#1A1A1A") }
     HoverHandler { id: hover }
     MouseArea {
         id: pointer; anchors.fill: parent; hoverEnabled: true

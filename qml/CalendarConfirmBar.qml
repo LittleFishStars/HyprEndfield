@@ -27,7 +27,7 @@ Item {
         Rectangle { x: 0; y: 1.5; width: 4; height: 18; color: "#E5383B" }
         Rectangle { x: 8; y: 1.5; width: 4; height: 18; color: "#E5383B" }
         Text {
-            x: 22; width: 348; height: 22; text: "删除此事项？"; color: "#F2F2F2"
+            x: 22; width: 348; height: 22; text: qsTr("删除此事项？"); color: "#F2F2F2"
             font.family: harmonyMedium.name; font.pixelSize: 17; font.weight: Font.Medium; renderType: Text.CurveRendering
         }
         Text {
@@ -38,7 +38,7 @@ Item {
     Column {
         x: 436; y: 18; spacing: 11
         Repeater {
-            model: [{ title: "取消", danger: false }, { title: "删除", danger: true }]
+            model: [{ title: qsTr("取消"), danger: false }, { title: qsTr("删除"), danger: true }]
             Rectangle {
                 required property var modelData; width: 150; height: 38; radius: 19
                 color: mouse.containsMouse ? (modelData.danger ? "#FFFFFF" : "#606060") : (modelData.danger ? "#E2E0E1" : "#4A4A4A")

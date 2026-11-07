@@ -1,10 +1,11 @@
 import QtQuick
+import "Appearance.js" as Appearance
 import QtQuick.Shapes
 
 Item {
     id: glyph
     property string kind: "text"
-    property color ink: "#F2F2F2"
+    property color ink: Appearance.tone("#F2F2F2")
 
     function path() {
         switch (kind) {

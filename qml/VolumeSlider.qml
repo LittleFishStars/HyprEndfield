@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 Item {
     id: root
@@ -74,9 +75,9 @@ Item {
         y: 11
         width: root.trackWidth
         height: 5
-        color: "#252525"
+        color: Appearance.tone("#252525")
         border.width: 1
-        border.color: "#111111"
+        border.color: Appearance.tone("#111111")
     }
 
     Rectangle {
@@ -88,11 +89,11 @@ Item {
             orientation: Gradient.Horizontal
             GradientStop {
                 position: 0
-                color: "#E9CF12"
+                color: Appearance.accent("#E9CF12")
             }
             GradientStop {
                 position: 1
-                color: "#FFFA00"
+                color: Appearance.accent("#FFFA00")
             }
         }
     }
@@ -103,7 +104,7 @@ Item {
         y: 8
         width: 1
         height: 11
-        color: "#111111"
+        color: Appearance.tone("#111111")
     }
 
     Repeater {
@@ -115,7 +116,7 @@ Item {
             y: 21
             width: 1
             height: 4
-            color: "#8D8E89"
+            color: Appearance.tone("#8D8E89")
         }
     }
 
@@ -125,7 +126,7 @@ Item {
         y: 5
         width: 9
         height: 17
-        color: "#151515"
+        color: Appearance.tone("#151515")
         property real growth: root.dragging || sliderPointer.containsMouse ? 21 / 17 : 1
         transform: Scale { origin.x: 4.5; origin.y: 8.5; yScale: thumb.growth }
         Behavior on growth {
@@ -137,7 +138,7 @@ Item {
             y: (parent.height - 11) / 2
             width: 2
             height: 11
-            color: "#FFFA00"
+            color: Appearance.accent("#FFFA00")
         }
     }
 
@@ -151,7 +152,7 @@ Item {
             renderType: Text.CurveRendering
             text: "<font color='#8A8B86'>[ </font>" + root.formattedValue(root.value) + "<font color='#8A8B86'> ]</font>"
             textFormat: Text.RichText
-            color: "#121212"
+            color: Appearance.tone("#121212")
             font.family: harmonyMedium.name
             font.pixelSize: 12
             font.weight: Font.Bold
