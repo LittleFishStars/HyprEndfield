@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Shapes
@@ -26,7 +27,7 @@ Item {
         else { chooser.close(); menuId = ""; removing = null }
     }
     Connections { target: appShortcutsController; function onAdded(id) { Qt.callLater(() => rows.positionViewAtEnd()) } }
-    SettingsHeader { title: qsTr("应用快捷方式"); english: "SHORTCUTS"; code: "MOD-18"; count: String(root.shortcuts.count).padStart(2, "0") }
+    SettingsHeader { title: qsTr("应用快捷方式"); english: "SHORTCUTS"; code: ModuleNumbering.code("addApp"); count: String(root.shortcuts.count).padStart(2, "0") }
     CalendarButton { x: 490; y: 22; width: 100; title: qsTr("添加应用"); enabled: root.shortcuts.available; onClicked: chooser.open(); reduceMotion: root.reduceMotion }
     ListView {
         id: rows; objectName: "shortcutRows"; x: 0; y: 81; width: 590; height: 420

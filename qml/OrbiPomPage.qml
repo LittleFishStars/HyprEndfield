@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Shapes
 import HyprEndfield.OrbiPom 1.0
 import "Appearance.js" as Appearance
@@ -27,7 +28,7 @@ Item {
         if (!game.skill) p.y = Math.max(0, Math.min(280, p.y))
         keyboardAim = p; controller.move(p.x, p.y)
     }
-    SettingsHeader { title: qsTr("小游戏"); english: "MINIGAME"; code: "MOD-06"; count: "SCORE" }
+    SettingsHeader { title: qsTr("小游戏"); english: "MINIGAME"; code: ModuleNumbering.code("minigame"); count: "SCORE" }
     Rectangle { x: 560; y: 22; width: 28; height: 28; radius: 14; color: Appearance.tone("#242424"); border.color: Appearance.tone("#444444")
         Text { anchors.centerIn: parent; text: "?"; color: Appearance.tone("#EEEEEE"); font.family: harmonyBold.name; font.pixelSize: 15; renderType: Text.CurveRendering }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.rules = !page.rules }

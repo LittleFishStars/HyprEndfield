@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import "CalendarFormat.js" as Format
@@ -149,7 +150,7 @@ Item {
             }
         }
         Text {
-            x: 549 - width; y: 1.75; text: "MOD-12"; color: Appearance.tone("#8A8A8A")
+            x: 549 - width; y: 1.75; text: ModuleNumbering.code("calendar"); color: Appearance.tone("#8A8A8A")
             font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering
         }
         Item {

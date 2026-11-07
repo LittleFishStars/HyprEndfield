@@ -129,7 +129,7 @@ qt_add_executable(hyprendfield
 
 target_include_directories(hyprendfield PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated" src/endfield)
 
-set_source_files_properties(qml/Appearance.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TRUE)
+set_source_files_properties(qml/Appearance.js qml/ModuleNumbering.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TRUE)
 qt_add_qml_module(hyprendfield
     URI HyprEndfield
     VERSION 1.0
@@ -154,6 +154,7 @@ qt_add_qml_module(hyprendfield
         qml/ClockInstrument.qml
         qml/BatteryAlertWindow.qml
         qml/Appearance.js
+        qml/ModuleNumbering.js
         qml/Redaction.qml
         qml/RedactionBlock.qml
         qml/BootLog.qml

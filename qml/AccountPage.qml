@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Shapes
 import "Appearance.js" as Appearance
 
@@ -24,7 +25,7 @@ Item {
             }
         }
     }
-    SettingsHeader { title: qsTr("账户绑定"); english: "ACCOUNT"; code: "MOD-16"; count: page.account.linked ? "LINKED" : "OFFLINE" }
+    SettingsHeader { title: qsTr("账户绑定"); english: "ACCOUNT"; code: ModuleNumbering.code("account"); count: page.account.linked ? "LINKED" : "OFFLINE" }
     CalendarButton { x: 386; y: 22; width: 96; visible: page.account.linked && page.account.reconnect; enabled: !page.account.busy; title: qsTr("重新连接"); onClicked: page.controller.action("connect") }
     CalendarButton { x: 490; y: 22; width: 100; visible: page.account.linked; enabled: !page.account.busy; title: qsTr("解除绑定"); kind: "secondary"; onClicked: page.confirming = true }
     Row {

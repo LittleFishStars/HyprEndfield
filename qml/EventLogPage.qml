@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Controls
 import QtQuick.Shapes
 import "Appearance.js" as Appearance
@@ -30,7 +31,7 @@ Item {
     onPresentedChanged: { eventLogController.active = presented; if (presented) refresh(true); else confirmLayer.visible = false }
     Component.onCompleted: refresh(false)
     Connections { target: eventLogController; function onStateChanged() { if (root.presented) root.refresh(true) } }
-    SettingsHeader { title: qsTr("事件日志"); english: "EVENT LOG"; code: "MOD-14"; count: String(root.logState.count).padStart(2, "0") }
+    SettingsHeader { title: qsTr("事件日志"); english: "EVENT LOG"; code: ModuleNumbering.code("eventLog"); count: String(root.logState.count).padStart(2, "0") }
     CalendarButton { x: 512; y: 22; width: 78; title: qsTr("清空"); kind: "secondary"; enabled: root.logState.count > 0; onClicked: confirmLayer.visible = true; reduceMotion: root.reduceMotion }
     Shortcut { sequence: "Q"; enabled: root.presented && !confirmLayer.visible; onActivated: root.selectFilter((root.selectedFilter + 4) % 5) }
     Shortcut { sequence: "E"; enabled: root.presented && !confirmLayer.visible; onActivated: root.selectFilter((root.selectedFilter + 1) % 5) }

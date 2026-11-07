@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Shapes
 import QtQuick.Controls as Controls
 import QtQuick.Dialogs
@@ -26,7 +27,7 @@ Item {
     function toolTitle() { return ({crop:qsTr("裁剪"),adjust:qsTr("调整"),curves:qsTr("曲线"),levels:qsTr("色阶"),trim:qsTr("剪辑")})[tool] || "" }
     function selectTool(name) { tool = name; editor.cropping = name === "crop" }
     function time(seconds) { return Math.floor(seconds / 60).toString().padStart(2, "0") + ":" + Math.floor(seconds % 60).toString().padStart(2, "0") }
-    SettingsHeader { title: qsTr("影像加工"); english: "MEDIA ASSEMBLY"; code: "MOD-05"; count: page.state.exporting ? Math.floor(page.state.progress * 100) + "%" : page.state.loaded ? (page.state.video ? "VID 01" : "IMG 01") : "EMPTY" }
+    SettingsHeader { title: qsTr("影像加工"); english: "MEDIA ASSEMBLY"; code: ModuleNumbering.code("mediaAssembly"); count: page.state.exporting ? Math.floor(page.state.progress * 100) + "%" : page.state.loaded ? (page.state.video ? "VID 01" : "IMG 01") : "EMPTY" }
     Row { x: 400; y: 24; spacing: 6
         CalendarButton { width: 64; title: qsTr("打开"); kind: "secondary"; enabled: !page.state.exporting; onClicked: sources.visible = !sources.visible }
         CalendarButton { width: 30; kind: "icon"; glyph: "×"; enabled: page.editable; onClicked: page.confirmation = "close" }

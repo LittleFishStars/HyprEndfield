@@ -1,11 +1,12 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Shapes
 import "Appearance.js" as Appearance
 
 Item {
     id: page; width: 590; height: 510
     required property var workspace
-    SettingsHeader { title: qsTr("投影"); english: "PROJECTION"; code: "MOD-09"; count: page.workspace.dotted ? "BG ON" : "BG OFF" }
+    SettingsHeader { title: qsTr("投影"); english: "PROJECTION"; code: ModuleNumbering.code("projection"); count: page.workspace.dotted ? "BG ON" : "BG OFF" }
     Canvas { id: preview; y: 81; width: 590; height: 150
         onPaint: {
             const c = getContext("2d"); c.fillStyle = page.workspace.dotted ? "#141414" : "#1C1C1C"; c.fillRect(0, 0, width, height)

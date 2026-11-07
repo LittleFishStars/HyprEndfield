@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import QtQuick.Dialogs
@@ -160,7 +161,7 @@ FocusScope {
                 Text { required property string modelData; required property int index; text: modelData; color: index >= 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
             }
         }
-        Text { x: 549 - width; y: 1.75; text: "MOD-10"; color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
+        Text { x: 549 - width; y: 1.75; text: ModuleNumbering.code("reader"); color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 8; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
         Item { x: 556; y: 3.5; width: 34; height: 7; clip: true; Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: "#24FFFFFF"; PathSvg { path: { let p = ""; for (let x = -7; x < 41; x += 3.5 * Math.SQRT2) p += "M" + x + " 7h1.414l7 -7h-1.414Z"; return p } } } } }
         Text { id: heading; x: 0; y: 20; height: 30; text: qsTr("阅读器"); color: Appearance.tone("#F4F4F4"); font.family: harmonyBold.name; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: 2.08; renderType: Text.CurveRendering }
         Text { x: heading.width + 12; y: heading.y + heading.baselineOffset - baselineOffset; text: "E-READER"; color: Appearance.tone("#8A8A8A"); font.family: harmonyMedium.name; font.pixelSize: 13; font.weight: Font.Medium; font.letterSpacing: 2.6; renderType: Text.CurveRendering }

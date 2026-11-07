@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import "Appearance.js" as Appearance
 import QtQuick.Shapes
 import QtQuick.Dialogs
@@ -214,7 +215,7 @@ FocusScope {
                     Text { required property string modelData; required property int index; text: modelData; color: index >= 2 ? Appearance.tone("#E6E6E6") : Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
                 }
             }
-            Text { x: 549 - width; y: 1.75; text: "MOD-04"; color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
+            Text { x: 549 - width; y: 1.75; text: ModuleNumbering.code("archive"); color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pointSize: 10.5 * 0.75; font.letterSpacing: 0.63; renderType: Text.CurveRendering }
             Item { x: 556; y: 3.5; width: 34; height: 7; clip: true; Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: "#24FFFFFF"; PathSvg { path: { let p = ""; for (let x = -7; x < 41; x += 3.5 * Math.SQRT2) p += "M" + x + " 7h1.414l7 -7h-1.414Z"; return p } } } } }
             CalendarButton { visible: archivePage.visualPage !== "list"; x: 0; y: 20; width: 30; height: 30; kind: "icon"; glyph: "‹"; reduceMotion: archivePage.reduceMotion; onClicked: archivePage.navigate("back", "", -1, 0) }
             Text {

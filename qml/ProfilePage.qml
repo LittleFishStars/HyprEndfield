@@ -1,4 +1,5 @@
 import QtQuick
+import "ModuleNumbering.js" as ModuleNumbering
 import QtQuick.Dialogs
 import HyprEndfield.Profile 1.0
 import "Appearance.js" as Appearance
@@ -23,7 +24,7 @@ Item {
     property string lastTheme: "#C9A2FF"
     function chooseImage(kind) { imageKind = kind; imageDialog.open() }
     onPresentedChanged: if (!presented) { forceActiveFocus(); popup = ""; }
-    SettingsHeader { title: qsTr("个人名片"); english: "PERSONAL ID"; code: "MOD-15"; count: "#" + page.profile.tag }
+    SettingsHeader { title: qsTr("个人名片"); english: "PERSONAL ID"; code: ModuleNumbering.code("profile"); count: "#" + page.profile.tag }
     VolumeDropdown {
         objectName: "profileMode"; x: 412; y: 22; width: 178; overlayHost: page
         visible: typeof accountController !== "undefined"

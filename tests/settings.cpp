@@ -112,6 +112,68 @@ private slots:
         settings.resetModules(); QCOMPARE(settings.value("moduleOrder").toStringList(), SettingsController::defaultModules()); QVERIFY(settings.value("hiddenModules").toStringList().isEmpty());
         QVERIFY(!settings.icons().isEmpty());
     }
+    void moduleHeaderNumbering() {
+        const QList<QPair<QString, QString>> pages{
+            {"NotesPage", "notes"}, {"FileShelfPage", "fileShelf"}, {"ClipboardPage", "clipboard"},
+            {"ArchivePage", "archive"}, {"VolumePage", "volume"}, {"ReaderPage", "reader"},
+            {"CalendarPage", "calendar"}, {"ProjectionPage", "projection"}, {"MediaAssemblyPage", "mediaAssembly"},
+            {"OrbiPomPage", "minigame"}, {"EventLogPage", "eventLog"}, {"AccountPage", "account"},
+            {"AppShortcutsPage", "addApp"}, {"ProfilePage", "profile"}};
+        QString source = "import QtQuick\nimport \"ModuleNumbering.js\" as ModuleNumbering\nQtObject {\n";
+        QStringList defaultOrder, consecutive;
+        for (const auto &[page, key] : pages) {
+            QFile file(QString(SETTINGS_QML_DIR) + '/' + page + ".qml"); QVERIFY(file.open(QIODevice::ReadOnly));
+            const QString pageSource = QString::fromUtf8(file.readAll());
+            const QString binding = "ModuleNumbering.code(\"" + key + "\")";
+            QVERIFY2(pageSource.contains("import \"ModuleNumbering.js\" as ModuleNumbering"), qPrintable(page));
+            QVERIFY2(pageSource.contains("text: " + binding) || pageSource.contains("code: " + binding), qPrintable(page));
+            source += "property string " + key + ": " + binding + "\n";
+            defaultOrder.append(key);
+            consecutive.append(QString("MOD-%1").arg(defaultOrder.size(), 2, 10, QChar('0')));
+        }
+        source += "property string playback: ModuleNumbering.code(\"nowPlaying\")\n"
+                  "property string focus: ModuleNumbering.code(\"workMode\")\n"
+                  "property string unknown: ModuleNumbering.code(\"missing\")\n}";
+        for (const bool configured : {false, true}) {
+            QTemporaryDir dir;
+            SettingsController settings(nullptr, dir.filePath("s.ini"), dir.filePath("startup"), dir.path());
+            QQmlEngine engine; QSignalSpy warnings(&engine, &QQmlEngine::warnings);
+            if (configured) engine.rootContext()->setContextProperty("settingsController", &settings);
+            QQmlComponent component(&engine);
+            component.setData(source.toUtf8(), QUrl::fromLocalFile(QString(SETTINGS_QML_DIR) + "/NumberingTest.qml"));
+            std::unique_ptr<QObject> object(component.create()); QVERIFY2(object, qPrintable(component.errorString()));
+            const auto codes = [&object](const QStringList &order) {
+                QStringList values;
+                for (const auto &key : order) values.append(object->property(key.toUtf8().constData()).toString());
+                return values;
+            };
+            QCOMPARE(codes(defaultOrder), consecutive);
+            QCOMPARE(codes({"playback", "focus", "unknown"}), QStringList({"", "", ""}));
+            if (configured) {
+                auto order = defaultOrder;
+                settings.moveModule("mediaAssembly", 0); order.move(order.indexOf("mediaAssembly"), 0);
+                QCOMPARE(codes(order), consecutive);
+                // Headerless pages do not create gaps in the displayed numbers.
+                settings.moveModule("nowPlaying", 0); QCOMPARE(codes(order), consecutive);
+                settings.showModule("notes", false); order.removeAll("notes"); order.append("notes");
+                QCOMPARE(codes(order), consecutive);
+                settings.showModule("account", false); order.removeAll("account"); order.append("account");
+                QCOMPARE(codes(order), consecutive);
+                // A hidden account page remains reachable from the profile, with a unique number.
+                QCOMPARE(object->property("account").toString(), QString("MOD-14"));
+                SettingsController restored(nullptr, dir.filePath("s.ini"), dir.filePath("startup"), dir.path());
+                engine.rootContext()->setContextProperty("settingsController", &restored);
+                QCOMPARE(codes(order), consecutive);
+                restored.resetModules(); QCOMPARE(codes(defaultOrder), consecutive);
+                engine.rootContext()->setContextProperty("settingsController", &settings);
+                settings.showModule("notes", true); settings.showModule("account", true);
+                order = defaultOrder; order.move(order.indexOf("mediaAssembly"), 0);
+                QCOMPARE(codes(order), consecutive);
+                settings.resetModules(); QCOMPARE(codes(defaultOrder), consecutive);
+            }
+            QVERIFY(warnings.isEmpty());
+        }
+    }
     void batteryEdgesAndDuration() {
         QTemporaryDir dir; SettingsController settings(nullptr, dir.filePath("s.ini"), dir.filePath("autostart"), dir.path());
         settings.set("batteryDuration", 1);
