@@ -58,6 +58,8 @@ qt_add_executable(hyprendfield
     src/calendarcontroller.hpp
     src/clipboardcontroller.cpp
     src/clipboardcontroller.hpp
+    src/notescontroller.cpp
+    src/notescontroller.hpp
     ${WLR_DATA_CONTROL_HEADER}
     ${WLR_DATA_CONTROL_SOURCE}
 )
@@ -95,6 +97,13 @@ qt_add_qml_module(hyprendfield
         qml/ClipboardCard.qml
         qml/ClipboardGlyph.qml
         qml/ClipboardConfirmBar.qml
+        qml/NotesPage.qml
+        qml/NotesWorkspace.qml
+        qml/NoteCard.qml
+        qml/NotesTaskCard.qml
+        qml/NotesFormatBar.qml
+        qml/NotesAddButton.qml
+        qml/NotesGlyph.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -246,6 +255,13 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_clipboard_tests PRIVATE CLIPBOARD_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME clipboard COMMAND hyprendfield_clipboard_tests)
     set_tests_properties(clipboard PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    qt_add_executable(hyprendfield_notes_tests tests/notes.cpp
+        src/notescontroller.cpp src/notescontroller.hpp)
+    target_include_directories(hyprendfield_notes_tests PRIVATE src)
+    target_link_libraries(hyprendfield_notes_tests PRIVATE Qt6::Quick Qt6::Test)
+    target_compile_definitions(hyprendfield_notes_tests PRIVATE NOTES_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    add_test(NAME notes COMMAND hyprendfield_notes_tests)
+    set_tests_properties(notes PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 install(TARGETS hyprendfield

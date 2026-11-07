@@ -8,6 +8,7 @@
 #include "activitycontroller.hpp"
 #include "calendarcontroller.hpp"
 #include "clipboardcontroller.hpp"
+#include "notescontroller.hpp"
 
 #include <QGuiApplication>
 #include <QIcon>
@@ -133,6 +134,7 @@ int main(int argc, char *argv[])
     ActivityController activity;
     CalendarController calendar;
     ClipboardController clipboard;
+    NotesController notes;
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
@@ -155,6 +157,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("activityController"), &activity);
     engine.rootContext()->setContextProperty(QStringLiteral("calendarController"), &calendar);
     engine.rootContext()->setContextProperty(QStringLiteral("clipboardController"), &clipboard);
+    engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
     engine.addImageProvider(QStringLiteral("activity-icons"), new ActivityIconProvider);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));

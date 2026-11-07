@@ -246,6 +246,15 @@ Item {
             presented: visible && appController.hudOpen
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        NotesPage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "notes"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
     }
     MenuPlane {
         scene: menu.shell
@@ -467,6 +476,17 @@ Item {
             sourceClipRect: Qt.rect(0, 142, 430, 83)
             smooth: true
             mipmap: true
+        }
+    }
+    MenuPlane {
+        scene: menu.shell
+        elevation: 34
+        z: 500
+        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1)
+        NotesWorkspace {
+            selectedModule: menu.shell.selectedModule
+            presented: appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
         }
     }
     Text {
