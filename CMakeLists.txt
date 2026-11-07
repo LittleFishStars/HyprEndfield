@@ -23,16 +23,36 @@ qt_add_qml_module(hyprendfield
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/WatchShell.qml
+        qml/HudNavButton.qml
+        qml/HudBottomButton.qml
+        qml/HudGlyph.qml
 )
 
 qt_add_resources(hyprendfield "hyprendfield_assets"
     PREFIX "/"
     FILES
+        assets/watch/ui_main_loop_bg.png
+        assets/watch/ui_out_ring.png
+        assets/watch/ui_out1_ring.png
         assets/watch/ui_mid_ring.png
         assets/watch/ui_triangle_fx.png
+        assets/watch/deco_04.png
+        assets/watch/endfield_industries.png
         assets/watch/SOURCES.json
+        assets/icons/notes.png
+        assets/icons/file-shelf.png
+        assets/icons/clipboard.png
+        assets/icons/archive.png
+        assets/icons/reader.png
+        assets/icons/work-mode.png
+        assets/icons/calendar.png
+        assets/icons/map.png
+        assets/icons/event-log.png
+        assets/icons/SOURCES.json
         assets/fonts/HarmonyOS_Sans_Regular.ttf
         assets/fonts/HarmonyOS_Sans_Medium.ttf
+        assets/fonts/HarmonyOS_Sans_Bold.ttf
         assets/fonts/HarmonyOS-Sans-LICENSE.txt
 )
 

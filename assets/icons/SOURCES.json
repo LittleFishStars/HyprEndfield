@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "source_project": "EndfieldHUD",
+  "source_directory": "Resources/AppIconSources/EndfieldWiki",
+  "transformation": "The source alpha is retained and visible pixels are recolored to #202020 for the navigation plates.",
+  "rights": "Game artwork remains third-party material owned by Hypergryph and the respective rights holders; excluded from the EndfieldHUD MIT grant.",
+  "assets": [
+    {
+      "file": "notes.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Mission_Icon.png",
+      "source_sha256": "2c011a796902d8fc0c53b0aad4dc87b75a078c2a2261c2f22a34aaf6259f8143",
+      "sha256": "b7262efd414bcdc0e5560acabe11cfdf4d30efe7892f00f3ae7105f7f7217b5d"
+    },
+    {
+      "file": "file-shelf.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Depot_icon.png",
+      "source_sha256": "41f9a002dcc84117907751576c791239705d21a286b6df0d31ae34c8af4705d3",
+      "sha256": "c940345b90795467149c2474b178d669a522077cab37ebb1f1096b7941e8f1ed"
+    },
+    {
+      "file": "clipboard.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Database_Icon.png",
+      "source_sha256": "031d7b08cfff002960b6e0b0a9423a6ad6d4c9bbf3471edec94c70b7504dea66",
+      "sha256": "58ef767ea7a2473577ff93c6d550e0d1016755af5c508204b2148643d90e1a30"
+    },
+    {
+      "file": "archive.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Archive_Icon.png",
+      "source_sha256": "ab7934c5fe2a774d0cf7b970876f576bbb6397ca94c477d93fcf4ce7b76ed440",
+      "sha256": "8ba183750bb29366e36d2771f95c83d85cfee122c1c6f8f2c4afd779c3bd8042"
+    },
+    {
+      "file": "reader.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Reader_Icon.png",
+      "source_sha256": "e9fe4b14c8559918a203f3632e5ed475b484839f1e1ff2cfe764f818936288ac",
+      "sha256": "90796faeac5dc2dd5fc8838b7ab5e0c4671ad9891575ed374e4771f08e4c8784"
+    },
+    {
+      "file": "work-mode.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/STR.png",
+      "source_sha256": "9ab5df33dee05e593471c960b0a6923ce2edd3d1b1b98dc726f1d2a0d9e5581f",
+      "sha256": "3d42ce345dacf3e15f2bd65fe8ecf43a90b9f6c0a43b68784477ecb1650d2b68"
+    },
+    {
+      "file": "calendar.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Calendar_Icon.png",
+      "source_sha256": "f51584c31ae684bf6b79ab811ce678b6c15927ccda85ab9c2af6c4ef76f70efb",
+      "sha256": "1e2051b240bbbf8999cbe3f653ac9b7a205eb456d749099126b01b80efbd918f"
+    },
+    {
+      "file": "map.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Region_icon.png",
+      "source_sha256": "d65910fb49e47a666fb476301efe5b6fd372b812ee076c79a5c2c5fbfec37394",
+      "sha256": "0d6b52875d0493c926d7d1e03b92f3890392ca449cbe7bc95c4d2114f776d04f"
+    },
+    {
+      "file": "event-log.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Questionnaire_Icon.png",
+      "source_sha256": "262f16f035f7a03f00f79668b9c09175e65112f9c8763167c09ef29024ecb2c4",
+      "sha256": "599b176bcd82e48b46c2abe313f73eb5946551869974111c71bde40eb1d51d78"
+    }
+  ]
+}

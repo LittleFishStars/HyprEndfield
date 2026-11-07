@@ -27,6 +27,45 @@
       "width": 143,
       "height": 123,
       "sha256": "8b9c6742b0a86441437462c8d4d1d87eba23d774cc7c88f527e43f8029ad6920"
+    },
+    {
+      "file": "ui_main_loop_bg.png",
+      "source_sprite": "ui_main_loop_bg",
+      "source_project_file": "Resources/WatchSource/Scene/sprites/ui_main_loop_bg--bf352424---8681011307611187518.png",
+      "width": 967,
+      "height": 972,
+      "sha256": "ffc01e9b37b19e503f73870bf570d25df2103a78fc377e73efd371564e644f4e"
+    },
+    {
+      "file": "ui_out_ring.png",
+      "source_sprite": "ui_out_ring",
+      "source_project_file": "Resources/WatchSource/Scene/sprites/ui_out_ring--53eb1b73--8429713191083063875.png",
+      "width": 1024,
+      "height": 1024,
+      "sha256": "ae03617e17ba88f1b325cb6f16d4081b133be8780be65891879b8dbc5bace5e4"
+    },
+    {
+      "file": "ui_out1_ring.png",
+      "source_sprite": "ui_out1_ring",
+      "source_project_file": "Resources/WatchSource/Scene/sprites/source-textures/ui_out1_ring--48501457--7567071519668357209.png",
+      "width": 600,
+      "height": 600,
+      "sha256": "0ffe2947c723ed2bf168a632a56433d5e7bb92a68b0e223a201abbcc8754544e"
+    },
+    {
+      "file": "deco_04.png",
+      "source_sprite": "deco_04",
+      "source_project_file": "Resources/WatchSource/Scene/sprites/deco_04--2e4c429a--574772873275865228.png",
+      "width": 498,
+      "height": 499,
+      "sha256": "7fc16492a48fa95bd5eaed9834b6cd02288d9dc70e1b9d4c1a7278cc41e11a94"
+    },
+    {
+      "file": "endfield_industries.png",
+      "source_project_file": "Resources/EndfieldIndustriesSource.png",
+      "width": 430,
+      "height": 372,
+      "sha256": "dd5468819ce5cff39cc5d8063ca3248b4f57a2addc0d8d97b5384c8871cd3db3"
     }
   ]
 }
