@@ -41,6 +41,7 @@ Item {
                                                       sceneRotation.scalar) * 180 / Math.PI
     readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
     readonly property bool transitioning: sourceClip.running || contentClip.running
+    readonly property real contentOverlapDuration: 0.10
     readonly property real motionIntensity: 1.25
                                                 * Math.max(0, Math.min(2, displaySettings.parallaxIntensity))
                                                 * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity))
@@ -122,6 +123,7 @@ Item {
         sourceClip.to = sourceWatchAnimation.openingDuration
         sourceClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000)
         sourceClip.restart()
+        contentClip.restart()
     }
 
     function animateExit() {
@@ -163,22 +165,24 @@ Item {
         target: shell
         property: "animationTime"
         easing.type: Easing.Linear
-
-        onFinished: {
-            if (shell.animationPhase !== 1 || shell.displaySettings.reduceMotion)
-                return
-            contentClip.from = 0
-            contentClip.to = sourceWatchAnimation.openingDuration
-            contentClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000)
-            contentClip.restart()
-        }
     }
 
-    NumberAnimation {
+    SequentialAnimation {
         id: contentClip
-        target: shell
-        property: "contentAnimationTime"
-        easing.type: Easing.Linear
+
+        PauseAnimation {
+            duration: Math.max(0, Math.round((sourceWatchAnimation.openingDuration
+                                             - shell.contentOverlapDuration) * 1000))
+        }
+
+        NumberAnimation {
+            target: shell
+            property: "contentAnimationTime"
+            from: 0
+            to: sourceWatchAnimation.openingDuration
+            duration: Math.round(sourceWatchAnimation.openingDuration * 1000)
+            easing.type: Easing.Linear
+        }
     }
 
     Timer {
