@@ -54,6 +54,8 @@ hl.define_submap("hyprendfield", function()
         hl.dispatch(hl.dsp.submap("reset"))
         hl.dispatch(hl.dsp.exec_cmd(hyprEndfield .. " --toggle"))
     end)
+    hl.bind("PRINT", hl.dsp.exec_cmd("hyprshot -m output"))
+    hl.bind("CTRL + ALT + A", hl.dsp.exec_cmd("hyprshot -m region --clipboard-only --silent"))
 end)
 
 hl.layer_rule({
