@@ -17,8 +17,10 @@ Item {
     property real contentAnimationTime: sourceWatchAnimation.openingDuration
     readonly property real contentAdvanceDuration: 0.40
     readonly property real closingLeadDuration: sourceWatchAnimation.contentTransitionDuration
-    readonly property real closingSequenceDuration: closingLeadDuration
-                                                   + sourceWatchAnimation.closingDuration
+    readonly property real closingDurationScale: 0.80
+    readonly property real closingSequenceDuration: closingDurationScale
+                                                   * (closingLeadDuration
+                                                      + sourceWatchAnimation.closingDuration)
     readonly property real sourceAnimationTime: animationPhase === 2
                                                  ? Math.max(0, animationTime)
                                                  : animationTime
