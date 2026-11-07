@@ -15,13 +15,12 @@ Item {
     property string clockText: "00:00:00"
     property string dateText: ""
     property int clockSeconds: 0
-    // shared-scene.js camera and spring, with the existing user intensity controls.
-    property real cameraPitch: 20
-    property real cameraYaw: 0
-    property real targetPitch: 20
-    property real targetYaw: 0
-    property real pitchVelocity: 0
-    property real yawVelocity: 0
+    property quaternion sourceGyroStart: sourceWatchAnimation.neutralGyro
+    property quaternion sourceGyroTarget: sourceWatchAnimation.neutralGyro
+    property real sourceGyroProgress: 1
+    readonly property quaternion sourceGyro: sourceWatchAnimation.interpolateRotation(sourceGyroStart, sourceGyroTarget, sourceGyroProgress)
+    readonly property real cameraPitch: 20 + Math.asin(Math.max(-1, Math.min(1, 2 * (sourceGyro.scalar * sourceGyro.x - sourceGyro.y * sourceGyro.z)))) * 180 / Math.PI
+    readonly property real cameraYaw: -Math.atan2(2 * (sourceGyro.scalar * sourceGyro.y + sourceGyro.x * sourceGyro.z), 1 - 2 * (sourceGyro.x * sourceGyro.x + sourceGyro.y * sourceGyro.y)) * 180 / Math.PI
     readonly property real rasterScale: Math.max(1, scale * 1000 / 1920 * 1.10) * Screen.devicePixelRatio * 2
     property int animationPhase: 0
     property real animationTime: sourceWatchAnimation.openingDuration
@@ -217,18 +216,22 @@ Item {
 
     function retargetPointer(normalizedX, normalizedY) {
         const intensity = displaySettings.reduceMotion ? 0 : Math.max(0, Math.min(2, displaySettings.parallaxIntensity)) * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity));
-        targetPitch = 20 - normalizedY * 2.5 * intensity;
-        targetYaw = -normalizedX * 4 * intensity;
+        const current = sourceGyro;
+        sourceGyroMotion.stop();
+        sourceGyroStart = current;
+        sourceGyroTarget = sourceWatchAnimation.gyroTarget(normalizedX, normalizedY, intensity * 1.25);
+        if (displaySettings.reduceMotion) sourceGyroProgress = 1;
+        else { sourceGyroProgress = 0; sourceGyroMotion.restart(); }
     }
 
-    FrameAnimation {
-        running: appController.hudVisible && !shell.displaySettings.reduceMotion && (Math.abs(shell.cameraPitch - shell.targetPitch) > 0.002 || Math.abs(shell.cameraYaw - shell.targetYaw) > 0.002 || Math.abs(shell.pitchVelocity) > 0.0006 || Math.abs(shell.yawVelocity) > 0.0006)
-        onTriggered: {
-            shell.pitchVelocity = (shell.pitchVelocity + (shell.targetPitch - shell.cameraPitch) * .008) * .8;
-            shell.yawVelocity = (shell.yawVelocity + (shell.targetYaw - shell.cameraYaw) * .008) * .8;
-            shell.cameraPitch += shell.pitchVelocity;
-            shell.cameraYaw += shell.yawVelocity;
-        }
+    NumberAnimation {
+        id: sourceGyroMotion
+        target: shell
+        property: "sourceGyroProgress"
+        from: 0
+        to: 1
+        duration: 500
+        easing.type: Easing.OutQuad
     }
 
     NumberAnimation {

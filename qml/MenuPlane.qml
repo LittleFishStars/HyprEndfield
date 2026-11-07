@@ -10,6 +10,6 @@ Item {
     height: 1080
     z: elevation
     transform: Matrix4x4 {
-        matrix: sourceWatchAnimation.projectPlane(plane.elevation, plane.compensated, plane.scene.cameraPitch, plane.scene.cameraYaw, plane.scene.animationPhase, plane.scene.sourceAnimationTime, plane.localMatrix)
+        matrix: sourceWatchAnimation.projectPlane(plane.elevation, plane.compensated, plane.scene.sourceGyro, plane.scene.animationPhase, plane.scene.sourceAnimationTime, plane.localMatrix)
     }
 }

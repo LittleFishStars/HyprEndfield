@@ -39,13 +39,19 @@ qt_add_qml_module(hyprendfield
         qml/MenuBadge.qml
         qml/MenuScene.qml
         qml/MenuGeometry.js
+        qml/WatchSurfaces.js
+        qml/SourceSurface.qml
+        qml/SourceBottomButton.qml
 )
 
 file(GLOB MENU_VECTOR_ASSETS CONFIGURE_DEPENDS "assets/menu/*.svg" "assets/menu/*.png")
 qt_add_resources(hyprendfield "menu_vectors"
     PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MENU_VECTOR_ASSETS})
 qt_add_shaders(hyprendfield "menu_shaders" PREFIX "/"
-    FILES shaders/viewport-mask.frag)
+    FILES shaders/viewport-mask.frag shaders/source-surface.frag)
+file(GLOB WATCH_SURFACE_ASSETS CONFIGURE_DEPENDS "assets/watch-surfaces/*.png")
+qt_add_resources(hyprendfield "watch_surfaces"
+    PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WATCH_SURFACE_ASSETS})
 
 qt_add_resources(hyprendfield "hyprendfield_assets"
     PREFIX "/"

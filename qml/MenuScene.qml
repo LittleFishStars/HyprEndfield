@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import "MenuGeometry.js" as Geometry
+import "WatchSurfaces.js" as Source
 
 Item {
     id: menu
@@ -84,15 +85,14 @@ Item {
             }
         }
     }
-    MenuPlane {
-        scene: menu.shell
-        elevation: Geometry.data.floorHeight
-        compensated: false
-        localMatrix: menu.ringMotion("meshScale", "meshRotation")
-        opacity: menu.shell.ringOpacity("mainOpacity")
-        MenuArt {
-            anchors.fill: parent
-            asset: "floor"
+    Repeater {
+        model: Source.data.outer
+        delegate: SourceSurface {
+            required property var modelData
+            shell: menu.shell
+            spec: modelData
+            z: -200
+            opacity: menu.shell.ringOpacity(modelData.group === "outer" ? "outerOpacity" : "secondaryOpacity")
         }
     }
     Repeater {
@@ -151,23 +151,6 @@ Item {
                 height: modelData.g[3]
                 color: "white"
             }
-        }
-    }
-    MenuPlane {
-        scene: menu.shell
-        compensated: false
-        localMatrix: menu.ringMotion("meshScale", "meshRotation").times(menu.cssMatrix(Geometry.data.decorRing.m))
-        opacity: menu.shell.ringOpacity("mainOpacity")
-        Rectangle {
-            x: -7.4
-            y: -7.4
-            width: 14.8
-            height: 14.8
-            radius: 7.4
-            color: "transparent"
-            border.width: 1.4
-            border.color: "#8cffde00"
-            antialiasing: true
         }
     }
     // Cables live on the deck, independently of the raised cards.
@@ -312,77 +295,23 @@ Item {
             }
         }
     }
+    SourceSurface {
+        shell: menu.shell
+        spec: Source.data.shadow
+        z: 25
+        opacity: menu.shell.remainingContentFrameValue("storageOpacity", 1)
+    }
     Repeater {
-        model: 2
-        delegate: MenuPlane {
+        model: Source.data.bottom
+        delegate: SourceBottomButton {
             required property int index
-            scene: menu.shell
-            elevation: 26
+            required property var modelData
+            shell: menu.shell
+            spec: modelData
+            z: 26
+            label: index === 0 ? "存储" : "活动监视器"
             opacity: menu.shell.remainingContentFrameValue(index === 0 ? "storageOpacity" : "activityOpacity", 1)
-            MenuArt {
-                x: 640 + menu.leanX * 30
-                y: 830 + menu.leanY * 30
-                width: 660
-                height: 160
-                asset: "bottom-" + index + "-back"
-            }
-            MenuArt {
-                x: 640
-                y: 830
-                width: 660
-                height: 160
-                asset: "bottom-" + index + "-face"
-            }
-            MenuArt {
-                x: 640
-                y: 830
-                width: 660
-                height: 160
-                asset: "bottom-" + index + "-decal"
-            }
-            MenuArt {
-                x: 640
-                y: 830
-                width: 660
-                height: 160
-                asset: "bottom-" + index + "-icon"
-            }
-            Text {
-                x: index === 0 ? 829 : 993
-                y: 876
-                width: index === 0 ? 111 : 153
-                height: 38
-                text: index === 0 ? "存储" : "活动监视器"
-                font.family: harmonyMedium.name
-                font.pixelSize: 24
-                color: "#fff"
-                rotation: -2
-                renderType: Text.CurveRendering
-            }
-            Shape {
-                id: bottomHit
-                visible: false
-                containsMode: Shape.FillContains
-                width: 1920
-                height: 1080
-                transform: Rotation {
-                    origin.x: 968.8
-                    origin.y: 918
-                    angle: -1.817
-                }
-                ShapePath {
-                    strokeWidth: -1
-                    PathSvg {
-                        path: Geometry.data.bottom[index].path
-                    }
-                }
-            }
-            MouseArea {
-                anchors.fill: parent
-                containmentMask: bottomHit
-                cursorShape: Qt.PointingHandCursor
-                onClicked: menu.shell.selectedModule = index === 0 ? "storage" : "activity"
-            }
+            onTriggered: menu.shell.selectedModule = index === 0 ? "storage" : "activity"
         }
     }
     MenuPlane {

@@ -33,8 +33,10 @@ public:
     Q_INVOKABLE QQuaternion combinedRotation(int phase, double time,
                                              const QQuaternion &gyro) const;
     Q_INVOKABLE QMatrix4x4 projectPlane(double height, bool compensate,
-                                      double pitch, double yaw, int phase, double time,
+                                      const QQuaternion &gyro, int phase, double time,
                                       const QMatrix4x4 &local) const;
+    Q_INVOKABLE QMatrix4x4 projectSourceNode(const QString &id, int phase, double time,
+                                           const QQuaternion &gyro) const;
 
 private:
     struct Data;

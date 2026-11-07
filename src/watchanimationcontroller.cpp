@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QHash>
 #include <QLoggingCategory>
+#include <QRectF>
 #include <QVector>
 #include <QtMath>
 
@@ -204,7 +205,137 @@ struct WatchAnimationController::Data
     double maximumYaw = 3.0;
     QQuaternion neutralGyro;
     QQuaternion contentRotation;
+    QHash<QString, QJsonObject> sourceNodes;
+    QMatrix4x4 sourceView;
+    QMatrix4x4 sourceWorldParent;
+    QVector3D sourceRootPosition;
+    double sourceFieldOfView = 0;
+    QString sourceCanvasID;
     bool valid = false;
+
+    QMatrix4x4 sourceWorld(const QQuaternion &gyro) const
+    {
+        // HUDSourceWatchCamera.layout: Float arithmetic at Unity's boundary.
+        const float radians = qDegreesToRadians(float(sourceFieldOfView) * .5f);
+        const float z = std::abs(sourceWorldParent.map(sourceRootPosition).z());
+        const float halfHeight = float(std::tan(double(radians))) * z;
+        QMatrix4x4 world = sourceWorldParent;
+        world.translate(sourceRootPosition);
+        world.rotate(gyro);
+        world.scale((halfHeight + halfHeight) / 1350.f);
+        return world;
+    }
+
+    QMatrix4x4 sourceScreen() const
+    {
+        const float focal = float(540.0 / std::tan(qDegreesToRadians(sourceFieldOfView) / 2));
+        return QMatrix4x4(focal, 0, 960, 0, 0, -focal, 540, 0, 0, 0, 1, 0, 0, 0, 1, 0);
+    }
+
+    static QMatrix4x4 planeHomography(QMatrix4x4 matrix)
+    {
+        // Preserve the projected local Z=0 plane and an invertible matrix for
+        // both Qt's curve renderer and the inverse pointer transform.
+        for (int column = 0; column < 4; ++column) matrix(2, column) = 0;
+        matrix(2, 2) = 1;
+        matrix(0, 2) = matrix(1, 2) = matrix(3, 2) = 0;
+        if (std::abs(matrix(3, 3)) > 1e-8f) matrix /= matrix(3, 3);
+        return matrix;
+    }
+
+    static QVector3D vector(const QJsonValue &value)
+    {
+        const auto o = value.toObject();
+        return {float(o.value("x").toDouble()), float(o.value("y").toDouble()), float(o.value("z").toDouble())};
+    }
+
+    struct ResolvedNode {
+        QMatrix4x4 world;
+        QRectF rect;
+    };
+
+    ResolvedNode resolveSourceNode(const QString &id, int phase, double time) const
+    {
+        const auto node = sourceNodes.value(id);
+        if (node.isEmpty()) return {};
+        const auto transform = node.value("transform").toObject();
+        const auto raw = transform.value("raw").toObject();
+        const QString path = node.value("path").toString();
+        // HUDSourceWatchAnimation.pose initializes the live WorldUIRoot panel.
+        if (path == "WatchPanel_PC") return {{}, QRectF(-1200, -675, 2400, 1350)};
+        const auto parent = resolveSourceNode(node.value("parent_id").toString(), phase, time);
+        const QString clipPath = path.mid(QStringLiteral("WatchPanel_PC/").size());
+        auto position = vector(raw.value("m_LocalPosition"));
+        auto scale = vector(raw.value("m_LocalScale"));
+        auto rotation = quaternionFromJson(raw.value("m_LocalRotation").toObject());
+        QRectF rect;
+        if (transform.value("type").toString() == "RectTransform") {
+            const auto lo = vector(raw.value("m_AnchorMin"));
+            const auto hi = vector(raw.value("m_AnchorMax"));
+            const auto pivot = vector(raw.value("m_Pivot"));
+            const auto size = vector(raw.value("m_SizeDelta"));
+            const auto anchored = vector(raw.value("m_AnchoredPosition"));
+            const double width = parent.rect.width() * (hi.x() - lo.x()) + size.x();
+            const double height = parent.rect.height() * (hi.y() - lo.y()) + size.y();
+            rect = QRectF(-width * pivot.x(), -height * pivot.y(), width, height);
+            position.setX(parent.rect.x() + parent.rect.width() * (lo.x() + (hi.x() - lo.x()) * pivot.x()) + anchored.x());
+            position.setY(parent.rect.y() + parent.rect.height() * (lo.y() + (hi.y() - lo.y()) * pivot.y()) + anchored.y());
+        }
+        const auto animatedPosition = value(phase, time, clipPath, "m_PositionCurves");
+        const auto animatedScale = value(phase, time, clipPath, "m_ScaleCurves");
+        const auto animatedRotation = value(phase, time, clipPath, "m_RotationCurves");
+        if (animatedPosition.size() == 3) position = QVector3D(animatedPosition[0], animatedPosition[1], animatedPosition[2]);
+        if (animatedScale.size() == 3) scale = QVector3D(animatedScale[0], animatedScale[1], animatedScale[2]);
+        if (animatedRotation.size() == 4)
+            rotation = QQuaternion(animatedRotation[3], animatedRotation[0], animatedRotation[1], animatedRotation[2]).normalized();
+        QMatrix4x4 local;
+        local.translate(position);
+        local.rotate(rotation);
+        local.scale(scale);
+        return {parent.world * local, rect};
+    }
+
+    void loadSourceCamera(const QJsonArray &runtime, const QJsonObject &root)
+    {
+        // EndfieldHUD/HUDSourceWatchCamera: resolve the authored camera and its
+        // parents, then replace only the runtime WorldUIRoot scale below.
+        QHash<QString, QJsonObject> transforms;
+        QJsonObject camera;
+        const auto objectID = [](const QJsonObject &o) {
+            return o.value("cab").toString() + ':' + o.value("path_id").toString();
+        };
+        for (const auto &v : runtime) {
+            const auto o = v.toObject();
+            const auto type = o.value("type").toString();
+            if (type == "RectTransform" || type == "Transform") transforms.insert(objectID(o), o);
+            if (type == "Camera") camera = o;
+        }
+        const auto parentID = [](const QJsonObject &o) {
+            const QString id = o.value("data").toObject().value("m_Father").toObject().value("m_PathID").toString();
+            return id == "0" ? QString() : o.value("cab").toString() + ':' + id;
+        };
+        const auto world = [&](auto &&self, const QString &id) -> QMatrix4x4 {
+            if (id.isEmpty()) return {};
+            const auto o = transforms.value(id);
+            const auto d = o.value("data").toObject();
+            QMatrix4x4 local;
+            local.translate(vector(d.value("m_LocalPosition")));
+            local.rotate(quaternionFromJson(d.value("m_LocalRotation").toObject()));
+            local.scale(vector(d.value("m_LocalScale")));
+            return self(self, parentID(o)) * local;
+        };
+        const auto cameraData = camera.value("data").toObject();
+        for (auto it = transforms.cbegin(); it != transforms.cend(); ++it) {
+            if (it.value().value("cab") == camera.value("cab")
+                && it.value().value("data").toObject().value("m_GameObject") == cameraData.value("m_GameObject")) {
+                sourceView = world(world, it.key()).inverted();
+                break;
+            }
+        }
+        sourceWorldParent = world(world, parentID(root));
+        sourceRootPosition = vector(root.value("data").toObject().value("m_LocalPosition"));
+        sourceFieldOfView = cameraData.value("field of view").toDouble();
+    }
 
     static QVector<double> components(const QJsonValue &value, int count)
     {
@@ -435,6 +566,7 @@ struct WatchAnimationController::Data
                 && data.value(QStringLiteral("m_GameObject")).toObject()
                        .value(QStringLiteral("m_PathID")).toString() == gyroGameObject) {
                 neutralGyro = quaternionFromJson(data.value(QStringLiteral("m_LocalRotation")).toObject());
+                loadSourceCamera(runtime, object);
                 break;
             }
         }
@@ -443,16 +575,19 @@ struct WatchAnimationController::Data
                                      .object().value(QStringLiteral("nodes")).toArray();
         for (const QJsonValue &nodeValue : nodes) {
             const QJsonObject node = nodeValue.toObject();
+            sourceNodes.insert(node.value("id").toString(), node);
+            if (node.value("path").toString() == "WatchPanel_PC/Content/WatchNode/canvas_watch")
+                sourceCanvasID = node.value("id").toString();
             if (node.value(QStringLiteral("path")).toString() != QStringLiteral("WatchPanel_PC/Content")) {
                 continue;
             }
             contentRotation = quaternionFromJson(node.value(QStringLiteral("transform")).toObject()
                                                      .value(QStringLiteral("raw")).toObject()
                                                      .value(QStringLiteral("m_LocalRotation")).toObject());
-            break;
         }
         valid = entrance.duration > 0.0 && exit.duration > 0.0
-            && !blurEntrance.keys.isEmpty() && !blurExit.keys.isEmpty();
+            && !blurEntrance.keys.isEmpty() && !blurExit.keys.isEmpty()
+            && !sourceCanvasID.isEmpty() && sourceFieldOfView > 0;
     }
 };
 
@@ -596,47 +731,40 @@ QQuaternion WatchAnimationController::combinedRotation(int phase, double time,
 }
 
 QMatrix4x4 WatchAnimationController::projectPlane(double height, bool compensate,
-                                                 double pitch, double yaw,
+                                                 const QQuaternion &gyro,
                                                  int phase, double time,
                                                  const QMatrix4x4 &local) const
 {
-    // endfield_menu/shared-scene.js: CSS perspective, world transform and
-    // rest-view compensation. Lengths use the original 1920 x 1080 stage.
-    constexpr float distance = 1600.f;
-    QMatrix4x4 rest;
-    rest.translate(29.f, -40.f);
-    rest.rotate(-1.f, 0.f, 0.f, 1.f);
-    rest.rotate(20.f, 1.f, 0.f, 0.f);
-    const QVector3D eye = rest.inverted().map(QVector3D(0.f, 0.f, distance))
-                           + QVector3D(960.f, 540.f, 0.f);
-    QMatrix4x4 perspective;
-    perspective(3, 2) = -1.f / distance;
-    QMatrix4x4 projection;
-    projection.translate(960.f, 540.f);
-    projection.scale(1.10f);
-    projection *= perspective;
-    projection.translate(29.f, -40.f);
-    projection.rotate(-1.f, 0.f, 0.f, 1.f);
-    projection.rotate(float(pitch), 1.f, 0.f, 0.f);
-    projection.rotate(float(yaw), 0.f, 1.f, 0.f);
-    // Preserve the extracted Unity clip and approved timing; its resting pose
-    // is represented by the camera above, so apply only the animated delta.
-    const auto pose = m_data->rotation(phase, time, QStringLiteral("Content/WatchNode"));
-    const auto settled = m_data->rotation(0, openingDuration(), QStringLiteral("Content/WatchNode"));
-    projection.rotate((pose * settled.conjugated()).normalized());
-    projection.translate(-960.f, -540.f);
+    if (!m_data->valid) return {};
+    // Existing stage-space components and the original sprite nodes must share
+    // one camera and WatchNode transform. Keep their current local geometry;
+    // HTML's fitted 1600px perspective and additional 1.10 zoom no longer apply.
+    const auto node = m_data->resolveSourceNode(m_data->sourceCanvasID, phase, time);
+    QMatrix4x4 stage;
+    stage.translate(-960.f, 540.f);
+    stage.scale(1.f, -1.f, -1.f);
+    QMatrix4x4 projection = m_data->sourceScreen() * m_data->sourceView
+        * m_data->sourceWorld(gyro) * node.world * stage;
     projection.translate(0.f, 0.f, float(height));
     if (compensate) {
+        const auto rest = m_data->resolveSourceNode(m_data->sourceCanvasID, 0, 0);
+        const auto eye = (m_data->sourceView * m_data->sourceWorld(neutralGyro())
+            * rest.world * stage).inverted().map(QVector3D());
         const float k = (eye.z() - float(height)) / eye.z();
         projection.translate((1.f - k) * eye.x(), (1.f - k) * eye.y());
         projection.scale(k, k, 1.f);
     }
     projection *= local;
-    // QQuickItem hit testing uses this same homography. Retain W for perspective,
-    // flatten clip-space Z and paint the separate planes in elevation order.
-    for (int column = 0; column < 4; ++column) projection(2, column) = 0.f;
-    // Keep the transform invertible. The curve renderer and pointer unprojection
-    // both need its inverse, even though all source vertices have local Z = 0.
-    projection(2, 2) = 1.f;
-    return projection;
+    return Data::planeHomography(projection);
+}
+
+QMatrix4x4 WatchAnimationController::projectSourceNode(const QString &id, int phase, double time,
+                                                      const QQuaternion &gyro) const
+{
+    if (!m_data->sourceNodes.contains(id) || m_data->sourceFieldOfView <= 0) return {};
+    const auto node = m_data->resolveSourceNode(id, phase, time);
+    QMatrix4x4 result = m_data->sourceScreen() * m_data->sourceView * m_data->sourceWorld(gyro) * node.world;
+    result.translate(node.rect.x(), node.rect.y() + node.rect.height());
+    result.scale(1, -1, 1);
+    return Data::planeHomography(result);
 }
