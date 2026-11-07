@@ -53,6 +53,7 @@ target_compile_options(hyprendfield PRIVATE
 
 set_target_properties(hyprendfield PROPERTIES
     OUTPUT_NAME HyprEndfield
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
 include(GNUInstallDirs)
