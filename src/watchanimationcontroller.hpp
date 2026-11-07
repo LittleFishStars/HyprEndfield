@@ -41,6 +41,13 @@ public:
     Q_INVOKABLE void restartAmbientMotion();
     void restartAmbientMotion(quint64 seed);
 
+    // Full homogeneous projection for original mesh vertices (including Z).
+    QMatrix4x4 projectSourceGeometry(const QString &id, int phase, double time,
+                                    const QQuaternion &gyro, double ambientTime) const;
+    QVector4D sourceGraphicColor(const QString &id, int phase, double time, bool mesh) const;
+    double sourceProperty(const QString &id, int phase, double time,
+                          const QString &attribute, double fallback) const;
+
 private:
     struct Data;
     std::unique_ptr<Data> m_data;

@@ -201,6 +201,8 @@ struct WatchAnimationController::Data
     Clip exit;
     QVector<QPair<QString, QString>> ambientBindings;
     QHash<QString, double> ambientRates;
+    QVector<QString> triangleIDs;
+    QHash<QString, double> triangleRates;
     ScalarCurve blurEntrance;
     ScalarCurve blurExit;
     ScalarCurve gyroPitch;
@@ -241,9 +243,12 @@ struct WatchAnimationController::Data
         // Preserve the projected local Z=0 plane and an invertible matrix for
         // both Qt's curve renderer and the inverse pointer transform.
         for (int column = 0; column < 4; ++column) matrix(2, column) = 0;
-        matrix(2, 2) = 1;
         matrix(0, 2) = matrix(1, 2) = matrix(3, 2) = 0;
         if (std::abs(matrix(3, 3)) > 1e-8f) matrix /= matrix(3, 3);
+        // Qt's curve rasterizer derives its AA width from the 4x4 determinant.
+        // Z is unused by this 2D homography: normalize it AFTER homogeneous W,
+        // otherwise camera depth widens every text/shape edge by sqrt(depth).
+        matrix(2, 2) = 1;
         return matrix;
     }
 
@@ -304,6 +309,13 @@ struct WatchAnimationController::Data
         if (animatedScale.size() == 3) scale = QVector3D(animatedScale[0], animatedScale[1], animatedScale[2]);
         if (animatedRotation.size() == 4)
             rotation = QQuaternion(animatedRotation[3], animatedRotation[0], animatedRotation[1], animatedRotation[2]).normalized();
+        if (ambientTime >= 0 && (phase != OpeningPhase || time >= entrance.duration)
+            && !(phase == ClosingPhase && curve(exit, clipPath, "m_RotationCurves"))) {
+            const auto rate = triangleRates.constFind(id);
+            if (rate != triangleRates.cend())
+                rotation = (rotation * QQuaternion::fromAxisAndAngle(0, 0, 1,
+                    float(std::fmod(ambientTime * rate.value(), 360.0)))).normalized();
+        }
         QMatrix4x4 local;
         local.translate(position);
         local.rotate(rotation);
@@ -600,6 +612,9 @@ struct WatchAnimationController::Data
         for (const QJsonValue &nodeValue : nodes) {
             const QJsonObject node = nodeValue.toObject();
             sourceNodes.insert(node.value("id").toString(), node);
+            if (node.value("name").toString() == "triangle_fx1"
+                && node.value("path").toString().contains("/MiddleDecoNode/TriagleNode/"))
+                triangleIDs.append(node.value("id").toString());
             if (node.value("path").toString() == "WatchPanel_PC/Content/WatchNode/canvas_watch")
                 sourceCanvasID = node.value("id").toString();
             if (node.value(QStringLiteral("path")).toString() != QStringLiteral("WatchPanel_PC/Content")) {
@@ -830,4 +845,59 @@ void WatchAnimationController::restartAmbientMotion(quint64 seed)
         }
         m_data->ambientRates.insert(id, rate);
     }
+    m_data->triangleRates.clear();
+    for (const auto &id : m_data->triangleIDs) {
+        double rate = 10.0 + 14.0 * random();
+        rate *= random() < .5 ? -1 : 1;
+        m_data->triangleRates.insert(id, rate);
+    }
+}
+
+QMatrix4x4 WatchAnimationController::projectSourceGeometry(const QString &id, int phase, double time,
+                                                          const QQuaternion &gyro, double ambientTime) const
+{
+    const auto node = m_data->resolveSourceNode(id, phase, time, ambientTime);
+    return m_data->sourceScreen() * m_data->sourceView * m_data->sourceWorld(gyro) * node.world;
+}
+
+double WatchAnimationController::sourceProperty(const QString &id, int phase, double time,
+                                                const QString &attribute, double fallback) const
+{
+    const auto path = m_data->sourceNodes.value(id).value("path").toString().mid(14);
+    return m_data->scalar(phase, time, path, attribute, 0, fallback);
+}
+
+QVector4D WatchAnimationController::sourceGraphicColor(const QString &id, int phase, double time, bool mesh) const
+{
+    QVector4D color(1, 1, 1, 1);
+    const auto node = m_data->sourceNodes.value(id);
+    if (!mesh) {
+        for (const auto &v : node.value("components").toArray()) {
+            const auto c = v.toObject();
+            if (c.value("script").toString() != "UIImage") continue;
+            if (!c.value("data").toObject().value("m_Enabled").toInt(1)) return {};
+            const auto raw = c.value("data").toObject().value("m_Color").toObject();
+            const QStringList axes {"r", "g", "b", "a"};
+            for (int i = 0; i < 4; ++i) {
+                const double sampled = sourceProperty(id, phase, time, "m_Color." + axes[i], raw.value(axes[i]).toDouble(1));
+                const double value = std::nearbyint(std::clamp(sampled, 0.0, 1.0) * 255) / 255;
+                color[i] = float(i == 3 ? value : value <= .04045 ? value / 12.92 : std::pow((value + .055) / 1.055, 2.4));
+            }
+        }
+    }
+    bool ignoreParentAlpha = mesh;
+    for (auto ancestor = node; !ancestor.isEmpty(); ancestor = m_data->sourceNodes.value(ancestor.value("parent_id").toString())) {
+        const auto ancestorID = ancestor.value("id").toString();
+        if (sourceProperty(ancestorID, phase, time, "m_IsActive", ancestor.value("active_self").toBool(true) ? 1 : 0) < .5)
+            return {};
+        if (ignoreParentAlpha) continue;
+        for (const auto &v : ancestor.value("components").toArray()) {
+            const auto component = v.toObject();
+            const auto data = component.value("data").toObject();
+            if (component.value("type").toString() != "CanvasGroup" || !data.value("m_Enabled").toInt(1)) continue;
+            color.setW(color.w() * float(std::clamp(sourceProperty(ancestorID, phase, time, "m_Alpha", data.value("m_Alpha").toDouble(1)), 0.0, 1.0)));
+            ignoreParentAlpha |= data.value("m_IgnoreParentGroups").toBool();
+        }
+    }
+    return color;
 }

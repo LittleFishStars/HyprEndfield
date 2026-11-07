@@ -35,6 +35,8 @@ int main(int argc, char **argv)
     const auto floor = scene.projectPlane(0, true, neutral, 0, 0, identity);
     for (double height : levels) {
         const auto compensated = scene.projectPlane(height, true, neutral, 0, 0, identity);
+        require(compensated(2, 2) == 1,
+                "Unused Z scale must not change Qt curve text antialiasing");
         require(std::abs(compensated.determinant()) > 0.01, "Projection must remain invertible for Qt curve rendering and hit testing");
         for (const auto &p : points) {
             require((floor.map(p) - compensated.map(p)).length() < 0.002,
@@ -53,6 +55,8 @@ int main(int argc, char **argv)
             const double t = duration*step/60;
             for (double height : levels) {
                 const auto matrix = scene.projectPlane(height, false, tilted, phase, t, identity);
+                require(matrix(2, 2) == 1,
+                        "Animation reintroduced camera depth into curve antialiasing");
                 require(std::abs(matrix.determinant()) > 0.001, "An animation frame made the visual transform singular");
                 for (const auto &p : points) {
                     const auto q = matrix.map(p);
@@ -80,6 +84,29 @@ int main(int argc, char **argv)
     const auto rightID = idFor("MiddleDecoNode/DecoOut/Right");
     const auto storageID = idFor("HudBgShdow/TechtreeNode/TechtreeBtn/Icon");
     const auto reportID = idFor("HudBgShdow/ReportNode/ReportBtn/Icon");
+    const auto meshID = idFor("MiddleDecoNode/MeshNode/RingFoMesh");
+    const auto meshProjection = scene.projectSourceGeometry(meshID,0,0,neutral,-1);
+    const auto elevatedVertex = meshProjection.map(QVector3D(-.04838806f,-.6761424f,.13230038f));
+    const auto flattenedVertex = meshProjection.map(QVector3D(-.04838806f,-.6761424f,0));
+    require((elevatedVertex-flattenedVertex).length()>5,
+            "The original Equipring mesh was flattened and lost its vertex depth");
+    for (const auto &value:nodes) {
+        const auto node=value.toObject();
+        if (!node.value("path").toString().contains("/MiddleDecoNode/")) continue;
+        const auto id=node.value("id").toString();
+        for(int phase:{1,2}) for(int step=0;step<=30;++step) {
+            const double t=(phase==1?scene.openingDuration():scene.closingDuration())*step/30;
+            const auto c=scene.sourceGraphicColor(id,phase,t,false);
+            for(int i=0;i<4;++i) require(std::isfinite(c[i]) && c[i]>=0 && c[i]<=1,
+                "An original dial colour/CanvasGroup curve produced invalid opacity");
+        }
+    }
+    const auto mainID=idFor("MiddleDecoNode/MainRingNode/MainRing");
+    const auto sourceRect=scene.projectSourceNode(mainID,0,0,neutral);
+    const auto sourceGeometry=scene.projectSourceGeometry(mainID,0,0,neutral,-1);
+    require((sourceRect.map(QVector3D(0,0,0)).toVector2D()
+            - sourceGeometry.map(QVector3D(-512,512,0)).toVector2D()).length()<.003,
+            "The original mesh renderer and interactive plane camera disagree");
     // The exported DecoOut rotation accelerates toward its final raw key.
     // The source wrapper must slow the sampling clock before watch_loop starts.
     for (const auto &id : {leftID, rightID}) {
@@ -96,6 +123,8 @@ int main(int argc, char **argv)
     for (const auto &id : {ringID, leftID, rightID, storageID, reportID}) {
         require(!id.isEmpty(), "Missing authored surface node");
         const auto matrix = scene.projectSourceNode(id, 0, 0, scene.neutralGyro());
+        require(matrix(2, 2) == 1,
+                "Source label projection must keep the unused Z scale normalized");
         require(std::abs(matrix.determinant()) > 1e-5, "Original surface is not invertible");
         const QVector3D p(42, 63, 0);
         require((matrix.inverted().map(matrix.map(p)) - p).length() < .002,

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools Concurrent Sql Multimedia Pdf)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick OpenGL ShaderTools Concurrent Sql Multimedia Pdf)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
@@ -43,6 +43,10 @@ qt_add_executable(hyprendfield
     src/applicationcontroller.hpp
     src/watchanimationcontroller.cpp
     src/watchanimationcontroller.hpp
+    src/sourcedial.cpp
+    src/sourcedial.hpp
+    src/batterycontroller.cpp
+    src/batterycontroller.hpp
     src/nowplayingcontroller.cpp
     src/nowplayingcontroller.hpp
     src/splayerlyrics.cpp
@@ -145,6 +149,7 @@ qt_add_qml_module(hyprendfield
         qml/WatchSurfaces.js
         qml/SourceSurface.qml
         qml/SourceBottomButton.qml
+        qml/BatteryBadge.qml
 )
 
 file(GLOB MENU_VECTOR_ASSETS CONFIGURE_DEPENDS "assets/menu/*.svg" "assets/menu/*.png")
@@ -155,6 +160,10 @@ qt_add_shaders(hyprendfield "menu_shaders" PREFIX "/"
 file(GLOB WATCH_SURFACE_ASSETS CONFIGURE_DEPENDS "assets/watch-surfaces/*.png")
 qt_add_resources(hyprendfield "watch_surfaces"
     PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WATCH_SURFACE_ASSETS})
+file(GLOB WATCH_DIAL_ASSETS CONFIGURE_DEPENDS "assets/watch-dial/*")
+qt_add_resources(hyprendfield "watch_dial"
+    PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${WATCH_DIAL_ASSETS}
+        shaders/dial.vert shaders/dial.frag shaders/dial-composite.vert shaders/dial-composite.frag)
 
 qt_add_resources(hyprendfield "hyprendfield_assets"
     PREFIX "/"
@@ -193,6 +202,7 @@ target_link_libraries(hyprendfield PRIVATE
     Qt6::WebSockets
     Qt6::Qml
     Qt6::Quick
+    Qt6::OpenGL
     Qt6::Concurrent
     Qt6::Sql
     Qt6::Multimedia
@@ -247,6 +257,16 @@ if(BUILD_TESTING)
         assets/watch/clips.json assets/watch/watch-blur.json
         assets/watch/runtime-root-camera.json assets/watch/scene.json)
     add_test(NAME scene_projection COMMAND hyprendfield_visual_tests)
+    qt_add_executable(hyprendfield_battery_tests tests/battery.cpp src/batterycontroller.cpp src/batterycontroller.hpp)
+    target_include_directories(hyprendfield_battery_tests PRIVATE src)
+    target_link_libraries(hyprendfield_battery_tests PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME battery COMMAND hyprendfield_battery_tests)
+    qt_add_executable(hyprendfield_battery_page_tests tests/battery_page.cpp src/batterycontroller.cpp src/batterycontroller.hpp)
+    target_include_directories(hyprendfield_battery_page_tests PRIVATE src)
+    target_link_libraries(hyprendfield_battery_page_tests PRIVATE Qt6::Quick Qt6::Test)
+    target_compile_definitions(hyprendfield_battery_page_tests PRIVATE BATTERY_QML_PATH="${CMAKE_CURRENT_SOURCE_DIR}/qml/BatteryBadge.qml")
+    add_test(NAME battery_page COMMAND hyprendfield_battery_page_tests)
+    set_tests_properties(battery_page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
     qt_add_executable(hyprendfield_audio_tests tests/audio.cpp src/audiocontroller.cpp src/audiocontroller.hpp)
     target_include_directories(hyprendfield_audio_tests PRIVATE src)
     target_link_libraries(hyprendfield_audio_tests PRIVATE Qt6::Core Qt6::Test PkgConfig::PULSE)

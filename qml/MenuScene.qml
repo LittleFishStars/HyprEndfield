@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "MenuGeometry.js" as Geometry
+import HyprEndfield.Source 1.0
 import "WatchSurfaces.js" as Source
 
 Item {
@@ -11,148 +11,13 @@ Item {
     enabled: !shell.transitioning
     readonly property real leanX: Math.round(-Math.tan(shell.cameraYaw * Math.PI / 180) * 160) / 100
     readonly property real leanY: Math.round(Math.tan((shell.cameraPitch - 20) * Math.PI / 180) * 160) / 100
-    property real flagSway: -30
-
-    function translation(x, y, z) {
-        return Qt.matrix4x4(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1);
-    }
-    function turnZ(degrees) {
-        const a = degrees * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
-        return Qt.matrix4x4(c, -s, 0, 0, s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-    }
-    function scaling(value) {
-        return Qt.matrix4x4(value, 0, 0, 0, 0, value, 0, 0, 0, 0, value, 0, 0, 0, 0, 1);
-    }
-    function cssMatrix(value) {
-        const m = value.slice(9, -1).split(',').map(Number);
-        return Qt.matrix4x4(m[0], m[4], m[8], m[12], m[1], m[5], m[9], m[13], m[2], m[6], m[10], m[14], m[3], m[7], m[11], m[15]);
-    }
-    function ringMotion(scaleKey, rotationKey) {
-        return translation(960, 540, 0).times(turnZ(shell.frameValue(rotationKey, 0))).times(scaling(shell.frameValue(scaleKey, 1))).times(translation(-960, -540, 0));
-    }
-    function flagPose(degrees) {
-        const a = degrees * Math.PI / 180;
-        return ringMotion("triangleScale", "triangleRotation").times(translation(960, 540, 0)).times(turnZ(flagSway)).times(translation(-960, -540, 0)).times(translation(960 + .96 * Geometry.data.flagRadius * Math.cos(a), 540 + .96 * Geometry.data.flagRadius * Math.sin(a), 0)).times(turnZ(degrees + 90)).times(Qt.matrix4x4(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1));
-    }
-
-    SequentialAnimation on flagSway {
-        running: appController.hudVisible && menu.shell.displaySettings.ambientAnimation && !menu.shell.displaySettings.reduceMotion && !menu.shell.displaySettings.lowPowerVisualMode
-        loops: Animation.Infinite
-        NumberAnimation {
-            from: -30
-            to: 30
-            duration: 45000
-        }
-        NumberAnimation {
-            from: 30
-            to: -30
-            duration: 45000
-        }
-    }
-
-    MenuPlane {
-        scene: menu.shell
-        elevation: -130
-        compensated: false
-        opacity: menu.shell.ringOpacity("mainOpacity")
-        localMatrix: menu.ringMotion("mainScale", "mainRotation")
-        MenuArt {
-            x: 513
-            y: 93
-            width: 894
-            height: 894
-            asset: "well"
-        }
-    }
-    Repeater {
-        model: Geometry.data.rings
-        delegate: MenuPlane {
-            required property int index
-            required property var modelData
-            scene: menu.shell
-            elevation: modelData.height
-            compensated: false
-            readonly property string scaleKey: ["mainScale", "secondaryScale", "blueScale", "outerScale"][index]
-            readonly property string rotationKey: ["mainRotation", "secondaryRotation", "blueRotation", "outerRotation"][index]
-            opacity: menu.shell.ringOpacity(["mainOpacity", "secondaryOpacity", "blueOpacity", "outerOpacity"][index])
-            localMatrix: menu.ringMotion(scaleKey, rotationKey)
-            MenuArt {
-                x: 480 - 180 * .96
-                y: 60 - 180 * .96
-                width: 1360 * .96
-                height: 1360 * .96
-                asset: modelData.id
-            }
-        }
-    }
-    Repeater {
-        model: Source.data.outer
-        delegate: SourceSurface {
-            required property var modelData
-            shell: menu.shell
-            spec: modelData
-            ambientTime: menu.shell.sourceAmbientSampleTime
-            z: -200
-            opacity: menu.shell.ringOpacity(modelData.group === "outer" ? "outerOpacity" : "secondaryOpacity")
-        }
-    }
-    Repeater {
-        model: Geometry.data.flags
-        delegate: MenuPlane {
-            required property real modelData
-            scene: menu.shell
-            elevation: 22
-            compensated: false
-            z: 55
-            localMatrix: menu.flagPose(modelData)
-            opacity: menu.shell.ringOpacity("blueOpacity")
-            MenuArt {
-                x: -30.72
-                y: -59.52
-                width: 61.44
-                height: 61.44
-                asset: "flag"
-            }
-        }
-    }
-    Repeater {
-        model: Geometry.data.marks
-        delegate: MenuPlane {
-            required property var modelData
-            scene: menu.shell
-            compensated: false
-            localMatrix: menu.cssMatrix(modelData.m)
-            z: Number(modelData.m.slice(9, -1).split(',')[14])
-            opacity: menu.shell.contentFrameValue("nativeOpacity", 1) * modelData.a
-            Rectangle {
-                x: modelData.g[0]
-                y: -modelData.wh / 2
-                width: modelData.g[1]
-                height: modelData.wh
-                color: "white"
-            }
-            Rectangle {
-                x: -modelData.g[0] - modelData.g[1]
-                y: -modelData.wh / 2
-                width: modelData.g[1]
-                height: modelData.wh
-                color: "white"
-            }
-            Rectangle {
-                x: -modelData.wv / 2
-                y: modelData.g[2]
-                width: modelData.wv
-                height: modelData.g[3]
-                color: "white"
-            }
-            Rectangle {
-                x: -modelData.wv / 2
-                y: -modelData.g[2] - modelData.g[3]
-                width: modelData.wv
-                height: modelData.g[3]
-                color: "white"
-            }
-        }
+    SourceDial {
+        width: 1920
+        height: 1080
+        z: -200
+        animation: sourceWatchAnimation
+        pose: ({phase: menu.shell.animationPhase, time: menu.shell.sourceAnimationTime,
+                ambient: menu.shell.sourceAmbientSampleTime, gyro: menu.shell.sourceGyro})
     }
     // Cables live on the deck, independently of the raised cards.
     Repeater {
@@ -517,16 +382,18 @@ Item {
     MenuPlane {
         scene: menu.shell
         elevation: 0
-        opacity: menu.shell.contentFrameValue("wordmarkOpacity", 1)
-        Image {
-            x: 835
-            y: 1015
-            width: 250
-            height: 48.25
-            source: "qrc:/assets/watch/endfield_industries.png"
-            sourceClipRect: Qt.rect(0, 142, 430, 83)
-            smooth: true
-            mipmap: true
+        z: 30
+        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1)
+        BatteryBadge {
+            // HUDChargeBadge center=(500,446), source offset=38. Convert its
+            // design units with the same scale as the existing 590px centre.
+            readonly property real sourceToStage: 1.12 / (1470 / (1920 * 1.15))
+            scale: .82 * sourceToStage
+            x: 960.4 - width * scale / 2
+            y: 579.6 + 164 * sourceToStage - height * scale / 2
+            transformOrigin: Item.TopLeft
+            presented: appController.hudOpen && !menu.shell.transitioning
+            reduceMotion: menu.shell.displaySettings.reduceMotion
         }
     }
     MenuPlane {

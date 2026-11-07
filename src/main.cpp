@@ -1,5 +1,7 @@
 #include "applicationcontroller.hpp"
 #include "watchanimationcontroller.hpp"
+#include "sourcedial.hpp"
+#include "batterycontroller.hpp"
 #include "nowplayingcontroller.hpp"
 #include "splayerlyrics.hpp"
 #include "audiocontroller.hpp"
@@ -149,8 +151,11 @@ int main(int argc, char *argv[])
 {
     qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("wayland"));
     QSurfaceFormat surfaceFormat;
+    surfaceFormat.setRenderableType(QSurfaceFormat::OpenGLES);
+    surfaceFormat.setVersion(3, 0);
     surfaceFormat.setSamples(4);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
     QGuiApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("HyprEndfield"));
@@ -176,6 +181,7 @@ int main(int argc, char *argv[])
 
     ApplicationController controller;
     WatchAnimationController watchAnimation;
+    BatteryController battery;
     NowPlayingController nowPlaying;
     SPlayerLyrics lyrics(&nowPlaying);
     AudioController audio;
@@ -190,6 +196,7 @@ int main(int argc, char *argv[])
     auto *readerImages = new ReaderImageProvider;
     ReaderController reader(nullptr, readerImages);
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
+    qmlRegisterType<SourceDial>("HyprEndfield.Source", 1, 0, "SourceDial");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
     });
@@ -203,6 +210,7 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("appController"), &controller);
+    engine.rootContext()->setContextProperty(QStringLiteral("batteryController"), &battery);
     engine.rootContext()->setContextProperty(QStringLiteral("sourceWatchAnimation"), &watchAnimation);
     engine.rootContext()->setContextProperty(QStringLiteral("nowPlayingController"), &nowPlaying);
     engine.rootContext()->setContextProperty(QStringLiteral("splayerLyrics"), &lyrics);
