@@ -55,7 +55,7 @@ Item {
         },
         {
             key: "hotkeys",
-            label: "快捷键"
+            label: "快捷终端"
         },
         {
             key: "about",

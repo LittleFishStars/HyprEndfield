@@ -41,8 +41,8 @@ Window {
     }
 
     Shortcut {
-        sequence: "Escape"
-        onActivated: appController.hideHud()
+        sequence: "Meta+Escape"
+        onActivated: appController.toggleHud()
     }
 
     Settings {

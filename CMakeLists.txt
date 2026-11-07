@@ -11,6 +11,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Qu
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
+pkg_check_modules(VTERM REQUIRED IMPORTED_TARGET vterm>=0.3.3)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -26,6 +27,10 @@ qt_add_executable(hyprendfield
     src/splayerlyrics.hpp
     src/audiocontroller.cpp
     src/audiocontroller.hpp
+    src/terminalsession.cpp
+    src/terminalsession.hpp
+    src/terminalview.cpp
+    src/terminalview.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -43,6 +48,7 @@ qt_add_qml_module(hyprendfield
         qml/VolumeRow.qml
         qml/VolumeSlider.qml
         qml/VolumeDropdown.qml
+        qml/TerminalPage.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -109,6 +115,8 @@ target_link_libraries(hyprendfield PRIVATE
     Qt6::Quick
     LayerShellQt::Interface
     PkgConfig::PULSE
+    PkgConfig::VTERM
+    util
 )
 
 target_compile_options(hyprendfield PRIVATE
@@ -161,6 +169,13 @@ if(BUILD_TESTING)
     target_link_libraries(hyprendfield_volume_page_tests PRIVATE Qt6::Quick Qt6::Test PkgConfig::PULSE)
     add_test(NAME volume_page COMMAND hyprendfield_volume_page_tests)
     set_tests_properties(volume_page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(hyprendfield_terminal_tests tests/terminal.cpp
+        src/terminalsession.cpp src/terminalsession.hpp src/terminalview.cpp src/terminalview.hpp)
+    target_include_directories(hyprendfield_terminal_tests PRIVATE src)
+    target_link_libraries(hyprendfield_terminal_tests PRIVATE Qt6::Quick Qt6::Test PkgConfig::VTERM util)
+    target_compile_definitions(hyprendfield_terminal_tests PRIVATE TERMINAL_PAGE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/qml/TerminalPage.qml")
+    add_test(NAME terminal COMMAND hyprendfield_terminal_tests)
+    set_tests_properties(terminal PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 install(TARGETS hyprendfield

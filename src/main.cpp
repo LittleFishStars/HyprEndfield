@@ -3,6 +3,8 @@
 #include "nowplayingcontroller.hpp"
 #include "splayerlyrics.hpp"
 #include "audiocontroller.hpp"
+#include "terminalsession.hpp"
+#include "terminalview.hpp"
 
 #include <QGuiApplication>
 #include <QIcon>
@@ -110,6 +112,8 @@ int main(int argc, char *argv[])
     NowPlayingController nowPlaying;
     SPlayerLyrics lyrics(&nowPlaying);
     AudioController audio;
+    TerminalSession terminal;
+    qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
     });
@@ -127,6 +131,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("nowPlayingController"), &nowPlaying);
     engine.rootContext()->setContextProperty(QStringLiteral("splayerLyrics"), &lyrics);
     engine.rootContext()->setContextProperty(QStringLiteral("audioController"), &audio);
+    engine.rootContext()->setContextProperty(QStringLiteral("terminalSession"), &terminal);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 

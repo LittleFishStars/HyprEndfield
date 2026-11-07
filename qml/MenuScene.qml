@@ -210,6 +210,15 @@ Item {
             presented: visible && appController.hudVisible
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        TerminalPage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "hotkeys"
+            presented: visible && appController.hudOpen && !menu.shell.transitioning
+            rasterScale: menu.shell.rasterScale * scale
+        }
     }
     MenuPlane {
         scene: menu.shell
