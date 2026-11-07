@@ -1,4 +1,4 @@
-# HyprEndfield
+# HyprEndfield （源项目:[EndfieldHUD](https://github.com/DDDuoDuo/EndfieldHUD)）
 
 # 欢迎Linux用户提交Issue/Pr
 
