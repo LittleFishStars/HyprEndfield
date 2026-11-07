@@ -443,6 +443,7 @@ Item {
             timeText: menu.shell.clockText
             dateText: menu.shell.dateText
             seconds: menu.shell.clockSeconds
+            focusActive: focusModeController.state.running
             transform: Matrix4x4 {
                 matrix: Qt.matrix4x4(.9995, .0739, 0, 0, -.0306, .9972, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
             }

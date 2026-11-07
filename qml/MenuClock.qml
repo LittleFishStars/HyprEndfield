@@ -6,6 +6,7 @@ Item {
     required property string timeText
     required property string dateText
     property int seconds: 0
+    property bool focusActive: false
     width: 340
     height: 145
     Rectangle {
@@ -73,9 +74,10 @@ Item {
         color: "#404040"
     }
     Text {
+        objectName: "menuClockModeLabel"
         x: 22
         y: 94
-        text: "FOCUS MODE"
+        text: clock.focusActive ? "FOCUS MODE" : "WORK MODE"
         color: "#737373"
         font.family: harmonyMedium.name
         font.pixelSize: 12

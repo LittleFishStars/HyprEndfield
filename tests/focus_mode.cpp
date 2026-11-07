@@ -152,6 +152,33 @@ private slots:
         QVERIFY(warnings.isEmpty());
         item->setParentItem(nullptr);
     }
+
+    void clockLabelFollowsRunningSession()
+    {
+        QQmlEngine engine;
+        const int font = QFontDatabase::addApplicationFont(
+            QStringLiteral(FOCUS_QML_DIR) + "/../assets/fonts/HarmonyOS_Sans_Medium.ttf");
+        QVERIFY(font >= 0);
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("harmonyMedium"),
+            QVariantMap{{QStringLiteral("name"), QFontDatabase::applicationFontFamilies(font).constFirst()}});
+        engine.rootContext()->setContextProperty(
+            QStringLiteral("harmonyBold"),
+            QVariantMap{{QStringLiteral("name"), QFontDatabase::applicationFontFamilies(font).constFirst()}});
+        QQmlComponent component(&engine, QUrl::fromLocalFile(QStringLiteral(FOCUS_QML_DIR) + "/MenuClock.qml"));
+        std::unique_ptr<QObject> root(component.createWithInitialProperties({
+            {QStringLiteral("timeText"), QStringLiteral("12:34:56")},
+            {QStringLiteral("dateText"), QStringLiteral("SAT NOV 7")}
+        }));
+        QVERIFY2(root != nullptr, qPrintable(component.errorString()));
+        auto *label = root->findChild<QObject *>(QStringLiteral("menuClockModeLabel"));
+        QVERIFY(label);
+        QCOMPARE(label->property("text").toString(), QStringLiteral("WORK MODE"));
+        root->setProperty("focusActive", true);
+        QCOMPARE(label->property("text").toString(), QStringLiteral("FOCUS MODE"));
+        root->setProperty("focusActive", false);
+        QCOMPARE(label->property("text").toString(), QStringLiteral("WORK MODE"));
+    }
 };
 
 int main(int argc, char **argv)
