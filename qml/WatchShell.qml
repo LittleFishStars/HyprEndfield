@@ -22,6 +22,11 @@ Item {
     readonly property quaternion gyroRotation: sourceWatchAnimation.interpolateRotation(
                                                    gyroStart, gyroEnd, gyroProgress)
     readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, animationTime)
+    readonly property var baseContentAnimationFrame: animationPhase === 1
+                                                       ? sourceWatchAnimation.frame(
+                                                             animationPhase,
+                                                             contentAnimationTime)
+                                                       : animationFrame
     readonly property var contentAnimationFrame: animationPhase === 1
                                                    ? sourceWatchAnimation.frame(
                                                          animationPhase,
@@ -110,6 +115,11 @@ Item {
 
     function contentFrameValue(name, fallbackValue) {
         const value = contentAnimationFrame[name]
+        return value === undefined ? fallbackValue : value
+    }
+
+    function baseContentFrameValue(name, fallbackValue) {
+        const value = baseContentAnimationFrame[name]
         return value === undefined ? fallbackValue : value
     }
 
@@ -428,7 +438,7 @@ Item {
             width: 205
             height: 78
             rotation: -1.4
-            opacity: shell.contentFrameValue("nativeOpacity", 1)
+            opacity: shell.baseContentFrameValue("nativeOpacity", 1)
 
             Rectangle {
                 anchors.fill: parent
@@ -488,7 +498,7 @@ Item {
             scale: 0.66576
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "system"
-            opacity: shell.contentFrameValue("nativeOpacity", 1)
+            opacity: shell.baseContentFrameValue("nativeOpacity", 1)
         }
 
         DisplayPage {
@@ -497,7 +507,7 @@ Item {
             scale: 0.66576
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "display"
-            opacity: shell.contentFrameValue("nativeOpacity", 1)
+            opacity: shell.baseContentFrameValue("nativeOpacity", 1)
             settings: shell.displaySettings
         }
 
