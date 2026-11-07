@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools Concurrent)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
@@ -31,6 +31,10 @@ qt_add_executable(hyprendfield
     src/terminalsession.hpp
     src/terminalview.cpp
     src/terminalview.hpp
+    src/activitycollector.cpp
+    src/activitycollector.hpp
+    src/activitycontroller.cpp
+    src/activitycontroller.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -49,6 +53,9 @@ qt_add_qml_module(hyprendfield
         qml/VolumeSlider.qml
         qml/VolumeDropdown.qml
         qml/TerminalPage.qml
+        qml/ActivityPage.qml
+        qml/ActivityMetricRow.qml
+        qml/ActivityFormat.js
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -113,6 +120,7 @@ target_link_libraries(hyprendfield PRIVATE
     Qt6::WebSockets
     Qt6::Qml
     Qt6::Quick
+    Qt6::Concurrent
     LayerShellQt::Interface
     PkgConfig::PULSE
     PkgConfig::VTERM
@@ -176,6 +184,13 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_terminal_tests PRIVATE TERMINAL_PAGE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/qml/TerminalPage.qml")
     add_test(NAME terminal COMMAND hyprendfield_terminal_tests)
     set_tests_properties(terminal PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    qt_add_executable(hyprendfield_activity_tests tests/activity.cpp
+        src/activitycollector.cpp src/activitycollector.hpp src/activitycontroller.cpp src/activitycontroller.hpp)
+    target_include_directories(hyprendfield_activity_tests PRIVATE src)
+    target_link_libraries(hyprendfield_activity_tests PRIVATE Qt6::Quick Qt6::Concurrent Qt6::Test)
+    target_compile_definitions(hyprendfield_activity_tests PRIVATE ACTIVITY_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    add_test(NAME activity COMMAND hyprendfield_activity_tests)
+    set_tests_properties(activity PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 install(TARGETS hyprendfield

@@ -219,6 +219,15 @@ Item {
             presented: visible && appController.hudOpen && !menu.shell.transitioning
             rasterScale: menu.shell.rasterScale * scale
         }
+        ActivityPage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "activity"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
     }
     MenuPlane {
         scene: menu.shell

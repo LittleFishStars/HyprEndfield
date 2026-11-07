@@ -5,9 +5,11 @@
 #include "audiocontroller.hpp"
 #include "terminalsession.hpp"
 #include "terminalview.hpp"
+#include "activitycontroller.hpp"
 
 #include <QGuiApplication>
 #include <QIcon>
+#include <QFileInfo>
 #include <QQuickImageProvider>
 #include <QLocalSocket>
 #include <QQmlApplicationEngine>
@@ -28,6 +30,19 @@ public:
         const QSize target = requested.isValid() ? requested : QSize(64, 64);
         QImage image = QIcon::fromTheme(QUrl::fromPercentEncoding(id.toUtf8())).pixmap(target).toImage();
         if (image.isNull()) { image = QImage(target, QImage::Format_ARGB32_Premultiplied); image.fill(Qt::transparent); }
+        if (size) *size = image.size();
+        return image;
+    }
+};
+class ActivityIconProvider final : public QQuickImageProvider
+{
+public:
+    ActivityIconProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}
+    QImage requestImage(const QString &id, QSize *size, const QSize &requested) override {
+        const QString name = QUrl::fromPercentEncoding(id.toUtf8());
+        const QSize target = requested.isValid() ? requested : QSize(64, 64);
+        const QIcon icon = QFileInfo(name).isAbsolute() ? QIcon(name) : QIcon::fromTheme(name);
+        const auto image = icon.pixmap(target).toImage();
         if (size) *size = image.size();
         return image;
     }
@@ -113,6 +128,7 @@ int main(int argc, char *argv[])
     SPlayerLyrics lyrics(&nowPlaying);
     AudioController audio;
     TerminalSession terminal;
+    ActivityController activity;
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
@@ -132,6 +148,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("splayerLyrics"), &lyrics);
     engine.rootContext()->setContextProperty(QStringLiteral("audioController"), &audio);
     engine.rootContext()->setContextProperty(QStringLiteral("terminalSession"), &terminal);
+    engine.rootContext()->setContextProperty(QStringLiteral("activityController"), &activity);
+    engine.addImageProvider(QStringLiteral("activity-icons"), new ActivityIconProvider);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 
