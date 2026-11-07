@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network DBus WebSockets Qml Quick OpenGL ShaderTools Concurrent Sql Multimedia Pdf)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network DBus WebSockets Qml Quick OpenGL ShaderTools Concurrent Sql Multimedia Pdf WebEngineWidgets)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
@@ -43,6 +43,20 @@ set(EVENT_LOG_SOURCES
     src/endfield/modules/event_log.cpp src/endfield/core/data/event_log_store.cpp
     src/endfield/core/data/json.cpp src/endfield/core/data/file_io.cpp src/endfield/data_platform.cpp)
 
+add_library(hyprendfield_account_core STATIC
+    src/endfield/modules/hypergryph_account_model.cpp
+    src/endfield/modules/hypergryph_account_crypto.cpp
+    src/endfield/modules/hypergryph_account_unicode.cpp
+    src/endfield/modules/hypergryph_account_api.cpp
+    src/endfield/modules/hypergryph_account_cache.cpp
+    src/endfield/modules/hypergryph_account_controller.cpp
+    src/endfield/modules/hypergryph_account_strings.cpp
+    src/endfield/modules/hypergryph_account_sanity_gauge.cpp
+    src/endfield/modules/profile_artwork.cpp
+    src/endfield/modules/hypergryph_account_login.cpp)
+target_include_directories(hyprendfield_account_core PUBLIC src/endfield)
+target_link_libraries(hyprendfield_account_core PUBLIC Qt6::Core)
+
 qt_add_executable(hyprendfield
     src/main.cpp
     src/applicationcontroller.cpp
@@ -57,6 +71,9 @@ qt_add_executable(hyprendfield
     src/storagecontroller.hpp
     src/profilecontroller.cpp
     src/profilecontroller.hpp
+    src/accountcontroller.cpp src/accountcontroller.hpp
+    src/accountlogin.cpp src/accountlogin.hpp
+    src/accountartwork.cpp src/accountartwork.hpp
     src/orbipomcontroller.cpp
     src/orbipomcontroller.hpp
     src/appshortcutscontroller.cpp src/appshortcutscontroller.hpp
@@ -119,6 +136,10 @@ qt_add_qml_module(hyprendfield
     QML_FILES
         qml/Main.qml
         qml/ProfilePage.qml
+        qml/AccountPage.qml
+        qml/AccountGauge.qml
+        qml/GameProfileBadge.qml
+        qml/ProfileCardSource.js
         qml/ProfileField.qml
         qml/OrbiPomPage.qml
         qml/EventLogPage.qml
@@ -222,6 +243,8 @@ file(GLOB_RECURSE SETTINGS_ASSETS CONFIGURE_DEPENDS "assets/settings/*")
 file(GLOB_RECURSE MEDIA_ASSETS CONFIGURE_DEPENDS "assets/media-assembly/*")
 file(GLOB_RECURSE ORBIPOM_ASSETS CONFIGURE_DEPENDS "assets/orbipom/*")
 file(GLOB_RECURSE SHORTCUT_ASSETS CONFIGURE_DEPENDS "assets/app-shortcut/*")
+file(GLOB_RECURSE ACCOUNT_ASSETS CONFIGURE_DEPENDS "assets/account/*" "assets/profile-card/*")
+qt_add_resources(hyprendfield "account_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ACCOUNT_ASSETS})
 qt_add_resources(hyprendfield "shortcut_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SHORTCUT_ASSETS})
 qt_add_resources(hyprendfield "orbipom_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ORBIPOM_ASSETS})
 qt_add_resources(hyprendfield "media_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MEDIA_ASSETS})
@@ -274,10 +297,12 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
 )
 
 target_link_libraries(hyprendfield PRIVATE
+    hyprendfield_account_core
     PkgConfig::GIO
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
+    Qt6::WebEngineWidgets
     Qt6::Network
     Qt6::DBus
     Qt6::WebSockets
@@ -350,7 +375,7 @@ if(BUILD_TESTING)
     target_link_libraries(hyprendfield_visual_tests PRIVATE Qt6::Core Qt6::Gui)
     qt_add_resources(hyprendfield_visual_tests "test_watch_data" PREFIX "/" FILES
         assets/watch/clips.json assets/watch/watch-blur.json
-        assets/watch/runtime-root-camera.json assets/watch/scene.json)
+        assets/watch/runtime-root-camera.json assets/watch/scene.json assets/profile-card/scene.json)
     add_test(NAME scene_projection COMMAND hyprendfield_visual_tests)
     qt_add_executable(hyprendfield_battery_tests tests/battery.cpp src/batterycontroller.cpp src/batterycontroller.hpp)
     target_include_directories(hyprendfield_battery_tests PRIVATE src)
@@ -479,6 +504,20 @@ if(BUILD_TESTING)
     qt_add_resources(hyprendfield_media_tests "media_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MEDIA_ASSETS} assets/icons/profile-frame.bgra)
     add_test(NAME media_components COMMAND hyprendfield_media_tests)
     set_tests_properties(media_components PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 90)
+    add_executable(hyprendfield_account_api_tests tests/account_api.cpp
+        src/endfield/core/data/json.cpp src/endfield/core/data/file_io.cpp src/endfield/data_platform.cpp)
+    target_link_libraries(hyprendfield_account_api_tests PRIVATE hyprendfield_account_core)
+    add_test(NAME account_api COMMAND hyprendfield_account_api_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/hypergryph-account-source.json")
+    qt_add_executable(hyprendfield_account_tests tests/account_components.cpp
+        src/accountcontroller.cpp src/accountlogin.cpp src/accountartwork.cpp src/profilecontroller.cpp src/watchanimationcontroller.cpp
+        src/endfield/core/data/json.cpp src/endfield/core/data/file_io.cpp src/endfield/data_platform.cpp)
+    target_include_directories(hyprendfield_account_tests PRIVATE src)
+    target_link_libraries(hyprendfield_account_tests PRIVATE hyprendfield_account_core Qt6::Quick Qt6::Test Qt6::WebEngineWidgets Qt6::Concurrent PkgConfig::LIBSECRET)
+    target_compile_definitions(hyprendfield_account_tests PRIVATE ACCOUNT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" ACCOUNT_PREVIEW_DIR="${CMAKE_BINARY_DIR}")
+    qt_add_resources(hyprendfield_account_tests "account_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ACCOUNT_ASSETS}
+        assets/icons/profile-frame.bgra assets/watch/clips.json assets/watch/watch-blur.json assets/watch/runtime-root-camera.json assets/watch/scene.json)
+    add_test(NAME account_components COMMAND hyprendfield_account_tests)
+    set_tests_properties(account_components PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 90)
 endif()
 
 install(TARGETS hyprendfield

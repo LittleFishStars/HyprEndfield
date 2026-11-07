@@ -627,6 +627,13 @@ struct WatchAnimationController::Data
         valid = entrance.duration > 0.0 && exit.duration > 0.0
             && !blurEntrance.keys.isEmpty() && !blurExit.keys.isEmpty()
             && !sourceCanvasID.isEmpty() && sourceFieldOfView > 0;
+        // BP13 keeps its original parent (PlayerInfoPosNode), so all card layers
+        // inherit the same camera, deployment and parallax as the source shell.
+        const auto profileNodes = readJson(QStringLiteral(":/assets/profile-card/scene.json")).object().value("nodes").toArray();
+        for (const auto &value : profileNodes) {
+            const auto node = value.toObject();
+            sourceNodes.insert(node.value("id").toString(), node);
+        }
     }
 };
 

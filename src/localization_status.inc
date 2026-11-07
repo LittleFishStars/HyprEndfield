@@ -1,4 +1,8 @@
 // Linux-specific states and component messages; order: EN, ZH, ZH-TW, JA, KO.
+        {"Custom card", "自定义名片", "自訂名片", "カスタム名刺", "사용자 지정 카드"},
+        {"Game card", "游戏名片", "遊戲名片", "ゲーム名刺", "게임 카드"},
+        {"Next %1", "下次回复 %1", "下次回復 %1", "次の回復 %1", "다음 회복 %1"},
+        {"All recovered %1", "全部回复 %1", "全部回復 %1", "全回復 %1", "전체 회복 %1"},
         {"Cannot load the minigame.", "小游戏无法载入。", "小遊戲無法載入。", "ミニゲームを読み込めません。", "미니게임을 불러올 수 없습니다."},
         {"The minigame encountered an error.", "小游戏运行出错。", "小遊戲執行出錯。", "ミニゲームでエラーが発生しました。", "미니게임에서 오류가 발생했습니다."},
         {"The system key service returned no reason.", "系统密钥服务没有返回原因。", "系統金鑰服務沒有傳回原因。", "システムの鍵サービスから理由が返されませんでした。", "시스템 키 서비스가 원인을 반환하지 않았습니다."},

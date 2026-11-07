@@ -7,6 +7,8 @@ Item {
     property string title: ""
     property string kind: "primary"
     property string glyph: ""
+    property string sourceIcon: ""
+    property real textSize: 10.5
     property bool reduceMotion: false
     signal clicked()
     implicitWidth: 64
@@ -51,12 +53,15 @@ Item {
         renderType: Text.CurveRendering
     }
     Text {
+        id: buttonText
         anchors.centerIn: parent; anchors.horizontalCenterOffset: control.kind === "secondary" ? 5 : 0
         visible: control.kind !== "icon"; text: control.title
         color: control.kind === "primary" ? "#111111" : "#EDEDED"
-        font.family: harmonyBold.name; font.pointSize: 10.5 * 0.75; font.weight: Font.Bold
+        font.family: harmonyBold.name; font.pointSize: control.textSize * 0.75; font.weight: Font.Bold
+        transform: Translate { x: control.sourceIcon ? 11.5 : 0 }
         renderType: Text.CurveRendering
     }
+    SourceGlyph { x: (control.width - buttonText.implicitWidth - 23) / 2; y: (control.height - 15) / 2; width:15; height:15; kind:control.sourceIcon; ink:control.kind === "primary" ? "#111111" : "#EDEDED"; visible:!!control.sourceIcon }
     Rectangle { visible: control.kind === "primary"; x: control.width - 10; y: control.height - 9; width: 4; height: 4; color: "#161616" }
     HoverHandler { id: hover }
     MouseArea { id: pointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: control.enabled; onClicked: control.clicked() }

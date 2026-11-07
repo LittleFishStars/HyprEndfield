@@ -11,14 +11,26 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QTextBoundaryFinder>
 #include <QUuid>
 #include <QtConcurrentRun>
 #include <QtMath>
+#include <algorithm>
 #include <cmath>
 
 namespace {
 QImage readImage(const QString &path) { QImageReader reader(path); reader.setAutoTransform(true); return reader.read(); }
 bool ownedImage(const QString &name) { return QRegularExpression("^[0-9a-f-]{36}\\.[a-z0-9]{1,8}$").match(name).hasMatch(); }
+QString characterPrefix(const QString &text, int count) {
+    QTextBoundaryFinder finder(QTextBoundaryFinder::Grapheme, text);
+    int end = 0;
+    for (int i = 0; i < count; ++i) {
+        const int next = finder.toNextBoundary();
+        if (next < 0) return text;
+        end = next;
+    }
+    return text.left(end);
+}
 QRectF crop(const QImage &image, QSizeF target, double zoom, double x, double y) {
     const double scale = std::max(target.width() / image.width(), target.height() / image.height()) * zoom;
     const QSizeF area(target.width() / scale, target.height() / scale);
@@ -73,7 +85,41 @@ ProfileController::ProfileController(QObject *parent, QString directory) : QObje
     });
 }
 ProfileController::~ProfileController() { m_import.waitForFinished(); if (!m_pendingImage.isEmpty()) QFile::remove(m_pendingImage); }
-QVariantMap ProfileController::state() const { auto result = m_values; result["error"] = m_error; result["busy"] = m_import.isRunning(); return result; }
+QVariantMap ProfileController::state() const { auto result = m_values; result["error"] = m_error; result["busy"] = m_import.isRunning(); result["lockedFields"] = m_locked; return result; }
+void ProfileController::setLockedFields(const QStringList &fields) { if (m_locked != fields) { m_locked = fields; emit changed(); } }
+bool ProfileController::applyGameFields(const QVariantMap &fields) {
+    if (!m_readable) return false;
+    const auto previous = m_values;
+    m_applyingGame = true;
+    // UserProfile.normalizedEditableValues / applyGameProfileUpdate in the
+    // source: normalize incoming game values before validating the transaction.
+    for (auto i = fields.cbegin(); i != fields.cend(); ++i) {
+        QVariant value = i.value();
+        if (i.key() == "name" || i.key() == "tag")
+            value = characterPrefix(value.toString().trimmed(), i.key() == "name" ? 20 : 10);
+        if (i.key() == "permissionLevel" || i.key() == "explorationLevel") {
+            bool ok = false; const auto level = value.toLongLong(&ok);
+            if (ok) value = std::clamp<qlonglong>(level, 1, i.key() == "permissionLevel" ? 60 : 7);
+        }
+        if (!setField(i.key(), value, false)) {
+            m_values = previous; m_applyingGame = false; emit changed(); return false;
+        }
+    }
+    m_applyingGame = false;
+    const bool saved = save(); emit changed(); return saved;
+}
+QString ProfileController::importGameAvatar(const QByteArray &png) {
+    if (!m_readable || m_import.isRunning() || png.size() > 4 * 1024 * 1024) return {};
+    const auto image = QImage::fromData(png, "PNG");
+    if (image.isNull() || image.width() > 512 || image.height() > 512) return {};
+    const auto name = QUuid::createUuid().toString(QUuid::WithoutBraces) + ".png";
+    QSaveFile file(m_directory + '/' + name);
+    if (!QDir().mkpath(m_directory) || !file.open(QIODevice::WriteOnly) || file.write(png) != png.size() || !file.commit()) return {};
+    const auto previous = m_values.value("avatar").toString(); m_values["avatar"] = name;
+    if (!save()) { QFile::remove(m_directory + '/' + name); return {}; }
+    m_avatar = image; if (ownedImage(previous)) QFile::remove(m_directory + '/' + previous);
+    emit changed(); return name;
+}
 bool ProfileController::save() {
     QFile current(m_path);
     if (!m_readable || (current.exists() && (!current.open(QIODevice::ReadOnly) || current.read(1024 * 1024 + 1) != m_persisted)) || (!current.exists() && !m_persisted.isEmpty())) {
@@ -87,6 +133,7 @@ bool ProfileController::save() {
     m_persisted = bytes; m_saved = m_values; m_error.clear(); return true;
 }
 bool ProfileController::setField(const QString &field, const QVariant &value, bool commit) {
+    if (!m_applyingGame && m_locked.contains(field)) return false;
     if (!m_values.contains(field) || field == "avatar" || field == "background") return false;
     QVariant accepted = value;
     bool valid = true;
@@ -101,8 +148,8 @@ bool ProfileController::setField(const QString &field, const QVariant &value, bo
     } else if (field == "showsBirthday") accepted = value.toBool();
     else {
         QString text = value.toString(); if (field != "introduction") text = text.trimmed();
-        if (field == "name") valid = !text.isEmpty() && text.size() <= 20 && !text.contains(QRegularExpression("[\\r\\n]"));
-        if (field == "tag") valid = !text.isEmpty() && text.size() <= 10 && !text.contains(QRegularExpression("[\\s#]"));
+        if (field == "name") valid = !text.isEmpty() && characterPrefix(text, 20) == text && !text.contains(QRegularExpression("[\\r\\n]"));
+        if (field == "tag") valid = !text.isEmpty() && characterPrefix(text, 10) == text && !text.contains(QRegularExpression("[\\s#]"));
         if (field == "introduction") valid = text.size() <= 150;
         if (field == "playerID") valid = !text.isEmpty() && text.size() <= 64 && !text.contains(QRegularExpression("[\\r\\n]"));
         if (field == "awakeningDate") valid = QDate::fromString(text, Qt::ISODate).isValid() && text.size() == 10;

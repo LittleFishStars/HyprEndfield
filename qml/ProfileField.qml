@@ -4,6 +4,9 @@ import "Appearance.js" as Appearance
 Item {
     id: field
     required property string fieldName
+    property var controller: profileController
+    readonly property bool locked: (controller.state.lockedFields || []).includes(fieldName)
+    onLockedChanged: if (locked && editing) { editing = false; field.forceActiveFocus(); }
     property color ink: "#F5F5F5"
     property color accent: Appearance.accent("#FFFA00")
     property real pixelSize: 13
@@ -12,8 +15,8 @@ Item {
     property bool multiline: false
     property string placeholder: ""
     property bool editing: false
-    function beginEditing() { editing = true; editor.text = String(profileController.state[fieldName]); editor.initial = editor.text; editor.forceActiveFocus(); editor.selectAll() }
-    function finish() { if (editing) { profileController.setField(fieldName, editor.text); editing = false; field.forceActiveFocus(); } }
+    function beginEditing() { if (locked) return; editing = true; editor.text = String(controller.state[fieldName]); editor.initial = editor.text; editor.forceActiveFocus(); editor.selectAll() }
+    function finish() { if (editing) { if (!locked) controller.setField(fieldName, editor.text); editing = false; field.forceActiveFocus(); } }
     width: 100; height: 28
     onVisibleChanged: if (!visible) finish()
     Rectangle { anchors.fill: parent; color: editor.activeFocus ? "#212121" : mouse.containsMouse ? "#22FFFFFF" : "transparent"; border.width: editor.activeFocus ? 1 : 0; border.color: field.accent }
@@ -32,8 +35,8 @@ Item {
             else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (!field.multiline || event.modifiers & Qt.ControlModifier)) { field.finish(); event.accepted = true; }
         }
         onTextChanged: if (activeFocus && text.length > field.textLimit) remove(field.textLimit, text.length)
-        Binding { target: editor; property: "text"; value: String(profileController.state[field.fieldName] ?? ""); when: !field.editing; restoreMode: Binding.RestoreNone }
+        Binding { target: editor; property: "text"; value: String(field.controller.state[field.fieldName] ?? ""); when: !field.editing; restoreMode: Binding.RestoreNone }
     }
     Text { x: 6; anchors.verticalCenter: parent.verticalCenter; visible: !editor.text && !editor.activeFocus; text: field.placeholder; font.family: harmonyRegular.name; font.pixelSize: field.pixelSize; color: field.ink; renderType: Text.CurveRendering }
-    MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; enabled: !editor.activeFocus; cursorShape: Qt.IBeamCursor; onClicked: field.beginEditing() }
+    MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; enabled: !editor.activeFocus && !field.locked; cursorShape: Qt.IBeamCursor; onClicked: field.beginEditing() }
 }

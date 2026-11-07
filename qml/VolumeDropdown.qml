@@ -47,7 +47,7 @@ Item {
         Behavior on height { NumberAnimation { duration: field.reduceMotion ? 0 : 140; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0.8, 0.2, 1, 1, 1] } }
     }
     Text {
-        x: 12; width: 133; anchors.verticalCenter: parent.verticalCenter
+        x: 12; width: field.width - 45; anchors.verticalCenter: parent.verticalCenter
         text: field.text; color: Appearance.tone("#EEEEEE"); elide: Text.ElideRight
         font.family: harmonyMedium.name; font.pointSize: 12.5 * 0.75; font.weight: Font.Medium; renderType: Text.CurveRendering
     }

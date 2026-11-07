@@ -3,6 +3,8 @@
 #include "facilitycontroller.hpp"
 #include "storagecontroller.hpp"
 #include "profilecontroller.hpp"
+#include "accountcontroller.hpp"
+#include "accountartwork.hpp"
 #include "orbipomcontroller.hpp"
 #include "eventlogcontroller.hpp"
 #include "appshortcutscontroller.hpp"
@@ -44,6 +46,7 @@
 #include <QQuickWindow>
 #include <QSurfaceFormat>
 #include <QScreen>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QtConcurrentRun>
 
@@ -192,6 +195,7 @@ int main(int argc, char *argv[])
     surfaceFormat.setSamples(4);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
     QApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("HyprEndfield"));
@@ -264,12 +268,24 @@ int main(int argc, char *argv[])
     NotesController notes;
     StorageController storage;
     ProfileController profile;
+    ProfileController gameProfile(nullptr, QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/HyprEndfield/GameProfile");
+    AccountController account(&gameProfile);
+    account.setLanguage(settings.value("languageIndex").toInt());
+    QObject::connect(&settings, &SettingsController::languageChanged, &account, [&] { account.setLanguage(settings.value("languageIndex").toInt()); });
+    QObject::connect(&account, &AccountController::loginRequested, &controller, [&] {
+        if (controller.hudVisible()) controller.hideHud();
+        else account.showLogin();
+    });
+    QObject::connect(&controller, &ApplicationController::hudVisibleChanged, &account, [&] { if (!controller.hudVisible()) account.showLogin(); });
+    QObject::connect(&account, &AccountController::loginFinished, &controller, &ApplicationController::showHud);
     OrbiPomController orbipom;
     FileShelfController fileShelf;
     ArchiveController archive;
     auto *readerImages = new ReaderImageProvider;
     ReaderController reader(nullptr, readerImages);
     EventLogController eventLog;
+    QObject::connect(&account, &AccountController::eventOccurred, &eventLog, [&](const QString &action) { eventLog.recordAction("accountAction", action); });
+    QObject::connect(&gameProfile, &ProfileController::cropChanged, &eventLog, [&](const QString &target) { eventLog.record("profileCropChanged", {{"target", target}}); });
     AppShortcutsController appShortcuts;
     QObject::connect(&settings, &SettingsController::languageChanged, &appShortcuts, &AppShortcutsController::changed);
     QObject::connect(&appShortcuts, &AppShortcutsController::launchRequested, &controller, [&] {
@@ -318,6 +334,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<ProjectionDots>("HyprEndfield.Projection", 1, 0, "ProjectionDots");
     qmlRegisterType<MediaEditor>("HyprEndfield.Media", 1, 0, "MediaEditor");
     qmlRegisterType<ProfileArtwork>("HyprEndfield.Profile", 1, 0, "ProfileArtwork");
+    qmlRegisterType<GameProfileArtwork>("HyprEndfield.Account", 1, 0, "GameProfileArtwork");
+    qmlRegisterType<AccountGaugeArtwork>("HyprEndfield.Account", 1, 0, "AccountGaugeArtwork");
     qmlRegisterType<OrbiPomBoard>("HyprEndfield.OrbiPom", 1, 0, "OrbiPomBoard");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
@@ -348,6 +366,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
     engine.rootContext()->setContextProperty(QStringLiteral("storageController"), &storage);
     engine.rootContext()->setContextProperty(QStringLiteral("profileController"), &profile);
+    engine.rootContext()->setContextProperty(QStringLiteral("gameProfileController"), &gameProfile);
+    engine.rootContext()->setContextProperty(QStringLiteral("accountController"), &account);
     engine.rootContext()->setContextProperty(QStringLiteral("orbipomController"), &orbipom);
     engine.rootContext()->setContextProperty(QStringLiteral("eventLogController"), &eventLog);
     engine.rootContext()->setContextProperty(QStringLiteral("appShortcutsController"), &appShortcuts);

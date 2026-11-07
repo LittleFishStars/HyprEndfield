@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 namespace endfield::core {
 enum class Language { system, english, simplifiedChinese, traditionalChinese, japanese, korean };
+inline bool isCJK(Language language) noexcept { return language != Language::system && language != Language::english; }
 inline std::string localized(std::string_view english, std::string_view chinese, Language) {
     const std::string source(chinese.empty() ? english : chinese);
     return QCoreApplication::translate("HyprEndfield", source.c_str()).toStdString();

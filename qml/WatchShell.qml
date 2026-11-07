@@ -11,6 +11,11 @@ Item {
     height: 640
 
     property string selectedModule: "system"
+    readonly property bool accountVisible: appController.hudOpen
+    readonly property bool accountPageVisible: accountVisible && selectedModule === "account"
+    function updateAccountVisibility() { if (typeof accountController !== "undefined") accountController.setVisible(accountVisible, accountPageVisible); }
+    onAccountVisibleChanged: updateAccountVisibility()
+    onAccountPageVisibleChanged: updateAccountVisibility()
     onSelectedModuleChanged: if (typeof eventLogController !== "undefined") eventLogController.record("moduleOpened", {module: selectedModule === "activity" ? "activityMonitor" : selectedModule})
     readonly property bool bootLogActive: menuScene.bootActive
     property real rightScrollOffset: 0
@@ -135,6 +140,9 @@ Item {
         },
         {
             key: "eventLog", label: qsTr("事件日志"), icon: "qrc:/assets/icons/event-log.png"
+        },
+        {
+            key: "account", label: qsTr("账户绑定"), glyph: "account"
         }
     ]
 

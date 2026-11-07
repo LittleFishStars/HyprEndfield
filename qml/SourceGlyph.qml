@@ -7,6 +7,7 @@ Item {
     function circle(x,y,r) {return "M"+(x-r)+" "+y+"a"+r+" "+r+" 0 1 0 "+(2*r)+" 0a"+r+" "+r+" 0 1 0 "+(-2*r)+" 0z"}
     function line() {
         switch(kind) {
+        case "link2":return "M9 15l6-6M7 12l-2 2a3.5 3.5 0 0 0 5 5l2-2M17 12l2-2a3.5 3.5 0 0 0-5-5l-2 2"
         case "authority":return "M5 10L15 17V30L5 23zM10 6L22 14V28M17 2L29 10V25"
         case "rotate":return "M20 12a8 8 0 1 1-3-6.2"
         case "mirror":return "M12 3v18"
@@ -29,6 +30,7 @@ Item {
     }
     function fill() {
         switch(kind) {
+        case "warn":return "M12 2L23 21H1Z"
         case "exploration":return "M8 8L12 4V10zM22 8L25 4L26 12zM8 24L12 28V22zM22 24L25 28L26 20zM5 5L7 10L6 16L7 22L5 27L3 21V11zM1 8L2 13V19L1 24L0 20V12zM29 5L27 10L28 16L27 22L29 27L31 21V11zM33 8L32 13V19L33 24L34 20V12z"
         case "play":return "M7 4l13 8-13 8z"
         case "pause":return "M6 4h4v16H6zM14 4h4v16h-4z"
@@ -47,6 +49,7 @@ Item {
             ShapePath { fillColor:"transparent";strokeColor:glyph.ink;strokeWidth:glyph.kind === "authority" ? 2.7 : glyph.kind === "mirror" || glyph.kind === "grid" ? 2 : glyph.kind === "reset" ? 2.8 : glyph.kind === "back" ? 3.2 : glyph.kind === "apps" || glyph.kind === "eye" ? 2.4 : 2.6;capStyle:glyph.kind === "back" || glyph.kind === "authority" ? ShapePath.SquareCap : ShapePath.RoundCap;joinStyle:glyph.kind === "authority" ? ShapePath.MiterJoin : ShapePath.RoundJoin;strokeStyle:glyph.kind === "mirror" ? ShapePath.DashLine : ShapePath.SolidLine;dashPattern:[1,1]; PathSvg {path:glyph.line()} }
             ShapePath { fillColor:glyph.ink;strokeWidth:-1;fillRule:ShapePath.OddEvenFill;PathSvg {path:glyph.kind === "exploration" ? glyph.circle(17,16,10)+glyph.circle(17,16,4) : ""} }
             ShapePath { fillColor:glyph.ink;strokeWidth:-1;PathSvg {path:glyph.fill()} }
+            ShapePath { fillColor:"transparent"; strokeColor:"#111111"; strokeWidth:2.6; capStyle:ShapePath.RoundCap; PathSvg { path:glyph.kind === "warn" ? "M12 9v6M12 17.5v1" : "" } }
         }
     }
 }

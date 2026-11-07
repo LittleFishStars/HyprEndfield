@@ -15,6 +15,9 @@ public:
     Q_INVOKABLE bool setField(const QString &field, const QVariant &value, bool commit = true);
     Q_INVOKABLE void importImage(const QString &kind, const QUrl &url);
     Q_INVOKABLE bool resetImage(const QString &kind);
+    bool applyGameFields(const QVariantMap &fields);
+    QString importGameAvatar(const QByteArray &png);
+    void setLockedFields(const QStringList &fields);
     const QImage &image(const QString &kind) const { return kind == "avatar" ? m_avatar : m_background; }
 signals:
     void changed();
@@ -27,6 +30,8 @@ private:
     QImage m_avatar, m_background;
     QFutureWatcher<QVariantMap> m_import;
     bool m_readable = true;
+    QStringList m_locked;
+    bool m_applyingGame = false;
 };
 
 // Portrait crop and backdrop geometry from HUDPortraitArtwork / PersonalProfileCanvas.

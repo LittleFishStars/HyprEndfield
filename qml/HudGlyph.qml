@@ -37,6 +37,8 @@ Item {
             }
         case "about":
             return circle(14) + box(14, 7, 4, 4) + box(14, 14, 4, 11);
+        case "account":
+            return "M10 8a6 6 0 1 0 12 0a6 6 0 1 0 -12 0Z" + box(4, 18, 24, 12);
         case "nowPlaying":
             return circle(14) + circle(11) + "M12 9L24 16L12 23Z";
         case "volume":

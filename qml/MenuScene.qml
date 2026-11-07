@@ -146,6 +146,13 @@ Item {
             x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
             visible: menu.shell.selectedModule === "profile"
             presented: visible && appController.hudOpen
+            onAccountRequested: menu.shell.selectedModule = "account"
+        }
+        AccountPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "account"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
         }
         ProjectionPage {
             x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
@@ -385,6 +392,7 @@ Item {
     MenuPlane {
         scene: menu.shell
         elevation: 64
+        visible: typeof accountController === "undefined" || !accountController.gameCard
         opacity: menu.shell.contentFrameValue("identityOpacity", 1)
         MenuBadge {
             x: 289
@@ -392,6 +400,22 @@ Item {
             leanX: menu.leanX
             leanY: menu.leanY
             onClicked: menu.shell.selectedModule = "profile"
+        }
+    }
+    GameProfileBadge {
+        shell:menu.shell; z:64
+        visible:typeof accountController !== "undefined" && accountController.gameCard
+        opacity:menu.shell.contentFrameValue("identityOpacity",1)
+        onClicked:menu.shell.selectedModule="profile"
+    }
+    MenuPlane {
+        scene:menu.shell; elevation:0; z:90
+        opacity:menu.shell.baseContentFrameValue("nativeOpacity",1)
+        // Original (270,2) header + (292,0) wallet, in the shared native plane.
+        AccountGauge {
+            x:960+(562-500)*1.12; y:540+(2-320)*1.12; scale:1.12; transformOrigin:Item.TopLeft
+            presented:appController.hudOpen && !menu.shell.transitioning
+            reduceMotion:menu.shell.displaySettings.reduceMotion
         }
     }
     MenuPlane {
