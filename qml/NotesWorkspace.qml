@@ -46,9 +46,4 @@ Item {
             onDeleteConfirmed: id => { notesWorkspace.pendingDeleteId = ""; notesController.removeNote(id) }
         }
     }
-    MouseArea {
-        anchors.fill: parent; z: -1; acceptedButtons: Qt.LeftButton
-        enabled: notesWorkspace.presented && notesWorkspace.selectedModule === "notes"
-        onClicked: { notesWorkspace.selectedId = ""; notesWorkspace.pendingDeleteId = "" }
-    }
 }

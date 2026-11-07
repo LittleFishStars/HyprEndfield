@@ -202,6 +202,52 @@ private slots:
         QCoreApplication::processEvents();
         QVERIFY(normalCard->isVisible());
 
+        QQmlComponent interactionComponent(&engine);
+        interactionComponent.setData(R"QML(
+import QtQuick
+import "."
+Item {
+    width: 1920
+    height: 1080
+    property int backgroundClicks: 0
+    MouseArea {
+        anchors.fill: parent
+        onClicked: parent.backgroundClicks += 1
+    }
+    NotesPage {
+        objectName: "interactionNotesPage"
+        presented: true
+        reduceMotion: true
+    }
+    NotesWorkspace {
+        objectName: "interactionNotesWorkspace"
+        selectedModule: "notes"
+        presented: true
+        reduceMotion: true
+    }
+}
+)QML", QUrl::fromLocalFile(QStringLiteral(NOTES_QML_DIR) + QStringLiteral("/NotesInteractionProbe.qml")));
+        std::unique_ptr<QObject> interactionObject(interactionComponent.create());
+        QVERIFY2(interactionObject != nullptr, qPrintable(interactionComponent.errorString()));
+        auto *interactionRoot = qobject_cast<QQuickItem *>(interactionObject.get());
+        QVERIFY(interactionRoot);
+        auto *interactionEditor = findItem(interactionRoot, QStringLiteral("notesTextEditor"));
+        QVERIFY(interactionEditor);
+        QQuickWindow interactionWindow;
+        interactionWindow.resize(800, 600);
+        interactionRoot->setParentItem(interactionWindow.contentItem());
+        interactionWindow.show();
+        QTest::qWait(50);
+        QTest::mouseClick(&interactionWindow, Qt::LeftButton, Qt::NoModifier,
+            interactionEditor->mapToScene(interactionEditor->boundingRect().center()).toPoint());
+        QVERIFY(interactionEditor->hasActiveFocus());
+        QTest::mouseClick(&interactionWindow, Qt::LeftButton, Qt::NoModifier, QPoint(440, 102));
+        QCOMPARE(controller.state().value(QStringLiteral("centre")).toMap()
+            .value(QStringLiteral("tab")).toString(), QStringLiteral("todo"));
+        QTest::mouseClick(&interactionWindow, Qt::LeftButton, Qt::NoModifier, QPoint(700, 100));
+        QCOMPARE(interactionRoot->property("backgroundClicks").toInt(), 1);
+        interactionRoot->setParentItem(nullptr);
+
         if (qEnvironmentVariableIsSet("HYPR_NOTES_RENDER")) {
             QQuickWindow window;
             window.resize(1100, 760);
