@@ -447,7 +447,7 @@ Item {
         y: 1120
         width: 400
         height: 30
-        text: "ESC TO CLOSE"
+        text: "SUPER + ESC TO CLOSE"
         color: "#8a8d8e"
         font.family: harmonyRegular.name
         font.pixelSize: 14
