@@ -37,6 +37,8 @@ qt_add_executable(hyprendfield
     src/activitycontroller.hpp
     src/calendarcontroller.cpp
     src/calendarcontroller.hpp
+    src/clipboardcontroller.cpp
+    src/clipboardcontroller.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -66,6 +68,10 @@ qt_add_qml_module(hyprendfield
         qml/CalendarEventPlate.qml
         qml/CalendarMonthPicker.qml
         qml/CalendarConfirmBar.qml
+        qml/ClipboardPage.qml
+        qml/ClipboardCard.qml
+        qml/ClipboardGlyph.qml
+        qml/ClipboardConfirmBar.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -207,6 +213,13 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_calendar_tests PRIVATE CALENDAR_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME calendar COMMAND hyprendfield_calendar_tests)
     set_tests_properties(calendar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    qt_add_executable(hyprendfield_clipboard_tests tests/clipboard.cpp
+        src/clipboardcontroller.cpp src/clipboardcontroller.hpp)
+    target_include_directories(hyprendfield_clipboard_tests PRIVATE src)
+    target_link_libraries(hyprendfield_clipboard_tests PRIVATE Qt6::Quick Qt6::Test)
+    target_compile_definitions(hyprendfield_clipboard_tests PRIVATE CLIPBOARD_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    add_test(NAME clipboard COMMAND hyprendfield_clipboard_tests)
+    set_tests_properties(clipboard PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 install(TARGETS hyprendfield
