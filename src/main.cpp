@@ -59,6 +59,8 @@ bool sendToExistingInstance(const QString &serverName, const QString &command)
 
 int main(int argc, char *argv[])
 {
+    qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("wayland"));
+
     QGuiApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("HyprEndfield"));
     application.setApplicationDisplayName(QStringLiteral("HyprEndfield"));
