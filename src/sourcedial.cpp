@@ -119,7 +119,11 @@ public:
             if (textures.contains("__logo")) { const auto texture = textures.take("__logo"); glDeleteTextures(1, &texture); }
             if (!logo.isNull()) {
                 GLuint texture; glGenTextures(1, &texture); glBindTexture(GL_TEXTURE_2D, texture);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+                const auto pixels = logo.flipped(Qt::Vertical);
+#else
                 const auto pixels = logo.mirrored(false, true);
+#endif
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, pixels.width(), pixels.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.constBits());
                 glGenerateMipmap(GL_TEXTURE_2D);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);

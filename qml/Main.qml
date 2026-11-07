@@ -66,7 +66,7 @@ Window {
         anchors.centerIn: parent
         anchors.horizontalCenterOffset: root.width * displaySettings.hudOffsetX
         anchors.verticalCenterOffset: -30 * scale + root.height * displaySettings.hudOffsetY
-        displaySettings: displaySettings
+        displaySettings: root.displaySettings
         scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.75)
                               * displaySettings.uiScale)
     }

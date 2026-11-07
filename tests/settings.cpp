@@ -145,6 +145,27 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(object.get(), "formattedValue", Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, 12))); QCOMPARE(result.toString(), QString("12 s"));
         QVERIFY(warnings.isEmpty());
     }
+    void mainSettingsBinding() {
+        QTemporaryDir dir; SettingsController settings(nullptr, dir.filePath("s.ini"), dir.filePath("startup"), dir.path());
+        QFile main(QString(SETTINGS_QML_DIR) + "/Main.qml"); QVERIFY(main.open(QIODevice::ReadOnly));
+        const QString source = QString::fromUtf8(main.readAll());
+        const auto start = source.indexOf("    WatchShell {"); QVERIFY(start >= 0);
+        const auto end = source.indexOf("\n    }", start); QVERIFY(end > start);
+        // Exercise the actual Main.qml shell binding without loading unrelated modules.
+        QString shell = source.mid(start, end - start + 6);
+        shell.replace("WatchShell {", "Item { property var displaySettings; objectName: 'shellBinding';");
+        QQmlEngine engine; QSignalSpy warnings(&engine, &QQmlEngine::warnings);
+        engine.rootContext()->setContextProperty("settingsController", &settings);
+        QQmlComponent component(&engine);
+        component.setData(("import QtQuick\nItem { id: root; width: 1600; height: 900; readonly property var displaySettings: settingsController;\n" + shell + "\n}").toUtf8(), QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create()); QVERIFY2(object, qPrintable(component.errorString()));
+        auto *item = object->findChild<QQuickItem *>("shellBinding"); QVERIFY(item);
+        QCOMPARE(item->property("displaySettings").value<QObject *>(), &settings);
+        settings.set("uiScale", 1.18);
+        QCOMPARE(item->scale(), std::min({1600. / 1100, 900. / 740, 1.75}) * 1.18);
+        QVERIFY(warnings.isEmpty());
+    }
     void overlaysAndClock() {
         QTemporaryDir dir; SettingsController settings(nullptr, dir.filePath("s.ini"), dir.filePath("startup"), dir.path());
         settings.set("languageIndex", 2); settings.set("reduceMotion", true);
