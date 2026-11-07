@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(HyprEndfield VERSION 0.1.0 LANGUAGES CXX)
+project(HyprEndfield VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,6 +12,23 @@ find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
 pkg_check_modules(VTERM REQUIRED IMPORTED_TARGET vterm>=0.3.3)
+pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
+
+find_program(WAYLAND_SCANNER_EXECUTABLE wayland-scanner REQUIRED)
+find_file(WLR_DATA_CONTROL_PROTOCOL wlr-data-control-unstable-v1.xml
+    PATHS
+        /usr/share/qt6/wayland/protocols/wlr-data-control
+        /usr/share/wlr-protocols/unstable
+    REQUIRED)
+set(WLR_DATA_CONTROL_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/wlr-data-control-unstable-v1-client-protocol.h")
+set(WLR_DATA_CONTROL_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/wlr-data-control-unstable-v1-protocol.c")
+add_custom_command(
+    OUTPUT "${WLR_DATA_CONTROL_HEADER}" "${WLR_DATA_CONTROL_SOURCE}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    COMMAND "${WAYLAND_SCANNER_EXECUTABLE}" client-header "${WLR_DATA_CONTROL_PROTOCOL}" "${WLR_DATA_CONTROL_HEADER}"
+    COMMAND "${WAYLAND_SCANNER_EXECUTABLE}" private-code "${WLR_DATA_CONTROL_PROTOCOL}" "${WLR_DATA_CONTROL_SOURCE}"
+    DEPENDS "${WLR_DATA_CONTROL_PROTOCOL}"
+    VERBATIM)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -39,7 +56,11 @@ qt_add_executable(hyprendfield
     src/calendarcontroller.hpp
     src/clipboardcontroller.cpp
     src/clipboardcontroller.hpp
+    ${WLR_DATA_CONTROL_HEADER}
+    ${WLR_DATA_CONTROL_SOURCE}
 )
+
+target_include_directories(hyprendfield PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 qt_add_qml_module(hyprendfield
     URI HyprEndfield
@@ -140,6 +161,7 @@ target_link_libraries(hyprendfield PRIVATE
     LayerShellQt::Interface
     PkgConfig::PULSE
     PkgConfig::VTERM
+    PkgConfig::WAYLAND_CLIENT
     util
 )
 
@@ -214,9 +236,10 @@ if(BUILD_TESTING)
     add_test(NAME calendar COMMAND hyprendfield_calendar_tests)
     set_tests_properties(calendar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     qt_add_executable(hyprendfield_clipboard_tests tests/clipboard.cpp
-        src/clipboardcontroller.cpp src/clipboardcontroller.hpp)
-    target_include_directories(hyprendfield_clipboard_tests PRIVATE src)
-    target_link_libraries(hyprendfield_clipboard_tests PRIVATE Qt6::Quick Qt6::Test)
+        src/clipboardcontroller.cpp src/clipboardcontroller.hpp
+        ${WLR_DATA_CONTROL_HEADER} ${WLR_DATA_CONTROL_SOURCE})
+    target_include_directories(hyprendfield_clipboard_tests PRIVATE src "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    target_link_libraries(hyprendfield_clipboard_tests PRIVATE Qt6::Quick Qt6::Test PkgConfig::WAYLAND_CLIENT)
     target_compile_definitions(hyprendfield_clipboard_tests PRIVATE CLIPBOARD_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME clipboard COMMAND hyprendfield_clipboard_tests)
     set_tests_properties(clipboard PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)

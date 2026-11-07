@@ -1,11 +1,12 @@
 #pragma once
 
+#include <QByteArray>
 #include <QObject>
-#include <QProcess>
-#include <QSet>
-#include <QSize>
-#include <QTimer>
+#include <QString>
 #include <QVariantMap>
+
+#include <memory>
+#include <vector>
 
 class ClipboardController final : public QObject
 {
@@ -13,7 +14,7 @@ class ClipboardController final : public QObject
     Q_PROPERTY(bool active READ active WRITE setActive NOTIFY activeChanged)
     Q_PROPERTY(QVariantMap state READ state NOTIFY stateChanged)
 public:
-    explicit ClipboardController(QObject *parent = nullptr, QString executable = {}, bool automatic = true);
+    explicit ClipboardController(QObject *parent = nullptr, bool automatic = true, int capacity = 10);
     ~ClipboardController() override;
 
     bool active() const { return m_active; }
@@ -25,9 +26,9 @@ public:
     Q_INVOKABLE bool removeItem(const QString &id);
     Q_INVOKABLE bool clearUnpinned();
 
-    // Accepts the CopyQ query result without starting a process; used by the
-    // isolated contract test and by the asynchronous query path.
-    bool acceptSnapshot(const QByteArray &json);
+    // Feeds an isolated offer through the same parser without touching the
+    // user's clipboard. Used by the controller and page contract tests.
+    bool captureForTest(const QString &mime, const QByteArray &data, bool sensitive = false);
 
 signals:
     void activeChanged();
@@ -35,36 +36,19 @@ signals:
     void actionFinished(const QString &action, bool success, const QString &message);
 
 private:
-    void requestRefresh();
-    void startRefresh();
-    void finishRefresh(int exitCode, QProcess::ExitStatus status);
-    void startMutation(const QString &action, const QString &script, bool refresh = true);
-    void stampNewItems(const QVariantList &items, int previousTotal, int currentTotal);
-    void requestNextThumbnail();
-    void startThumbnail(const QVariantMap &item);
-    void finishThumbnail(int exitCode, QProcess::ExitStatus status);
-    QVariantMap item(const QString &id) const;
-    static QString snapshotScript();
-    static QString mutationPrefix(const QString &id, int row);
-    static QString jsString(const QString &value);
+    struct Entry;
+    struct Backend;
 
-    QString m_executable;
-    bool m_automatic = true;
+    bool capture(const QString &mime, const QByteArray &data, bool sensitive);
+    void setBackendReady(bool ready, const QString &status = {});
+    void publishState();
+    Entry *findEntry(const QString &id);
+    const Entry *findEntry(const QString &id) const;
+
     bool m_active = false;
-    bool m_refreshPending = false;
-    bool m_initialised = false;
-    int m_lastTotal = 0;
-    QVariantMap m_state;
-    QVariantList m_items;
-    QSet<QString> m_seenIds;
-    QHash<QString, QString> m_thumbnails;
-    QHash<QString, QSize> m_imageSizes;
-    QSet<QString> m_thumbnailFailures;
-    QSet<QString> m_thumbnailPending;
-    QTimer m_timer;
-    QProcess m_refreshProcess;
-    QByteArray m_refreshOutput;
-    QProcess *m_thumbnailProcess = nullptr;
-    QByteArray m_thumbnailOutput;
-    QString m_thumbnailId;
+    bool m_ready = false;
+    int m_capacity = 10;
+    QString m_status;
+    std::vector<Entry> m_entries;
+    std::unique_ptr<Backend> m_backend;
 };

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 
-// EndfieldHUD ClipboardCanvas, MOD-03, backed by CopyQ on Linux.
+// EndfieldHUD ClipboardCanvas, MOD-03, backed by Hyprland's Wayland clipboard.
 Item {
     id: clipboardPage
     width: 590; height: 510; focus: presented
@@ -224,7 +224,7 @@ Item {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter; y: 104; visible: rows.count === 0
-                text: clipboardPage.clipboard.ready ? "NO RECORDS\n剪贴板为空" : "COPYQ OFFLINE\n无法读取 CopyQ"
+                text: clipboardPage.clipboard.ready ? "NO RECORDS\n剪贴板为空" : "WAYLAND OFFLINE\n无法监视系统剪贴板"
                 color: "#777777"; horizontalAlignment: Text.AlignHCenter; font.family: harmonyMedium.name; font.pixelSize: 12; font.letterSpacing: 1.2; lineHeight: 1.8; renderType: Text.CurveRendering
             }
         }

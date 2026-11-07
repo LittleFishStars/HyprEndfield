@@ -1,26 +1,50 @@
 #include "clipboardcontroller.hpp"
 
+#include "wlr-data-control-unstable-v1-client-protocol.h"
+
 #include <QBuffer>
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QFileInfo>
 #include <QImage>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
+#include <QImageReader>
 #include <QRegularExpression>
-#include <QStandardPaths>
+#include <QSocketNotifier>
 #include <QUrl>
+
+#include <wayland-client-core.h>
+#include <wayland-client-protocol.h>
+
 #include <algorithm>
+#include <cerrno>
+#include <cstring>
+#include <fcntl.h>
 #include <memory>
+#include <thread>
+#include <unordered_map>
+#include <unistd.h>
 
 namespace {
-constexpr qsizetype maximumSnapshotBytes = 4 * 1024 * 1024;
+constexpr qsizetype maximumTextBytes = 1024 * 1024;
 constexpr qsizetype maximumImageBytes = 64 * 1024 * 1024;
+constexpr qsizetype maximumRetainedBytes = 128 * 1024 * 1024;
 
-QVariantMap emptyState()
+QString compactText(const QString &value)
 {
-    return {{"ready", false}, {"total", 0}, {"capacity", 0}, {"removable", 0},
-            {"items", QVariantList{}}, {"status", QStringLiteral("正在连接 CopyQ")}};
+    const QString flattened = value.simplified();
+    return flattened.size() > 90 ? flattened.left(89) + QStringLiteral("…") : flattened;
+}
+
+bool looksLikeLink(const QString &value)
+{
+    const QString candidate = value.trimmed();
+    if (candidate.isEmpty() || candidate.contains(QRegularExpression(QStringLiteral("\\s")))) return false;
+    const QUrl url(candidate);
+    const QString scheme = url.scheme().toLower();
+    if (QStringList{QStringLiteral("http"), QStringLiteral("https"), QStringLiteral("ftp")}.contains(scheme))
+        return !url.host().isEmpty();
+    return QStringList{QStringLiteral("mailto"), QStringLiteral("tel"), QStringLiteral("sms")}.contains(scheme)
+        && candidate.size() > scheme.size() + 1;
 }
 
 QString imageFormat(const QString &mime)
@@ -30,8 +54,33 @@ QString imageFormat(const QString &mime)
     return value;
 }
 
-QString fileSize(qint64 bytes)
+QVariantList fileUris(const QByteArray &data)
 {
+    QVariantList result;
+    const QString text = QString::fromUtf8(data);
+    for (const QString &line : text.split(QRegularExpression(QStringLiteral("\\r?\\n")), Qt::SkipEmptyParts)) {
+        const QString value = line.trimmed();
+        if (!value.startsWith(QLatin1Char('#')) && QUrl(value).isLocalFile()) result.append(value);
+    }
+    return result;
+}
+
+QString filePreview(const QVariantList &uris)
+{
+    QStringList names;
+    for (const auto &value : uris.mid(0, 3)) names.append(QFileInfo(QUrl(value.toString()).toLocalFile()).fileName());
+    QString preview = names.join(QStringLiteral(", "));
+    if (uris.size() > 3) preview += QStringLiteral(" (+%1)").arg(uris.size() - 3);
+    return compactText(preview);
+}
+
+QString fileMeta(const QVariantList &uris)
+{
+    if (uris.isEmpty()) return {};
+    if (uris.size() > 1) return QStringLiteral("%1 项").arg(uris.size());
+    const QFileInfo info(QUrl(uris.constFirst().toString()).toLocalFile());
+    if (info.isDir()) return QStringLiteral("文件夹");
+    const qint64 bytes = info.size();
     if (bytes < 1000) return QStringLiteral("%1 字节").arg(bytes);
     static const QStringList units{QStringLiteral("KB"), QStringLiteral("MB"),
                                    QStringLiteral("GB"), QStringLiteral("TB")};
@@ -43,385 +92,486 @@ QString fileSize(qint64 bytes)
         + QLatin1Char(' ') + units.at(unit);
 }
 
-QString fileMeta(const QVariantList &uris)
+void writeAllAndClose(int descriptor, QByteArray data)
 {
-    if (uris.isEmpty()) return {};
-    if (uris.size() > 1) return QStringLiteral("%1 项").arg(uris.size());
-    const QFileInfo info(QUrl(uris.constFirst().toString()).toLocalFile());
-    return info.isFile() ? fileSize(info.size()) : QStringLiteral("文件夹");
+    const int flags = fcntl(descriptor, F_GETFL);
+    if (flags >= 0) fcntl(descriptor, F_SETFL, flags & ~O_NONBLOCK);
+    qsizetype offset = 0;
+    while (offset < data.size()) {
+        const ssize_t written = ::write(descriptor, data.constData() + offset,
+                                        static_cast<size_t>(data.size() - offset));
+        if (written > 0) offset += written;
+        else if (written < 0 && errno == EINTR) continue;
+        else break;
+    }
+    ::close(descriptor);
 }
 }
 
-ClipboardController::ClipboardController(QObject *parent, QString executable, bool automatic)
-    : QObject(parent), m_executable(std::move(executable)), m_automatic(automatic), m_state(emptyState())
+struct ClipboardController::Entry
 {
-    if (m_executable.isEmpty()) m_executable = QStandardPaths::findExecutable(QStringLiteral("copyq"));
-    m_timer.setInterval(3000);
-    connect(&m_timer, &QTimer::timeout, this, &ClipboardController::requestRefresh);
-    connect(&m_refreshProcess, &QProcess::readyReadStandardOutput, this, [this] {
-        m_refreshOutput += m_refreshProcess.readAllStandardOutput();
-        if (m_refreshOutput.size() > maximumSnapshotBytes) m_refreshProcess.kill();
-    });
-    connect(&m_refreshProcess, &QProcess::finished, this, &ClipboardController::finishRefresh);
-    if (m_automatic) {
-        m_timer.start();
-        QTimer::singleShot(0, this, &ClipboardController::requestRefresh);
+    QString id;
+    QString kind;
+    QString preview;
+    QString meta;
+    QString mime;
+    QString thumbnail;
+    QVariantList fileUris;
+    QByteArray payload;
+    qint64 createdAt = 0;
+    bool pinned = false;
+};
+
+struct ClipboardController::Backend
+{
+    struct Offer {
+        zwlr_data_control_offer_v1 *object = nullptr;
+        QStringList mimeTypes;
+    };
+    struct Source {
+        Backend *backend = nullptr;
+        zwlr_data_control_source_v1 *object = nullptr;
+        QHash<QString, QByteArray> payloads;
+    };
+
+    explicit Backend(ClipboardController *controller) : owner(controller) {}
+    ~Backend() { shutdown(); }
+
+    bool start()
+    {
+        display = wl_display_connect(nullptr);
+        if (!display) return false;
+        registry = wl_display_get_registry(display);
+        wl_registry_add_listener(registry, &registryListener, this);
+        if (wl_display_roundtrip(display) < 0 || !manager || !seat) return false;
+        device = zwlr_data_control_manager_v1_get_data_device(manager, seat);
+        zwlr_data_control_device_v1_add_listener(device, &deviceListener, this);
+        baselinePending = true;
+        if (wl_display_roundtrip(display) < 0) return false;
+        baselinePending = false;
+        displayNotifier = std::make_unique<QSocketNotifier>(wl_display_get_fd(display), QSocketNotifier::Read, owner);
+        QObject::connect(displayNotifier.get(), &QSocketNotifier::activated, owner, [this] { dispatch(); });
+        connected = true;
+        return true;
+    }
+
+    void shutdown()
+    {
+        cancelRead();
+        displayNotifier.reset();
+        for (auto &source : sources) {
+            if (source->object) zwlr_data_control_source_v1_destroy(source->object);
+            source->object = nullptr;
+        }
+        sources.clear();
+        for (auto &[object, offer] : offers) {
+            if (object) zwlr_data_control_offer_v1_destroy(object);
+            offer->object = nullptr;
+        }
+        offers.clear();
+        selection = nullptr;
+        if (device) zwlr_data_control_device_v1_destroy(device);
+        if (seat) wl_seat_destroy(seat);
+        if (manager) zwlr_data_control_manager_v1_destroy(manager);
+        if (registry) wl_registry_destroy(registry);
+        if (display) wl_display_disconnect(display);
+        device = nullptr; seat = nullptr; manager = nullptr; registry = nullptr; display = nullptr;
+        connected = false;
+    }
+
+    bool publish(const Entry &entry)
+    {
+        if (!connected || !manager || !device) return false;
+        auto source = std::make_unique<Source>();
+        source->backend = this;
+        source->object = zwlr_data_control_manager_v1_create_data_source(manager);
+        zwlr_data_control_source_v1_add_listener(source->object, &sourceListener, source.get());
+        if (entry.kind == QStringLiteral("text") || entry.kind == QStringLiteral("url")) {
+            for (const auto &mime : {QStringLiteral("text/plain;charset=utf-8"), QStringLiteral("text/plain"),
+                                     QStringLiteral("UTF8_STRING"), QStringLiteral("STRING"), QStringLiteral("TEXT")})
+                source->payloads.insert(mime, entry.payload);
+        } else {
+            source->payloads.insert(entry.mime, entry.payload);
+        }
+        for (auto it = source->payloads.cbegin(); it != source->payloads.cend(); ++it)
+            zwlr_data_control_source_v1_offer(source->object, it.key().toUtf8().constData());
+        Source *raw = source.get();
+        sources.push_back(std::move(source));
+        ignoreNextSelection = true;
+        zwlr_data_control_device_v1_set_selection(device, raw->object);
+        const bool success = wl_display_flush(display) >= 0 || errno == EAGAIN;
+        if (!success) ignoreNextSelection = false;
+        return success;
+    }
+
+    void dispatch()
+    {
+        if (!display || wl_display_dispatch(display) < 0) {
+            connected = false;
+            displayNotifier.reset();
+            owner->setBackendReady(false, QStringLiteral("无法连接系统剪贴板"));
+            return;
+        }
+        wl_display_flush(display);
+    }
+
+    void beginRead(Offer *offer)
+    {
+        cancelRead();
+        if (!offer) return;
+        for (const auto &type : offer->mimeTypes) {
+            if (type.compare(QStringLiteral("x-kde-passwordManagerHint"), Qt::CaseInsensitive) == 0) return;
+        }
+        QString mime;
+        if (offer->mimeTypes.contains(QStringLiteral("text/uri-list"))) {
+            mime = QStringLiteral("text/uri-list");
+        } else {
+            static const QStringList imagePriority{QStringLiteral("image/png"), QStringLiteral("image/jpeg"),
+                QStringLiteral("image/jpg"), QStringLiteral("image/tiff"), QStringLiteral("image/webp"),
+                QStringLiteral("image/bmp")};
+            for (const auto &candidate : imagePriority)
+                if (offer->mimeTypes.contains(candidate)) { mime = candidate; break; }
+            if (mime.isEmpty()) {
+                static const QStringList textPriority{QStringLiteral("text/plain;charset=utf-8"),
+                    QStringLiteral("text/plain"), QStringLiteral("UTF8_STRING"), QStringLiteral("TEXT"),
+                    QStringLiteral("STRING")};
+                for (const auto &candidate : textPriority)
+                    if (offer->mimeTypes.contains(candidate)) { mime = candidate; break; }
+            }
+        }
+        if (mime.isEmpty()) return;
+        int descriptors[2];
+        if (pipe2(descriptors, O_CLOEXEC | O_NONBLOCK) != 0) return;
+        readDescriptor = descriptors[0];
+        readMime = mime;
+        readData.clear();
+        readLimit = mime.startsWith(QStringLiteral("image/")) ? maximumImageBytes : maximumTextBytes;
+        zwlr_data_control_offer_v1_receive(offer->object, mime.toUtf8().constData(), descriptors[1]);
+        ::close(descriptors[1]);
+        wl_display_flush(display);
+        readNotifier = std::make_unique<QSocketNotifier>(readDescriptor, QSocketNotifier::Read, owner);
+        QObject::connect(readNotifier.get(), &QSocketNotifier::activated, owner, [this] { drainRead(); });
+        drainRead();
+    }
+
+    void drainRead()
+    {
+        if (readDescriptor < 0) return;
+        char buffer[64 * 1024];
+        for (;;) {
+            const ssize_t count = ::read(readDescriptor, buffer, sizeof(buffer));
+            if (count > 0) {
+                if (readData.size() + count > readLimit) { cancelRead(); return; }
+                readData.append(buffer, count);
+                continue;
+            }
+            if (count == 0) {
+                const QString mime = readMime;
+                const QByteArray data = readData;
+                cancelRead();
+                owner->capture(mime, data, false);
+                return;
+            }
+            if (errno == EINTR) continue;
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return;
+            cancelRead();
+            return;
+        }
+    }
+
+    void cancelRead()
+    {
+        readNotifier.reset();
+        if (readDescriptor >= 0) ::close(readDescriptor);
+        readDescriptor = -1;
+        readMime.clear();
+        readData.clear();
+        readLimit = 0;
+    }
+
+    void removeOffer(zwlr_data_control_offer_v1 *object)
+    {
+        if (!object) return;
+        const auto found = offers.find(object);
+        if (found == offers.end()) return;
+        zwlr_data_control_offer_v1_destroy(object);
+        offers.erase(found);
+    }
+
+    void removeSource(Source *source)
+    {
+        const auto found = std::find_if(sources.begin(), sources.end(),
+            [source](const auto &candidate) { return candidate.get() == source; });
+        if (found == sources.end()) return;
+        if ((*found)->object) zwlr_data_control_source_v1_destroy((*found)->object);
+        (*found)->object = nullptr;
+        sources.erase(found);
+    }
+
+    static void registryGlobal(void *data, wl_registry *registryObject, uint32_t name,
+                               const char *interface, uint32_t version)
+    {
+        auto *self = static_cast<Backend *>(data);
+        if (!self->manager && std::strcmp(interface, zwlr_data_control_manager_v1_interface.name) == 0)
+            self->manager = static_cast<zwlr_data_control_manager_v1 *>(wl_registry_bind(
+                registryObject, name, &zwlr_data_control_manager_v1_interface, std::min(version, 2u)));
+        else if (!self->seat && std::strcmp(interface, wl_seat_interface.name) == 0)
+            self->seat = static_cast<wl_seat *>(wl_registry_bind(
+                registryObject, name, &wl_seat_interface, std::min(version, 7u)));
+    }
+    static void registryRemoved(void *, wl_registry *, uint32_t) {}
+    static void offered(void *data, zwlr_data_control_offer_v1 *, const char *mime)
+    {
+        static_cast<Offer *>(data)->mimeTypes.append(QString::fromUtf8(mime));
+    }
+    static void dataOffer(void *data, zwlr_data_control_device_v1 *, zwlr_data_control_offer_v1 *object)
+    {
+        auto *self = static_cast<Backend *>(data);
+        auto offer = std::make_unique<Offer>();
+        offer->object = object;
+        zwlr_data_control_offer_v1_add_listener(object, &offerListener, offer.get());
+        self->offers.emplace(object, std::move(offer));
+    }
+    static void selected(void *data, zwlr_data_control_device_v1 *, zwlr_data_control_offer_v1 *object)
+    {
+        auto *self = static_cast<Backend *>(data);
+        if (self->selection && self->selection != object) self->removeOffer(self->selection);
+        self->selection = object;
+        if (!object) { self->cancelRead(); return; }
+        if (self->baselinePending) return;
+        if (self->ignoreNextSelection) { self->ignoreNextSelection = false; return; }
+        const auto found = self->offers.find(object);
+        if (found != self->offers.end()) self->beginRead(found->second.get());
+    }
+    static void finished(void *data, zwlr_data_control_device_v1 *)
+    {
+        auto *self = static_cast<Backend *>(data);
+        self->connected = false;
+        self->owner->setBackendReady(false, QStringLiteral("系统剪贴板监视已终止"));
+    }
+    static void primarySelected(void *data, zwlr_data_control_device_v1 *, zwlr_data_control_offer_v1 *object)
+    {
+        static_cast<Backend *>(data)->removeOffer(object);
+    }
+    static void sourceSend(void *data, zwlr_data_control_source_v1 *, const char *mime, int32_t descriptor)
+    {
+        auto *source = static_cast<Source *>(data);
+        const QByteArray bytes = source->payloads.value(QString::fromUtf8(mime));
+        std::thread(writeAllAndClose, descriptor, bytes).detach();
+    }
+    static void sourceCancelled(void *data, zwlr_data_control_source_v1 *)
+    {
+        auto *source = static_cast<Source *>(data);
+        source->backend->removeSource(source);
+    }
+
+    ClipboardController *owner = nullptr;
+    wl_display *display = nullptr;
+    wl_registry *registry = nullptr;
+    wl_seat *seat = nullptr;
+    zwlr_data_control_manager_v1 *manager = nullptr;
+    zwlr_data_control_device_v1 *device = nullptr;
+    std::unique_ptr<QSocketNotifier> displayNotifier;
+    std::unordered_map<zwlr_data_control_offer_v1 *, std::unique_ptr<Offer>> offers;
+    std::vector<std::unique_ptr<Source>> sources;
+    zwlr_data_control_offer_v1 *selection = nullptr;
+    bool connected = false;
+    bool baselinePending = false;
+    bool ignoreNextSelection = false;
+    int readDescriptor = -1;
+    qsizetype readLimit = 0;
+    QString readMime;
+    QByteArray readData;
+    std::unique_ptr<QSocketNotifier> readNotifier;
+
+    inline static const wl_registry_listener registryListener{registryGlobal, registryRemoved};
+    inline static const zwlr_data_control_offer_v1_listener offerListener{offered};
+    inline static const zwlr_data_control_device_v1_listener deviceListener{
+        dataOffer, selected, finished, primarySelected};
+    inline static const zwlr_data_control_source_v1_listener sourceListener{sourceSend, sourceCancelled};
+};
+
+ClipboardController::ClipboardController(QObject *parent, bool automatic, int capacity)
+    : QObject(parent), m_capacity(std::max(1, capacity)), m_status(QStringLiteral("正在连接系统剪贴板"))
+{
+    if (!automatic) {
+        m_ready = true;
+        m_status.clear();
+        return;
+    }
+    m_backend = std::make_unique<Backend>(this);
+    if (m_backend->start()) setBackendReady(true);
+    else {
+        m_backend.reset();
+        setBackendReady(false, QStringLiteral("无法连接系统剪贴板"));
     }
 }
 
-ClipboardController::~ClipboardController()
-{
-    m_timer.stop();
-    if (m_refreshProcess.state() != QProcess::NotRunning) {
-        m_refreshProcess.kill();
-        m_refreshProcess.waitForFinished(1000);
-    }
-    if (m_thumbnailProcess && m_thumbnailProcess->state() != QProcess::NotRunning) {
-        m_thumbnailProcess->kill();
-        m_thumbnailProcess->waitForFinished(1000);
-    }
-}
+ClipboardController::~ClipboardController() = default;
 
 void ClipboardController::setActive(bool active)
 {
     if (m_active == active) return;
     m_active = active;
-    m_timer.setInterval(active ? 1000 : 3000);
     emit activeChanged();
-    if (active) {
-        requestRefresh();
-        requestNextThumbnail();
-    }
 }
 
 QVariantMap ClipboardController::state() const
 {
-    QVariantMap result = m_state;
     QVariantList items;
-    items.reserve(m_items.size());
-    for (const auto &value : m_items) {
-        auto entry = value.toMap();
-        const QString id = entry.value("id").toString();
-        if (entry.value("kind").toString() == QStringLiteral("image")) {
-            QString meta = entry.value("format").toString();
-            if (const QSize size = m_imageSizes.value(id); size.isValid())
-                meta += QStringLiteral("   %1 × %2").arg(size.width()).arg(size.height());
-            entry["meta"] = meta;
-            if (m_thumbnails.contains(id)) entry["thumbnail"] = m_thumbnails.value(id);
+    items.reserve(static_cast<qsizetype>(m_entries.size()));
+    int removable = 0;
+    for (const auto &entry : m_entries) {
+        QVariantMap value{{"id", entry.id}, {"kind", entry.kind}, {"preview", entry.preview},
+                          {"meta", entry.meta}, {"createdAt", entry.createdAt}, {"pinned", entry.pinned}};
+        if (!entry.thumbnail.isEmpty()) value["thumbnail"] = entry.thumbnail;
+        if (!entry.pinned) ++removable;
+        items.append(value);
+    }
+    return {{"ready", m_ready}, {"total", static_cast<int>(m_entries.size())}, {"capacity", m_capacity},
+            {"removable", removable}, {"items", items}, {"status", m_status}};
+}
+
+bool ClipboardController::captureForTest(const QString &mime, const QByteArray &data, bool sensitive)
+{
+    return capture(mime, data, sensitive);
+}
+
+bool ClipboardController::capture(const QString &mime, const QByteArray &data, bool sensitive)
+{
+    if (sensitive || data.isEmpty()) return false;
+    Entry entry;
+    entry.mime = mime;
+    entry.payload = data;
+    entry.createdAt = QDateTime::currentMSecsSinceEpoch();
+    if (mime == QStringLiteral("text/uri-list")) {
+        entry.fileUris = fileUris(data);
+        if (entry.fileUris.isEmpty()) return false;
+        entry.kind = QStringLiteral("files");
+        entry.preview = filePreview(entry.fileUris);
+        entry.meta = fileMeta(entry.fileUris);
+    } else if (mime.startsWith(QStringLiteral("image/"))) {
+        if (data.size() > maximumImageBytes) return false;
+        QBuffer source(&entry.payload);
+        source.open(QIODevice::ReadOnly);
+        QImageReader reader(&source);
+        const QSize dimensions = reader.size();
+        if (!dimensions.isValid() || dimensions.width() <= 0 || dimensions.height() <= 0
+            || static_cast<qint64>(dimensions.width()) * dimensions.height() > 100'000'000) return false;
+        reader.setAutoTransform(true);
+        reader.setScaledSize(dimensions.scaled(QSize(128, 96), Qt::KeepAspectRatio));
+        const QImage thumb = reader.read();
+        if (thumb.isNull()) return false;
+        entry.kind = QStringLiteral("image");
+        entry.preview = QStringLiteral("图片");
+        entry.meta = QStringLiteral("%1   %2 × %3").arg(imageFormat(mime))
+            .arg(dimensions.width()).arg(dimensions.height());
+        QByteArray bytes;
+        QBuffer buffer(&bytes); buffer.open(QIODevice::WriteOnly); thumb.save(&buffer, "PNG");
+        entry.thumbnail = QStringLiteral("data:image/png;base64,") + QString::fromLatin1(bytes.toBase64());
+    } else {
+        if (data.size() > maximumTextBytes) return false;
+        const QString text = QString::fromUtf8(data);
+        if (text.isEmpty()) return false;
+        entry.kind = looksLikeLink(text) ? QStringLiteral("url") : QStringLiteral("text");
+        entry.preview = compactText(text);
+        entry.meta = entry.kind == QStringLiteral("url") ? QUrl(text.trimmed()).host()
+            : QStringLiteral("%1 字符").arg(text.size());
+    }
+    const QByteArray digestInput = entry.kind.toUtf8() + '\0' + entry.payload;
+    entry.id = QString::fromLatin1(QCryptographicHash::hash(digestInput, QCryptographicHash::Sha256).toHex());
+    const auto existing = std::find_if(m_entries.begin(), m_entries.end(),
+        [&entry](const Entry &candidate) { return candidate.id == entry.id; });
+    if (existing != m_entries.end()) {
+        Entry previous = std::move(*existing);
+        m_entries.erase(existing);
+        m_entries.insert(m_entries.begin(), std::move(previous));
+        publishState();
+        return true;
+    }
+    qsizetype retained = data.size();
+    for (const auto &value : m_entries) retained += value.payload.size();
+    while (static_cast<int>(m_entries.size()) >= m_capacity || retained > maximumRetainedBytes) {
+        const auto removable = std::find_if(m_entries.rbegin(), m_entries.rend(),
+            [](const Entry &candidate) { return !candidate.pinned; });
+        if (removable == m_entries.rend()) {
+            m_status = QStringLiteral("缓存已被固定项目占满");
+            publishState();
+            return false;
         }
-        items.append(entry);
+        retained -= removable->payload.size();
+        m_entries.erase(std::next(removable).base());
     }
-    result["items"] = items;
-    return result;
-}
-
-void ClipboardController::requestRefresh()
-{
-    if (!m_automatic || m_executable.isEmpty()) return;
-    if (m_refreshProcess.state() != QProcess::NotRunning) { m_refreshPending = true; return; }
-    startRefresh();
-}
-
-void ClipboardController::startRefresh()
-{
-    m_refreshOutput.clear();
-    m_refreshProcess.start(m_executable, {QStringLiteral("eval"), snapshotScript()});
-}
-
-void ClipboardController::finishRefresh(int exitCode, QProcess::ExitStatus status)
-{
-    m_refreshOutput += m_refreshProcess.readAllStandardOutput();
-    const bool ok = status == QProcess::NormalExit && exitCode == 0
-        && m_refreshOutput.size() <= maximumSnapshotBytes && acceptSnapshot(m_refreshOutput);
-    if (!ok) {
-        const QVariantMap before = state();
-        m_state["ready"] = false;
-        m_state["status"] = QStringLiteral("CopyQ 暂时无法读取");
-        if (before != state()) emit stateChanged();
-    }
-    if (m_refreshPending) { m_refreshPending = false; QTimer::singleShot(0, this, &ClipboardController::startRefresh); }
-}
-
-bool ClipboardController::acceptSnapshot(const QByteArray &json)
-{
-    QJsonParseError error;
-    const QJsonDocument document = QJsonDocument::fromJson(json, &error);
-    if (error.error != QJsonParseError::NoError || !document.isObject()) return false;
-    const QVariantMap source = document.object().toVariantMap();
-    bool totalOk = false, capacityOk = false, removableOk = false;
-    const int total = source.value("total").toInt(&totalOk);
-    const int capacity = source.value("capacity").toInt(&capacityOk);
-    const int removable = source.value("removable").toInt(&removableOk);
-    if (!totalOk || !capacityOk || !removableOk || total < 0 || capacity < 1
-        || removable < 0 || removable > total || !source.value("items").canConvert<QVariantList>()) return false;
-
-    QVariantList parsed;
-    for (const auto &value : source.value("items").toList()) {
-        auto entry = value.toMap();
-        const QString id = entry.value("id").toString();
-        const QString kind = entry.value("kind").toString();
-        const int row = entry.value("row").toInt();
-        if (id.isEmpty() || row < 0 || !QStringList{"text", "url", "image", "files"}.contains(kind)) return false;
-        const QString created = entry.take("createdAt").toString();
-        const QDateTime time = QDateTime::fromString(created, Qt::ISODateWithMs);
-        entry["createdAt"] = time.isValid() ? time.toMSecsSinceEpoch() : 0;
-        QString meta;
-        if (kind == QStringLiteral("text")) meta = QStringLiteral("%1 字符").arg(entry.value("characters").toLongLong());
-        else if (kind == QStringLiteral("url")) meta = QUrl(entry.value("preview").toString().trimmed()).host();
-        else if (kind == QStringLiteral("image")) {
-            const QString format = imageFormat(entry.value("imageMime").toString());
-            entry["format"] = format;
-            meta = format;
-        } else {
-            const QVariantList uris = entry.take("fileUris").toList();
-            entry["fileCount"] = uris.size();
-            meta = fileMeta(uris);
-        }
-        entry["meta"] = meta;
-        parsed.append(entry);
-    }
-
-    const QVariantMap before = state();
-    if (m_initialised && m_automatic && !m_executable.isEmpty())
-        stampNewItems(parsed, m_lastTotal, total);
-    else
-        m_initialised = true;
-    for (const auto &value : parsed) m_seenIds.insert(value.toMap().value("id").toString());
-    m_lastTotal = total;
-    m_items = std::move(parsed);
-    m_state = {{"ready", true}, {"total", total}, {"capacity", capacity},
-               {"removable", removable}, {"status", QString()}};
-    if (before != state()) emit stateChanged();
-    requestNextThumbnail();
+    m_entries.insert(m_entries.begin(), std::move(entry));
+    m_status.clear();
+    publishState();
     return true;
-}
-
-QVariantMap ClipboardController::item(const QString &id) const
-{
-    for (const auto &value : m_items) {
-        const auto entry = value.toMap();
-        if (entry.value("id").toString() == id) return entry;
-    }
-    return {};
-}
-
-QString ClipboardController::jsString(const QString &value)
-{
-    QByteArray json = QJsonDocument(QJsonArray{value}).toJson(QJsonDocument::Compact);
-    return QString::fromUtf8(json.mid(1, json.size() - 2));
-}
-
-QString ClipboardController::mutationPrefix(const QString &id, int row)
-{
-    return QStringLiteral(R"JS(
-const timeMime = 'application/x-hyprendfield-copy-time';
-const wanted = %1;
-const hint = %2;
-function stableId(item) {
-    const clean = {};
-    const keys = Object.keys(item).sort();
-    for (let index = 0; index < keys.length; ++index) {
-        const key = keys[index];
-        if (key !== timeMime) clean[key] = item[key];
-    }
-    return str(toBase64(sha256sum(pack(clean))));
-}
-function findRow() {
-    if (hint >= 0 && hint < size() && stableId(getItem(hint)) === wanted) return hint;
-    const maximum = Math.min(size(), 512);
-    for (let row = 0; row < maximum; ++row)
-        if (stableId(getItem(row)) === wanted) return row;
-    return -1;
-}
-)JS").arg(jsString(id)).arg(row);
-}
-
-void ClipboardController::startMutation(const QString &action, const QString &script, bool refresh)
-{
-    if (m_executable.isEmpty()) {
-        if (!action.isEmpty()) emit actionFinished(action, false, QStringLiteral("CopyQ 暂时无法使用"));
-        return;
-    }
-    auto *process = new QProcess(this);
-    auto output = std::make_shared<QByteArray>();
-    connect(process, &QProcess::readyReadStandardOutput, process, [process, output] { *output += process->readAllStandardOutput(); });
-    connect(process, &QProcess::finished, this,
-            [this, process, output, action, refresh](int exitCode, QProcess::ExitStatus status) {
-        *output += process->readAllStandardOutput();
-        const bool success = status == QProcess::NormalExit && exitCode == 0 && output->trimmed() == QByteArrayLiteral("1");
-        if (!action.isEmpty()) {
-            const QString message = success ? QString() : QStringLiteral("CopyQ 没有完成此操作");
-            emit actionFinished(action, success, message);
-        }
-        process->deleteLater();
-        if (refresh) QTimer::singleShot(40, this, &ClipboardController::requestRefresh);
-    });
-    process->start(m_executable, {QStringLiteral("eval"), script});
 }
 
 bool ClipboardController::copyItem(const QString &id)
 {
-    const auto entry = item(id); if (entry.isEmpty()) return false;
-    QString script = mutationPrefix(id, entry.value("row").toInt());
-    script += QStringLiteral("const row = findRow(); if (row < 0) print('0'); else { copy(getItem(row)); print('1'); }");
-    startMutation(QStringLiteral("copy"), script, false); return true;
+    const Entry *entry = findEntry(id);
+    const bool success = entry && m_backend && m_backend->publish(*entry);
+    emit actionFinished(QStringLiteral("copy"), success,
+        success ? QString() : QStringLiteral("无法写入系统剪贴板"));
+    return success;
 }
 
 bool ClipboardController::togglePin(const QString &id)
 {
-    const auto entry = item(id); if (entry.isEmpty()) return false;
-    QString script = mutationPrefix(id, entry.value("row").toInt());
-    script += QStringLiteral("const row = findRow(); if (row < 0) print('0'); else { if (plugins.itempinned.isPinned(row)) plugins.itempinned.unpin(row); else plugins.itempinned.pin(row); print('1'); }");
-    startMutation(QStringLiteral("pin"), script); return true;
+    Entry *entry = findEntry(id);
+    if (!entry) return false;
+    entry->pinned = !entry->pinned;
+    publishState();
+    emit actionFinished(QStringLiteral("pin"), true, {});
+    return true;
 }
 
 bool ClipboardController::removeItem(const QString &id)
 {
-    const auto entry = item(id); if (entry.isEmpty() || entry.value("pinned").toBool()) return false;
-    QString script = mutationPrefix(id, entry.value("row").toInt());
-    script += QStringLiteral("const row = findRow(); if (row < 0 || plugins.itempinned.isPinned(row)) print('0'); else { remove(row); print('1'); }");
-    startMutation(QStringLiteral("remove"), script); return true;
+    const auto found = std::find_if(m_entries.begin(), m_entries.end(),
+        [&id](const Entry &entry) { return entry.id == id; });
+    if (found == m_entries.end() || found->pinned) return false;
+    m_entries.erase(found);
+    publishState();
+    emit actionFinished(QStringLiteral("remove"), true, {});
+    return true;
 }
 
 bool ClipboardController::clearUnpinned()
 {
-    if (m_state.value("removable").toInt() <= 0) return false;
-    startMutation(QStringLiteral("clear"), QStringLiteral("ItemSelection().selectRemovable().removeAll(); print('1');"));
-    return true;
+    const auto oldSize = m_entries.size();
+    std::erase_if(m_entries, [](const Entry &entry) { return !entry.pinned; });
+    const bool changed = oldSize != m_entries.size();
+    if (changed) publishState();
+    emit actionFinished(QStringLiteral("clear"), changed,
+        changed ? QString() : QStringLiteral("没有可以清空的记录"));
+    return changed;
 }
 
-void ClipboardController::stampNewItems(const QVariantList &items, int previousTotal, int currentTotal)
+void ClipboardController::setBackendReady(bool ready, const QString &status)
 {
-    int remaining = std::max(0, currentTotal - previousTotal);
-    if (!remaining) return;
-    for (const auto &value : items) {
-        const auto entry = value.toMap();
-        const QString id = entry.value("id").toString();
-        if (m_seenIds.contains(id) || entry.value("createdAt").toLongLong() > 0) continue;
-        QString script = mutationPrefix(id, entry.value("row").toInt());
-        script += QStringLiteral("const row = findRow(); if (row < 0 || getItem(row)[timeMime]) print('0'); else { change(row, timeMime, %1); print('1'); }")
-            .arg(jsString(QDateTime::currentDateTime().toString(Qt::ISODateWithMs)));
-        startMutation({}, script);
-        if (--remaining == 0) break;
-    }
+    const QVariantMap before = state();
+    m_ready = ready;
+    m_status = status;
+    if (before != state()) emit stateChanged();
 }
 
-void ClipboardController::requestNextThumbnail()
+void ClipboardController::publishState()
 {
-    if (!m_active || m_thumbnailProcess) return;
-    for (const auto &value : m_items) {
-        const auto entry = value.toMap();
-        const QString id = entry.value("id").toString();
-        if (entry.value("kind").toString() != QStringLiteral("image") || m_thumbnails.contains(id)
-            || m_thumbnailFailures.contains(id) || m_thumbnailPending.contains(id)) continue;
-        startThumbnail(entry); return;
-    }
+    emit stateChanged();
 }
 
-void ClipboardController::startThumbnail(const QVariantMap &entry)
+ClipboardController::Entry *ClipboardController::findEntry(const QString &id)
 {
-    const QString id = entry.value("id").toString();
-    const QString mime = entry.value("imageMime").toString();
-    if (id.isEmpty() || mime.isEmpty()) return;
-    m_thumbnailId = id;
-    m_thumbnailOutput.clear();
-    m_thumbnailPending.insert(id);
-    m_thumbnailProcess = new QProcess(this);
-    QString script = mutationPrefix(id, entry.value("row").toInt());
-    script += QStringLiteral("const row = findRow(); if (row >= 0) print(getItem(row)[%1]);").arg(jsString(mime));
-    connect(m_thumbnailProcess, &QProcess::readyReadStandardOutput, this, [this] {
-        m_thumbnailOutput += m_thumbnailProcess->readAllStandardOutput();
-        if (m_thumbnailOutput.size() > maximumImageBytes) m_thumbnailProcess->kill();
-    });
-    connect(m_thumbnailProcess, &QProcess::finished, this, &ClipboardController::finishThumbnail);
-    m_thumbnailProcess->start(m_executable, {QStringLiteral("eval"), script});
+    const auto found = std::find_if(m_entries.begin(), m_entries.end(),
+        [&id](const Entry &entry) { return entry.id == id; });
+    return found == m_entries.end() ? nullptr : &*found;
 }
 
-void ClipboardController::finishThumbnail(int exitCode, QProcess::ExitStatus status)
+const ClipboardController::Entry *ClipboardController::findEntry(const QString &id) const
 {
-    QProcess *process = m_thumbnailProcess;
-    m_thumbnailOutput += process->readAllStandardOutput();
-    const QString id = m_thumbnailId;
-    m_thumbnailPending.remove(id);
-    QImage image;
-    if (status == QProcess::NormalExit && exitCode == 0 && m_thumbnailOutput.size() <= maximumImageBytes)
-        image.loadFromData(m_thumbnailOutput);
-    if (image.isNull()) {
-        m_thumbnailFailures.insert(id);
-    } else {
-        m_imageSizes[id] = image.size();
-        const QImage thumb = image.scaled(QSize(128, 96), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-        QByteArray bytes; QBuffer buffer(&bytes); buffer.open(QIODevice::WriteOnly); thumb.save(&buffer, "PNG");
-        m_thumbnails[id] = QStringLiteral("data:image/png;base64,") + QString::fromLatin1(bytes.toBase64());
-        emit stateChanged();
-    }
-    m_thumbnailProcess = nullptr;
-    m_thumbnailId.clear();
-    m_thumbnailOutput.clear();
-    process->deleteLater();
-    QTimer::singleShot(0, this, &ClipboardController::requestNextThumbnail);
-}
-
-QString ClipboardController::snapshotScript()
-{
-    return QStringLiteral(R"JS(
-const timeMime = 'application/x-hyprendfield-copy-time';
-const uriMime = 'text/uri-list';
-const maximum = 64;
-function stableId(item) {
-    const clean = {};
-    const keys = Object.keys(item).sort();
-    for (let index = 0; index < keys.length; ++index) {
-        const key = keys[index];
-        if (key !== timeMime) clean[key] = item[key];
-    }
-    return str(toBase64(sha256sum(pack(clean))));
-}
-function flattened(value) { return str(value || '').replace(/\s+/g, ' ').trim(); }
-function compact(value) {
-    const characters = Array.from(value);
-    return characters.length > 90 ? characters.slice(0, 89).join('') + '…' : value;
-}
-function uriLines(item) {
-    if (!item[uriMime]) return [];
-    return str(item[uriMime]).split(/\r?\n/).filter(line => line && line[0] !== '#');
-}
-function looksLikeLink(value) {
-    const text = value.trim();
-    return !/\s/.test(text) && /^(https?|ftp|mailto|tel|sms):/i.test(text);
-}
-const total = size();
-const removable = ItemSelection().selectRemovable().length;
-const items = [];
-for (let row = 0; row < Math.min(total, maximum); ++row) {
-    const item = getItem(row);
-    const formats = Object.keys(item);
-    const imageMime = formats.find(format => /^image\/(png|jpeg|jpg|tiff|bmp|webp)$/i.test(format)) || '';
-    const uris = uriLines(item);
-    const files = uris.filter(uri => /^file:/i.test(uri));
-    const plain = str(item['text/plain'] || '');
-    let kind = 'text';
-    let preview = flattened(plain);
-    let fileUris = [];
-    if (files.length > 0) {
-        kind = 'files'; fileUris = files;
-        const names = files.slice(0, 3).map(uri => {
-            const path = decodeURIComponent(uri.replace(/^file:\/\//i, ''));
-            const pieces = path.replace(/\/$/, '').split('/');
-            return pieces[pieces.length - 1] || path;
-        });
-        preview = names.join(', ') + (files.length > 3 ? ' (+' + (files.length - 3) + ')' : '');
-    } else if (imageMime) {
-        kind = 'image'; preview = '图片';
-    } else if (uris.length > 0 || looksLikeLink(plain)) {
-        kind = 'url'; preview = flattened(plain || uris[0]);
-    }
-    items.push({id: stableId(item), row: row, kind: kind, preview: compact(preview),
-        characters: kind === 'text' ? Array.from(plain).length : 0,
-        imageMime: imageMime, fileUris: fileUris, createdAt: str(item[timeMime] || ''),
-        pinned: plugins.itempinned.isPinned(row)});
-}
-print(JSON.stringify({total: total, capacity: Number(config('maxitems')) || total,
-    removable: removable, items: items}));
-)JS");
+    const auto found = std::find_if(m_entries.cbegin(), m_entries.cend(),
+        [&id](const Entry &entry) { return entry.id == id; });
+    return found == m_entries.cend() ? nullptr : &*found;
 }

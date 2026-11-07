@@ -1,10 +1,8 @@
 #include "clipboardcontroller.hpp"
 
+#include <QBuffer>
 #include <QFontDatabase>
 #include <QGuiApplication>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -16,24 +14,31 @@
 #include <QtTest>
 
 namespace {
-QByteArray snapshot()
+QByteArray testImage()
 {
-    const QJsonArray items{
-        QJsonObject{{"id", "text-id"}, {"row", 0}, {"kind", "text"}, {"preview", "一段文字"},
-                    {"characters", 4}, {"imageMime", ""}, {"fileUris", QJsonArray{}},
-                    {"createdAt", "2026-11-07T09:08:07.000+08:00"}, {"pinned", false}},
-        QJsonObject{{"id", "link-id"}, {"row", 1}, {"kind", "url"}, {"preview", "https://example.com/docs"},
-                    {"characters", 0}, {"imageMime", ""}, {"fileUris", QJsonArray{}},
-                    {"createdAt", ""}, {"pinned", true}},
-        QJsonObject{{"id", "image-id"}, {"row", 2}, {"kind", "image"}, {"preview", "图片"},
-                    {"characters", 0}, {"imageMime", "image/png"}, {"fileUris", QJsonArray{}},
-                    {"createdAt", ""}, {"pinned", false}},
-        QJsonObject{{"id", "file-id"}, {"row", 3}, {"kind", "files"}, {"preview", "Document.pdf"},
-                    {"characters", 0}, {"imageMime", ""}, {"fileUris", QJsonArray{"file:///tmp/Document.pdf"}},
-                    {"createdAt", ""}, {"pinned", false}}
-    };
-    return QJsonDocument(QJsonObject{{"total", 4}, {"capacity", 20000}, {"removable", 3}, {"items", items}})
-        .toJson(QJsonDocument::Compact);
+    QImage image(12, 8, QImage::Format_ARGB32_Premultiplied);
+    image.fill(QColor("#fffa00"));
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "PNG");
+    return bytes;
+}
+
+void populate(ClipboardController &controller)
+{
+    QVERIFY(controller.captureForTest(QStringLiteral("text/plain;charset=utf-8"), QStringLiteral("一段文字").toUtf8()));
+    QVERIFY(controller.captureForTest(QStringLiteral("text/plain"), QByteArrayLiteral("https://example.com/docs")));
+    QVERIFY(controller.captureForTest(QStringLiteral("image/png"), testImage()));
+    QVERIFY(controller.captureForTest(QStringLiteral("text/uri-list"), QByteArrayLiteral("file:///tmp/Document.pdf\r\n")));
+    const QVariantList items = controller.state().value("items").toList();
+    for (const auto &value : items) {
+        const QVariantMap item = value.toMap();
+        if (item.value("kind").toString() == QStringLiteral("url")) {
+            QVERIFY(controller.togglePin(item.value("id").toString()));
+            break;
+        }
+    }
 }
 
 QQuickItem *findItem(QQuickItem *root, const QString &name)
@@ -48,29 +53,49 @@ class ClipboardTests final : public QObject
 {
     Q_OBJECT
 private slots:
-    void parsesCopyQSnapshot()
+    void connectsToWaylandClipboard()
     {
-        ClipboardController controller(nullptr, QStringLiteral("/bin/false"), false);
-        QVERIFY(controller.acceptSnapshot(snapshot()));
+        if (!qEnvironmentVariableIsSet("HYPR_CLIPBOARD_LIVE")) QSKIP("live Wayland check is opt-in");
+        ClipboardController controller;
         const QVariantMap state = controller.state();
+        QVERIFY2(state.value("ready").toBool(), qPrintable(state.value("status").toString()));
+        QCOMPARE(state.value("total").toInt(), 0);
+    }
+
+    void capturesWaylandOffers()
+    {
+        ClipboardController controller(nullptr, false);
+        QVERIFY(!controller.captureForTest(QStringLiteral("text/plain"), QByteArrayLiteral("secret"), true));
+        populate(controller);
+        QVariantMap state = controller.state();
         QVERIFY(state.value("ready").toBool());
         QCOMPARE(state.value("total").toInt(), 4);
-        QCOMPARE(state.value("capacity").toInt(), 20000);
+        QCOMPARE(state.value("capacity").toInt(), 10);
         QCOMPARE(state.value("removable").toInt(), 3);
         const QVariantList items = state.value("items").toList();
-        QCOMPARE(items.size(), 4);
-        QCOMPARE(items[0].toMap().value("meta").toString(), QStringLiteral("4 字符"));
-        QVERIFY(items[0].toMap().value("createdAt").toLongLong() > 0);
-        QCOMPARE(items[1].toMap().value("meta").toString(), QStringLiteral("example.com"));
-        QCOMPARE(items[2].toMap().value("format").toString(), QStringLiteral("PNG"));
-        QCOMPARE(items[3].toMap().value("fileCount").toInt(), 1);
-        QVERIFY(!controller.acceptSnapshot("{}"));
+        QCOMPARE(items[0].toMap().value("kind").toString(), QStringLiteral("files"));
+        QCOMPARE(items[1].toMap().value("kind").toString(), QStringLiteral("image"));
+        QCOMPARE(items[1].toMap().value("meta").toString(), QStringLiteral("PNG   12 × 8"));
+        QVERIFY(items[1].toMap().value("thumbnail").toString().startsWith(QStringLiteral("data:image/png;base64,")));
+        QCOMPARE(items[2].toMap().value("kind").toString(), QStringLiteral("url"));
+        QCOMPARE(items[2].toMap().value("meta").toString(), QStringLiteral("example.com"));
+        QVERIFY(items[2].toMap().value("pinned").toBool());
+        QCOMPARE(items[3].toMap().value("meta").toString(), QStringLiteral("4 字符"));
+        QVERIFY(items[3].toMap().value("createdAt").toLongLong() > 0);
+
+        QVERIFY(controller.captureForTest(QStringLiteral("text/plain;charset=utf-8"), QStringLiteral("一段文字").toUtf8()));
+        QCOMPARE(controller.state().value("total").toInt(), 4);
+        QVERIFY(controller.clearUnpinned());
+        state = controller.state();
+        QCOMPARE(state.value("total").toInt(), 1);
+        QCOMPARE(state.value("removable").toInt(), 0);
+        QVERIFY(state.value("items").toList().constFirst().toMap().value("pinned").toBool());
     }
 
     void pageContract()
     {
-        ClipboardController controller(nullptr, QStringLiteral("/bin/false"), false);
-        QVERIFY(controller.acceptSnapshot(snapshot()));
+        ClipboardController controller(nullptr, false);
+        populate(controller);
         QQmlEngine engine;
         engine.rootContext()->setContextProperty(QStringLiteral("clipboardController"), &controller);
         for (const auto &weight : {"Regular", "Medium", "Bold"}) {
@@ -93,7 +118,6 @@ private slots:
         QTest::qWait(100);
         if (qEnvironmentVariableIsSet("HYPR_CLIPBOARD_RENDER"))
             QVERIFY(window.grabWindow().save(QStringLiteral("/tmp/hyprendfield-clipboard.png")));
-        root->setProperty("reduceMotion", true);
         QVERIFY(QMetaObject::invokeMethod(root.get(), "selectFilter", Q_ARG(QVariant, 1)));
         QCOMPARE(root->property("selectedFilter").toInt(), 1);
         QCOMPARE(rows->property("count").toInt(), 1);
