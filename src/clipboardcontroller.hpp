@@ -32,6 +32,7 @@ public:
     bool captureForTest(const QString &mime, const QByteArray &data, bool sensitive = false);
 
 signals:
+    void itemCopied(const QString &kind);
     void activeChanged();
     void stateChanged();
     void actionFinished(const QString &action, bool success, const QString &message);

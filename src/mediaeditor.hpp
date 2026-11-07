@@ -41,6 +41,7 @@ public:
     Q_INVOKABLE void cancelExport();
     Q_INVOKABLE void retranslate() { emit catalogChanged(); emit changed(); }
 signals:
+    void eventOccurred(const QString &action);
     void changed();
     void catalogChanged();
     void presentedChanged();

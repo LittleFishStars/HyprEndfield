@@ -18,6 +18,7 @@ public:
     const QImage &image(const QString &kind) const { return kind == "avatar" ? m_avatar : m_background; }
 signals:
     void changed();
+    void cropChanged(const QString &target);
 private:
     bool save();
     QString m_directory, m_path, m_error, m_importKind, m_pendingImage;

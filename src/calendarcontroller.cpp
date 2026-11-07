@@ -219,7 +219,9 @@ bool CalendarController::saveEvent(const QString &rawTitle, const QString &detai
     }
     const qsizetype upcoming = std::count_if(next.cbegin(), next.cend(), [&](const Event &event) { return event.day >= timestamp.date(); });
     if (upcoming > maximumUpcoming) { setError(QCoreApplication::translate("HyprEndfield", "最多保留 30 个待办日期事项，以确保每条提醒都能安排。")); return false; }
-    return persist(next);
+    if (!persist(next)) return false;
+    emit eventOccurred(creating ? "created" : "edited");
+    return true;
 }
 
 bool CalendarController::removeEvent(const QString &id)
@@ -227,7 +229,9 @@ bool CalendarController::removeEvent(const QString &id)
     QList<Event> next = m_events;
     const auto size = next.size();
     next.removeIf([&](const Event &event) { return event.id == id.toUpper(); });
-    return next.size() != size && persist(next);
+    if (next.size() == size || !persist(next)) return false;
+    emit eventOccurred("deleted");
+    return true;
 }
 
 bool CalendarController::refreshReminders()

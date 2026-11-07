@@ -111,7 +111,11 @@ bool ProfileController::setField(const QString &field, const QVariant &value, bo
         accepted = text;
     }
     if (!valid) { m_error = tr("输入内容超出允许范围，或格式不正确。"); emit changed(); return false; }
-    m_values[field] = accepted; m_error.clear(); const bool saved = !commit || save(); emit changed(); return saved;
+    const bool changedValue = m_values.value(field) != accepted;
+    m_values[field] = accepted; m_error.clear(); const bool saved = !commit || save(); emit changed();
+    if (saved && commit && changedValue && (field.startsWith("avatar") || field.startsWith("thumbnail") || field.startsWith("background")))
+        emit cropChanged(field.startsWith("background") ? "background" : "thumbnail");
+    return saved;
 }
 void ProfileController::importImage(const QString &kind, const QUrl &url) {
     if ((kind != "avatar" && kind != "background") || !url.isLocalFile() || m_import.isRunning() || !m_readable) return;

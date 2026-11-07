@@ -33,7 +33,9 @@ Item {
         CalendarButton { width: 76; title: page.state.exporting ? qsTr("取消") : qsTr("导出"); enabled: page.state.loaded && !page.state.busy; onClicked: { if (page.state.exporting) editor.cancelExport(); else saveDialog.open(); } }
     }
     Item { x: -10; y: 81; width: 448; height: 412
-        MediaEditor { id: editor; objectName: "mediaEditor"; anchors.fill: parent; presented: page.presented }
+        MediaEditor { id: editor; objectName: "mediaEditor"; anchors.fill: parent; presented: page.presented
+            onEventOccurred: action => { if (typeof eventLogController !== "undefined") eventLogController.recordAction("mediaAssemblyAction", action, action === "edited") }
+        }
         Rectangle { anchors.fill: parent; color: "transparent"; border.color: Appearance.tone("#444444") }
         Column { y: 165; width: 448; spacing: 10; visible: !page.state.loaded
             Text { width: 448; horizontalAlignment: Text.AlignHCenter; text: "[ NO SOURCE ]"; color: Appearance.tone("#CCCCCC"); font.family: harmonyBold.name; font.pixelSize: 20; renderType: Text.CurveRendering }

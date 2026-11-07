@@ -6,6 +6,12 @@
   "rights": "Game artwork remains third-party material owned by Hypergryph and the respective rights holders; excluded from the EndfieldHUD MIT grant.",
   "assets": [
     {
+      "file": "event-log.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Questionnaire_Icon.png",
+      "source_sha256": "262f16f035f7a03f00f79668b9c09175e65112f9c8763167c09ef29024ecb2c4",
+      "sha256": "c06c16f87430a991bb40aaa528fb0c901099e544970d972d6d987adffd1a746e"
+    },
+    {
       "file": "minigame.png",
       "source_project_file": "Resources/AppIconSources/EndfieldWiki/Minigame_Icon.png",
       "source_sha256": "2be87ff8d044b66e162fea51ab002442c227b32a2dcc3c732ada76521f775fbd",

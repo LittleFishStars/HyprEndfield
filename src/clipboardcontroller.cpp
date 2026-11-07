@@ -560,7 +560,8 @@ bool ClipboardController::copyItem(const QString &id)
     const Entry snapshot = *entry;
     QMetaObject::invokeMethod(m_backend, [backend = m_backend, controller = this, snapshot] {
         const bool success = backend->publish(snapshot);
-        QMetaObject::invokeMethod(controller, [controller, success] {
+        QMetaObject::invokeMethod(controller, [controller, success, kind = snapshot.kind] {
+            if (success) emit controller->itemCopied(kind);
             emit controller->actionFinished(QStringLiteral("copy"), success,
                 success ? QString() : QCoreApplication::translate("HyprEndfield", "无法写入系统剪贴板"));
         }, Qt::QueuedConnection);

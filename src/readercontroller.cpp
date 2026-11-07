@@ -723,6 +723,7 @@ void ReaderController::setPreference(const QString &name, const QVariant &value)
     const auto previous = m_preferences;
     m_preferences = next;
     if (!saveLibrary()) { m_preferences = previous; fail(QStringLiteral("settings"), m_error); return; }
+    emit actionFinished("settings", true, {});
     m_history.clear();
     m_detail.reset();
     if (!m_pages.isEmpty()) requestRender(m_pages.constFirst().location);

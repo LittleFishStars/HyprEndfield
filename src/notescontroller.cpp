@@ -300,7 +300,7 @@ QJsonObject noteObject(const NotesController::Note &note)
             {QStringLiteral("strokes"), strokes}};
 }
 
-bool NotesController::persist(const Centre &centre, const QList<Note> &notes)
+bool NotesController::persist(const Centre &centre, const QList<Note> &notes, const QString &action)
 {
     if (!m_available) {
         fail(QCoreApplication::translate("HyprEndfield", "便笺存储不可用。"));
@@ -336,11 +336,13 @@ bool NotesController::persist(const Centre &centre, const QList<Note> &notes)
         fail(QCoreApplication::translate("HyprEndfield", "无法保存便笺数据。"));
         return false;
     }
+    const bool changedContent = bytes != m_persisted;
     m_centre = centre;
     m_notes = notes;
     m_persisted = bytes;
     m_error.clear();
     emit stateChanged();
+    if (changedContent && !action.isEmpty()) emit eventOccurred(action);
     return true;
 }
 
@@ -461,7 +463,7 @@ bool NotesController::setCentreText(const QString &text)
 {
     Centre next = m_centre;
     next.text = text.left(maximumText);
-    return persist(next, m_notes);
+    return persist(next, m_notes, "editedText");
 }
 
 bool NotesController::setCentreStyle(const QString &key, const QVariant &value)
@@ -484,7 +486,7 @@ bool NotesController::setCentreStyle(const QString &key, const QVariant &value)
     else if (key == QStringLiteral("underline")) next.style.underline = value.toBool();
     else if (key == QStringLiteral("strikeout")) next.style.strikeout = value.toBool();
     else return false;
-    return persist(next, m_notes);
+    return persist(next, m_notes, "formattedText");
 }
 
 bool NotesController::addCentreTask(const QString &rawText)
@@ -493,7 +495,7 @@ bool NotesController::addCentreTask(const QString &rawText)
     if (text.isEmpty() || m_centre.tasks.size() >= maximumTasks) return false;
     Centre next = m_centre;
     next.tasks.append(Task{newId(), text});
-    return persist(next, m_notes);
+    return persist(next, m_notes, "editedTODO");
 }
 
 bool NotesController::updateCentreTask(const QString &id, const QString &rawText)
@@ -504,7 +506,7 @@ bool NotesController::updateCentreTask(const QString &id, const QString &rawText
     auto found = std::find_if(next.tasks.begin(), next.tasks.end(), [&](const Task &task) { return task.id == id.toUpper(); });
     if (found == next.tasks.end()) return false;
     found->text = text;
-    return persist(next, m_notes);
+    return persist(next, m_notes, "editedTODO");
 }
 
 bool NotesController::toggleCentreTask(const QString &id)
@@ -513,7 +515,7 @@ bool NotesController::toggleCentreTask(const QString &id)
     auto found = std::find_if(next.tasks.begin(), next.tasks.end(), [&](const Task &task) { return task.id == id.toUpper(); });
     if (found == next.tasks.end()) return false;
     found->checked = !found->checked;
-    return persist(next, m_notes);
+    return persist(next, m_notes, "editedTODO");
 }
 
 bool NotesController::toggleCentreFlag(const QString &id)
@@ -522,7 +524,7 @@ bool NotesController::toggleCentreFlag(const QString &id)
     auto found = std::find_if(next.tasks.begin(), next.tasks.end(), [&](const Task &task) { return task.id == id.toUpper(); });
     if (found == next.tasks.end()) return false;
     found->flagged = !found->flagged;
-    return persist(next, m_notes);
+    return persist(next, m_notes, "editedTODO");
 }
 
 bool NotesController::moveCentreTask(const QString &id, int offset)
@@ -534,14 +536,14 @@ bool NotesController::moveCentreTask(const QString &id, int offset)
     const int destination = std::clamp(index + offset, 0, int(next.tasks.size()) - 1);
     if (index == destination) return false;
     next.tasks.move(index, destination);
-    return persist(next, m_notes);
+    return persist(next, m_notes, "editedTODO");
 }
 
 bool NotesController::removeCentreTask(const QString &id)
 {
     Centre next = m_centre;
     const qsizetype removed = next.tasks.removeIf([&](const Task &task) { return task.id == id.toUpper(); });
-    return removed > 0 && persist(next, m_notes);
+    return removed > 0 && persist(next, m_notes, "editedTODO");
 }
 
 QString NotesController::createNote(const QString &kind, double x, double y)
@@ -564,7 +566,7 @@ QString NotesController::createNote(const QString &kind, double x, double y)
     if (kind == QStringLiteral("todo")) note.tasks.append(Task{newId(), QString()});
     constrain(note);
     next.append(note);
-    if (!persist(m_centre, next)) return {};
+    if (!persist(m_centre, next, kind == "todo" ? "createdTODO" : kind == "drawing" ? "createdDrawing" : "createdText")) return {};
     emit actionFinished(QStringLiteral("create"), true,
                         kind == QStringLiteral("drawing") ? QCoreApplication::translate("HyprEndfield", "已创建画画便笺") : QCoreApplication::translate("HyprEndfield", "已创建便笺"));
     return note.id;
@@ -623,7 +625,7 @@ QString NotesController::importImage(const QUrl &url, double x, double y)
     note.created = QDateTime::currentDateTime();
     constrain(note);
     next.append(note);
-    if (!persist(m_centre, next)) {
+    if (!persist(m_centre, next, "createdMedia")) {
         QFile::remove(destination);
         return {};
     }
@@ -660,7 +662,7 @@ void NotesController::importMedia(const QUrl &url, double x, double y) {
         auto next = m_notes; Note note; note.id = newId(); note.kind = gif ? "gif" : "video"; note.mediaName = name;
         note.x = x; note.y = y; note.width = 320; note.height = 232; note.z = nextZ(next); note.created = QDateTime::currentDateTime(); constrain(note);
         next.append(note);
-        if (!persist(m_centre, next)) QFile::remove(destination);
+        if (!persist(m_centre, next, "createdMedia")) QFile::remove(destination);
         else emit actionFinished("import", true, gif ? tr("已创建图片便笺") : tr("已创建视频便笺"));
         emit stateChanged();
     });
@@ -689,7 +691,7 @@ bool NotesController::updateNoteRichText(const QString &id, const QString &html)
     QTextDocument document; document.setHtml(html);
     if (document.toPlainText().size() > maximumText) return false;
     next[index].text = document.toPlainText(); next[index].richText = document.toHtml();
-    return persist(m_centre, next);
+    return persist(m_centre, next, "editedText");
 }
 
 bool NotesController::updateNoteGeometry(const QString &id, double x, double y, double width, double height)
@@ -713,7 +715,7 @@ bool NotesController::updateNoteText(const QString &id, const QString &text)
     if (index < 0 || next[index].kind != QStringLiteral("text")) return false;
     next[index].text = text.left(maximumText);
     next[index].richText.clear();
-    return persist(m_centre, next);
+    return persist(m_centre, next, "editedText");
 }
 
 bool NotesController::toggleNotePin(const QString &id)
@@ -734,7 +736,7 @@ bool NotesController::removeNote(const QString &id)
     const QString imageName = next[index].imageName;
     const QString mediaName = next[index].mediaName;
     next.removeAt(index);
-    if (!persist(m_centre, next)) return false;
+    if (!persist(m_centre, next, "deletedNote")) return false;
     if (!imageName.isEmpty()) QFile::remove(m_imagesDirectory + QLatin1Char('/') + imageName);
     if (!mediaName.isEmpty()) QFile::remove(m_directory + "/Media/" + mediaName);
     emit actionFinished(QStringLiteral("delete"), true, QCoreApplication::translate("HyprEndfield", "便笺已删除"));
@@ -750,7 +752,7 @@ bool NotesController::addNoteTask(const QString &id, const QString &rawText)
     if (index < 0 || next[index].kind != QStringLiteral("todo") || next[index].tasks.size() >= maximumTasks) return false;
     if (next[index].tasks.size() == 1 && next[index].tasks[0].text.isEmpty()) next[index].tasks[0].text = text;
     else next[index].tasks.append(Task{newId(), text});
-    return persist(m_centre, next);
+    return persist(m_centre, next, "editedTODO");
 }
 
 bool NotesController::updateNoteTask(const QString &id, const QString &taskId, const QString &rawText)
@@ -763,7 +765,7 @@ bool NotesController::updateNoteTask(const QString &id, const QString &taskId, c
     auto found = std::find_if(next[index].tasks.begin(), next[index].tasks.end(), [&](const Task &task) { return task.id == taskId.toUpper(); });
     if (found == next[index].tasks.end()) return false;
     found->text = text;
-    return persist(m_centre, next);
+    return persist(m_centre, next, "editedTODO");
 }
 
 bool NotesController::toggleNoteTask(const QString &id, const QString &taskId)
@@ -774,7 +776,7 @@ bool NotesController::toggleNoteTask(const QString &id, const QString &taskId)
     auto found = std::find_if(next[index].tasks.begin(), next[index].tasks.end(), [&](const Task &task) { return task.id == taskId.toUpper(); });
     if (found == next[index].tasks.end()) return false;
     found->checked = !found->checked;
-    return persist(m_centre, next);
+    return persist(m_centre, next, "editedTODO");
 }
 
 bool NotesController::moveNoteTask(const QString &id, const QString &taskId, int offset)
@@ -789,7 +791,7 @@ bool NotesController::moveNoteTask(const QString &id, const QString &taskId, int
     const int destination = std::clamp(index + offset, 0, int(tasks.size()) - 1);
     if (index == destination) return false;
     tasks.move(index, destination);
-    return persist(m_centre, next);
+    return persist(m_centre, next, "editedTODO");
 }
 
 bool NotesController::removeNoteTask(const QString &id, const QString &taskId)
@@ -798,7 +800,7 @@ bool NotesController::removeNoteTask(const QString &id, const QString &taskId)
     const int index = noteIndex(next, id);
     if (index < 0 || next[index].kind != QStringLiteral("todo")) return false;
     const qsizetype removed = next[index].tasks.removeIf([&](const Task &task) { return task.id == taskId.toUpper(); });
-    return removed > 0 && persist(m_centre, next);
+    return removed > 0 && persist(m_centre, next, "editedTODO");
 }
 
 bool NotesController::appendStroke(const QString &id, const QVariantList &values,
@@ -827,7 +829,7 @@ bool NotesController::appendStroke(const QString &id, const QVariantList &values
         return false;
     }
     next[index].strokes.append(std::move(stroke));
-    return persist(m_centre, next);
+    return persist(m_centre, next, "drawingEdited");
 }
 
 bool NotesController::eraseDrawing(const QString &id, double x, double y, double radius)
@@ -875,7 +877,7 @@ bool NotesController::eraseDrawingPath(const QString &id, const QVariantList &va
         }
         return false;
     });
-    return next[index].strokes.size() != before && persist(m_centre, next);
+    return next[index].strokes.size() != before && persist(m_centre, next, "drawingEdited");
 }
 
 bool NotesController::clearDrawing(const QString &id)
@@ -884,5 +886,5 @@ bool NotesController::clearDrawing(const QString &id)
     const int index = noteIndex(next, id);
     if (index < 0 || next[index].kind != QStringLiteral("drawing") || next[index].strokes.isEmpty()) return false;
     next[index].strokes.clear();
-    return persist(m_centre, next);
+    return persist(m_centre, next, "drawingEdited");
 }

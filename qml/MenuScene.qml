@@ -130,6 +130,18 @@ Item {
             visible: menu.shell.selectedModule === "minigame"
             presented: visible && appController.hudOpen
         }
+        EventLogPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "eventLog"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
+        AppShortcutsPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "addApp"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
         ProfilePage {
             x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
             visible: menu.shell.selectedModule === "profile"
@@ -274,7 +286,7 @@ Item {
                             leanX: menu.leanX
                             leanY: menu.leanY
                             opacity: menu.shell.navigationListValue("rightAlpha", slot, 1)
-                            onTriggered: menu.shell.selectedModule = entry.key
+                            onTriggered: { if (entry.shortcutId) appShortcutsController.requestOpen(entry.shortcutId); else menu.shell.selectedModule = entry.key }
                             DropArea {
                                 anchors.fill: parent
                                 enabled: parent.entry.key === "fileShelf"

@@ -45,6 +45,7 @@ MediaEditor::MediaEditor(QQuickItem *parent) : QQuickPaintedItem(parent) {
         m_preview = {}; m_original = result.take("image").value<QImage>(); m_metadata.remove("image"); ++m_revision;
         if (m_metadata.value("kind") == "video") m_player.setSource(m_metadata.value("source").toUrl());
         else requestPreview();
+        emit eventOccurred("imported");
         update(); emit changed();
     });
     connect(&m_render, &QFutureWatcherBase::finished, this, [this] {
@@ -58,6 +59,7 @@ MediaEditor::MediaEditor(QQuickItem *parent) : QQuickPaintedItem(parent) {
     connect(&m_export, &QFutureWatcherBase::finished, this, [this] {
         m_progressTimer.stop(); m_error = m_export.result();
         m_message = m_error.isEmpty() ? tr("导出完成。") : QString(); emit changed();
+        if (m_error.isEmpty()) emit eventOccurred("exported");
     });
 }
 MediaEditor::~MediaEditor() { m_cancel = true; m_export.waitForFinished(); m_open.waitForFinished(); m_render.waitForFinished(); }
@@ -101,7 +103,7 @@ void MediaEditor::closeSource() {
     ++m_revision; m_player.stop(); m_player.setSource({}); m_metadata.clear(); m_original = {}; m_preview = {}; m_selected = -1;
     m_adjustments = {}; m_viewport.reset(); m_pendingOverwrite.clear(); m_error.clear(); m_message.clear(); update(); emit changed();
 }
-void MediaEditor::editChanged() { m_error.clear(); m_message.clear(); requestPreview(); emit changed(); update(); }
+void MediaEditor::editChanged() { m_error.clear(); m_message.clear(); requestPreview(); emit changed(); update(); emit eventOccurred("edited"); }
 void MediaEditor::setAdjustment(const QString &key, double value) {
     if (!editable() || !std::isfinite(value)) return;
     auto a = m_adjustments;

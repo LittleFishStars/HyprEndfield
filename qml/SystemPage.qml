@@ -12,8 +12,8 @@ Item {
     property real draggedY: 0
     property var previewOrder: []
     property var languageOptions: [qsTr("跟随系统"), "English", "简体中文", "繁體中文", "日本語", "한국어"]
-    readonly property var moduleNames: ({notes: qsTr("便笺"), fileShelf: qsTr("文件暂存架"), clipboard: qsTr("剪贴板"), archive: qsTr("档案库"), nowPlaying: qsTr("当前播放"), volume: qsTr("音量"), reader: qsTr("阅读器"), workMode: qsTr("专注模式"), calendar: qsTr("日历"), projection: qsTr("投影"), mediaAssembly: qsTr("影像加工"), minigame: qsTr("可露希尔的小游戏")})
-    readonly property var moduleIcons: ({notes: "notes", fileShelf: "file-shelf", clipboard: "clipboard", archive: "archive", reader: "reader", workMode: "work-mode", calendar: "calendar", projection: "projection", mediaAssembly: "media-assembly", minigame: "minigame"})
+    readonly property var moduleNames: ({notes: qsTr("便笺"), fileShelf: qsTr("文件暂存架"), clipboard: qsTr("剪贴板"), archive: qsTr("档案库"), nowPlaying: qsTr("当前播放"), volume: qsTr("音量"), reader: qsTr("阅读器"), workMode: qsTr("专注模式"), calendar: qsTr("日历"), projection: qsTr("投影"), mediaAssembly: qsTr("影像加工"), minigame: qsTr("可露希尔的小游戏"), eventLog: qsTr("事件日志")})
+    readonly property var moduleIcons: ({notes: "notes", fileShelf: "file-shelf", clipboard: "clipboard", archive: "archive", reader: "reader", workMode: "work-mode", calendar: "calendar", projection: "projection", mediaAssembly: "media-assembly", minigame: "minigame", eventLog: "event-log"})
     readonly property string moduleCount: (settings.moduleOrder.length - settings.hiddenModules.length) + " / " + settings.moduleOrder.length
     readonly property int selectedDisplay: settings.displays.findIndex(item => item.id === settings.displayChoice)
     width: 590; height: 510

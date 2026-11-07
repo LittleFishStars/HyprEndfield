@@ -27,6 +27,7 @@ public:
     Q_INVOKABLE void moveStroke(QPointF point);
     Q_INVOKABLE void endStroke();
 signals:
+    void eventOccurred(const QString &action);
     void penChanged();
     void contentChanged();
     void mediaChanged();

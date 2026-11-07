@@ -520,7 +520,7 @@ QString ArchiveController::addCategory()
     QSqlQuery query(m_database); query.prepare("INSERT INTO categories(id,name,created,viewed) VALUES(?,?,?,0)");
     query.addBindValue(category.id); query.addBindValue(category.name); query.addBindValue(category.created);
     if (!query.exec()) { fail("category", query.lastError().text()); return {}; }
-    m_categories.append(category); emit stateChanged(); emit actionFinished("category", true, QCoreApplication::translate("HyprEndfield", "分类已创建。")); return category.id;
+    m_categories.append(category); emit eventOccurred("categoryCreated"); emit stateChanged(); emit actionFinished("category", true, QCoreApplication::translate("HyprEndfield", "分类已创建。")); return category.id;
 }
 bool ArchiveController::renameCategory(const QString &id, const QString &name)
 {
@@ -532,7 +532,7 @@ bool ArchiveController::renameCategory(const QString &id, const QString &name)
     for (auto &category : m_categories) if (category.id == id) {
         QSqlQuery query(m_database); query.prepare("UPDATE categories SET name=? WHERE id=?"); query.addBindValue(normalized); query.addBindValue(id);
         if (!query.exec()) return fail("category", query.lastError().text());
-        category.name = normalized; emit stateChanged(); return true;
+        category.name = normalized; emit eventOccurred("categoryChanged"); emit stateChanged(); return true;
     }
     return false;
 }
@@ -546,7 +546,7 @@ bool ArchiveController::removeCategory(const QString &id)
     for (auto &entry : m_entries) if (entry.categoryId == id) entry.categoryId.clear();
     m_categories.erase(std::remove_if(m_categories.begin(), m_categories.end(), [&](const Category &item) { return item.id == id; }), m_categories.end());
     if (m_filter == id) { m_filter = "uncategorized"; saveStateValue("filter", m_filter); }
-    emit stateChanged(); return true;
+    emit eventOccurred("categoryDeleted"); emit stateChanged(); return true;
 }
 QString ArchiveController::createDocument()
 {
@@ -555,7 +555,7 @@ QString ArchiveController::createDocument()
     Entry entry; entry.id = uuid(); entry.title = QCoreApplication::translate("HyprEndfield", "未命名文档"); entry.date = now; entry.modified = now;
     if (m_filter != "all" && m_filter != "uncategorized") entry.categoryId = m_filter;
     if (!saveEntry(entry)) return {};
-    m_entries.prepend(entry); m_selectedId = entry.id; saveStateValue("selected", m_selectedId); emit stateChanged(); return entry.id;
+    m_entries.prepend(entry); emit eventOccurred("created"); m_selectedId = entry.id; saveStateValue("selected", m_selectedId); emit stateChanged(); return entry.id;
 }
 bool ArchiveController::selectDocument(const QString &id)
 {
@@ -577,14 +577,14 @@ bool ArchiveController::updateSelected(const QString &title, const QString &body
     if (title.size() > 200 || body.toUtf8().size() > maximumBodyBytes || richBody.toUtf8().size() > maximumPayloadBytes)
         return fail("document", QCoreApplication::translate("HyprEndfield", "文档内容超过保存上限。"));
     entry->title = title; entry->body = body; entry->richBody = richBody; entry->modified = QDateTime::currentMSecsSinceEpoch();
-    scheduleSave(); emit stateChanged(); return true;
+    scheduleSave(); emit eventOccurred("edited"); emit stateChanged(); return true;
 }
 bool ArchiveController::moveSelected(const QString &categoryId)
 {
     auto *entry = selectedEntry(); if (!entry) return false;
     const QString target = categoryId == "uncategorized" ? QString() : categoryId;
     if (!target.isEmpty() && !findCategory(target)) return false;
-    entry->categoryId = target; entry->modified = QDateTime::currentMSecsSinceEpoch(); scheduleSave(); emit stateChanged(); return true;
+    entry->categoryId = target; entry->modified = QDateTime::currentMSecsSinceEpoch(); scheduleSave(); emit eventOccurred("edited"); emit stateChanged(); return true;
 }
 bool ArchiveController::deleteSelected()
 {
@@ -593,7 +593,7 @@ bool ArchiveController::deleteSelected()
     QSqlQuery query(m_database); query.prepare("DELETE FROM entries WHERE id=?"); query.addBindValue(id);
     if (!query.exec()) return fail("document", query.lastError().text());
     m_entries.erase(std::remove_if(m_entries.begin(), m_entries.end(), [&](const Entry &value) { return value.id == id; }), m_entries.end());
-    m_selectedId.clear(); m_unlockedId.clear(); m_ownerAuthorizedId.clear(); saveStateValue("selected", {}); updateSchemaVersion(); emit stateChanged();
+    emit eventOccurred("deleted"); m_selectedId.clear(); m_unlockedId.clear(); m_ownerAuthorizedId.clear(); saveStateValue("selected", {}); updateSchemaVersion(); emit stateChanged();
     if (classified) (void)QtConcurrent::run([vault = m_vault, account] { QString ignored; vault->remove(account, &ignored); });
     return true;
 }
@@ -615,12 +615,12 @@ bool ArchiveController::importMedia(const QList<QUrl> &urls)
         Media media{uuid(), path, info.fileName(), kind, QString::number(qulonglong(identity.st_dev)), QString::number(qulonglong(identity.st_ino))};
         additions.append(media);
     }
-    entry->media.append(additions); entry->modified = QDateTime::currentMSecsSinceEpoch(); scheduleSave(); emit stateChanged(); return true;
+    entry->media.append(additions); entry->modified = QDateTime::currentMSecsSinceEpoch(); scheduleSave(); emit eventOccurred("mediaAdded"); emit stateChanged(); return true;
 }
 bool ArchiveController::removeMedia(int index)
 {
     auto *entry = selectedEntry(); if (!entry || index < 0 || index >= entry->media.size()) return false;
-    entry->media.removeAt(index); entry->modified = QDateTime::currentMSecsSinceEpoch(); scheduleSave(); emit stateChanged(); return true;
+    entry->media.removeAt(index); entry->modified = QDateTime::currentMSecsSinceEpoch(); scheduleSave(); emit eventOccurred("mediaRemoved"); emit stateChanged(); return true;
 }
 
 bool ArchiveController::validPassword(const QString &password, const QString &confirmation, QString *message)

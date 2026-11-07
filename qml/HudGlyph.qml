@@ -47,6 +47,8 @@ Item {
             return box(3, 23, 5, 7) + box(13, 18, 5, 12) + box(23, 12, 5, 18);
         case "power":
             return box(14, 1, 4, 15);
+        case "addApp":
+            return roundBox(3, 3, 26, 26, 3) + box(7, 7, 18, 18) + "M14 10H18V14H22V18H18V22H14V18H10V14H14Z";
         }
         return "";
     }

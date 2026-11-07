@@ -47,6 +47,8 @@ public:
     QList<QUrl> exportUrls(const QStringList &ids, QString *error) const;
 
 signals:
+    void itemRemoved(const QString &filename);
+    void shelfCleared(int count);
     void stateChanged();
     void propertiesChanged();
     void activeChanged();

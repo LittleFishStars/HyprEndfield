@@ -58,6 +58,7 @@ void BatteryController::refresh()
             continue;
         next["available"] = true;
         const auto status = read(path + "status");
+        next["stateKey"] = status == "Charging" ? "charging" : status == "Full" ? "full" : status == "Discharging" ? "battery" : plugged ? "connected" : "unavailable";
         next["status"] = status == "Charging" ? tr("正在充电")
             : status == "Full"                ? tr("已充满")
             : status == "Discharging"         ? tr("使用电池")

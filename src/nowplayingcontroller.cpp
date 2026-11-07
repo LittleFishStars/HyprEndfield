@@ -213,11 +213,13 @@ void NowPlayingController::call(const QString &method, const QList<QVariant> &ar
     auto message = QDBusMessage::createMethodCall(m_owner, path, interface, method);
     message.setArguments(args);
     auto *pending = new QDBusPendingCallWatcher(m_bus.asyncCall(message, 2000), this);
-    connect(pending, &QDBusPendingCallWatcher::finished, this, [this, generation](auto *watcher) {
+    connect(pending, &QDBusPendingCallWatcher::finished, this, [this, generation, method](auto *watcher) {
         const QDBusPendingReply<> reply = *watcher;
         watcher->deleteLater();
         if (!m_active || generation != m_generation) return;
         if (reply.isError()) { emit commandFailed(reply.error().message()); return; }
+        const QString action = method == "PlayPause" ? "playPause" : method == "Previous" ? "previous" : method == "Next" ? "next" : method == "SetPosition" ? "seek" : "";
+        if (!action.isEmpty()) emit eventOccurred(action);
         refresh();
     });
 }

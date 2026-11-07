@@ -4,6 +4,8 @@
 #include "storagecontroller.hpp"
 #include "profilecontroller.hpp"
 #include "orbipomcontroller.hpp"
+#include "eventlogcontroller.hpp"
+#include "appshortcutscontroller.hpp"
 #include "projectioncanvas.hpp"
 #include "mediaeditor.hpp"
 #include "centerlogo.hpp"
@@ -41,6 +43,7 @@
 #include <QQmlContext>
 #include <QQuickWindow>
 #include <QSurfaceFormat>
+#include <QScreen>
 #include <QTimer>
 #include <QtConcurrentRun>
 
@@ -266,6 +269,49 @@ int main(int argc, char *argv[])
     ArchiveController archive;
     auto *readerImages = new ReaderImageProvider;
     ReaderController reader(nullptr, readerImages);
+    EventLogController eventLog;
+    AppShortcutsController appShortcuts;
+    QObject::connect(&settings, &SettingsController::languageChanged, &appShortcuts, &AppShortcutsController::changed);
+    QObject::connect(&appShortcuts, &AppShortcutsController::launchRequested, &controller, [&] {
+        if (controller.hudVisible()) controller.hideHud();
+        else appShortcuts.launchPending();
+    });
+    QObject::connect(&controller, &ApplicationController::hudVisibleChanged, &appShortcuts, [&] { if (!controller.hudVisible()) appShortcuts.launchPending(); });
+    QObject::connect(&appShortcuts, &AppShortcutsController::launchFailed, &controller, &ApplicationController::showHud);
+    QObject::connect(&appShortcuts, &AppShortcutsController::opened, &eventLog, [&](const QString &name) { eventLog.record("appShortcutOpened", {{"app", name}}); });
+    QObject::connect(&application, &QCoreApplication::aboutToQuit, &eventLog, &EventLogController::flush);
+    QObject::connect(&settings, &SettingsController::languageChanged, &eventLog, &EventLogController::stateChanged);
+    QObject::connect(&controller, &ApplicationController::hudOpenChanged, &eventLog, [&] { if (controller.hudOpen()) eventLog.record("overlayOpened"); });
+    QObject::connect(&notes, &NotesController::eventOccurred, &eventLog, [&](const QString &action) { eventLog.recordAction("noteAction", action, action.startsWith("edited") || action == "drawingEdited"); });
+    QObject::connect(&calendar, &CalendarController::eventOccurred, &eventLog, [&](const QString &action) { eventLog.recordAction("calendarAction", action); });
+    QObject::connect(&archive, &ArchiveController::eventOccurred, &eventLog, [&](const QString &action) { eventLog.recordAction("archiveAction", action, action == "edited"); });
+    QObject::connect(&orbipom, &OrbiPomController::actionFinished, &eventLog, [&](const QString &action, bool success, const QString &) { if (success) eventLog.recordAction("minigameAction", action); });
+    QObject::connect(&nowPlaying, &NowPlayingController::eventOccurred, &eventLog, [&](const QString &action) { eventLog.record("playbackAction", {{"action", action}, {"source", "system"}}); });
+    QObject::connect(&reader, &ReaderController::actionFinished, &eventLog, [&](const QString &action, bool success, const QString &) {
+        const QString event = action == "import" ? "imported" : action == "remove" ? "deleted" : action == "bookmark" ? "bookmarked" : action == "settings" ? "settings" : "";
+        if (success && !event.isEmpty()) eventLog.recordAction("readerAction", event, event == "settings");
+    });
+    QObject::connect(&clipboard, &ClipboardController::itemCopied, &eventLog, [&](const QString &kind) { eventLog.record("clipboardCopied", {{"kind", kind}}); });
+    QObject::connect(&fileShelf, &FileShelfController::itemsAdded, &eventLog, [&](const QStringList &ids) {
+        for (const auto &url : fileShelf.exportUrls(ids, nullptr)) eventLog.record("shelfAdded", {{"filename", QFileInfo(url.toLocalFile()).fileName()}});
+    });
+    QObject::connect(&fileShelf, &FileShelfController::itemRemoved, &eventLog, [&](const QString &name) { eventLog.record("shelfRemoved", {{"filename", name}}); });
+    QObject::connect(&fileShelf, &FileShelfController::shelfCleared, &eventLog, [&](int count) { eventLog.record("shelfCleared", {{"count", count}}); });
+    eventLog.observeWork(focusMode.state()); eventLog.observeBattery(battery.state());
+    QObject::connect(&focusMode, &FocusModeController::stateChanged, &eventLog, [&] { eventLog.observeWork(focusMode.state()); });
+    QObject::connect(&battery, &BatteryController::stateChanged, &eventLog, [&] { eventLog.observeBattery(battery.state()); });
+    QObject::connect(&audio, &AudioController::stateChanged, &eventLog, [&] { eventLog.observeAudio(audio.state()); });
+    QObject::connect(&application, &QGuiApplication::screenAdded, &eventLog, [&](QScreen *screen) { eventLog.record("displayConnected", {{"device", screen->model().isEmpty() ? screen->name() : screen->model()}}); });
+    QObject::connect(&application, &QGuiApplication::screenRemoved, &eventLog, [&](QScreen *screen) { eventLog.record("displayDisconnected", {{"device", screen->model().isEmpty() ? screen->name() : screen->model()}}); });
+    QObject::connect(&profile, &ProfileController::cropChanged, &eventLog, [&](const QString &target) { eventLog.record("profileCropChanged", {{"target", target}}); });
+    QObject::connect(&settings, &SettingsController::preferenceChanged, &eventLog, [&](const QString &key, const QVariant &value) {
+        QString field, setting;
+        if (key == "clockStyleIndex") { field = "clockStyle"; setting = QStringList{"digital", "split", "dial", "rail", "stacked"}.value(value.toInt()); }
+        else if (key == "centerLogoIndex") { field = "centerLogo"; setting = QStringList{"endfield", "rhodesIsland", "babel", "rhineLab", "custom"}.value(value.toInt()); }
+        else if (key == "batteryMetric") { field = "alertMetric"; setting = QStringList{"battery", "ram", "cpu", "network", "disk", "gpu"}.value(value.toInt()); }
+        else if (key == "customLogo") { field = "centerLogo"; setting = "customImported"; }
+        if (!field.isEmpty()) eventLog.record("displaySettingsChanged", {{"field", field}, {"value", setting}});
+    });
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     qmlRegisterType<SourceDial>("HyprEndfield.Source", 1, 0, "SourceDial");
     qmlRegisterType<ProjectionCanvas>("HyprEndfield.Projection", 1, 0, "ProjectionCanvas");
@@ -302,6 +348,9 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("storageController"), &storage);
     engine.rootContext()->setContextProperty(QStringLiteral("profileController"), &profile);
     engine.rootContext()->setContextProperty(QStringLiteral("orbipomController"), &orbipom);
+    engine.rootContext()->setContextProperty(QStringLiteral("eventLogController"), &eventLog);
+    engine.rootContext()->setContextProperty(QStringLiteral("appShortcutsController"), &appShortcuts);
+    engine.addImageProvider(QStringLiteral("shortcut-icons"), new ShortcutIconProvider(&appShortcuts));
     engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
     engine.rootContext()->setContextProperty(QStringLiteral("archiveController"), &archive);
     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &reader);

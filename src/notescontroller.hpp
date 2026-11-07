@@ -102,13 +102,14 @@ public:
     };
 
 signals:
+    void eventOccurred(const QString &action);
     void stateChanged();
     void actionFinished(const QString &action, bool success, const QString &message);
 
 private:
 
     void load();
-    bool persist(const Centre &centre, const QList<Note> &notes);
+    bool persist(const Centre &centre, const QList<Note> &notes, const QString &action = {});
     void fail(const QString &message, const QString &action = {});
     int noteIndex(const QList<Note> &notes, const QString &id) const;
     int nextZ(const QList<Note> &notes) const;

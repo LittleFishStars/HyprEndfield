@@ -26,6 +26,7 @@ public:
     Q_INVOKABLE void seek(double seconds, const QString &trackKey);
     Q_INVOKABLE void setVolume(double volume, const QString &trackKey);
 signals:
+    void eventOccurred(const QString &action);
     void activeChanged();
     void stateChanged();
     void positionChanged();

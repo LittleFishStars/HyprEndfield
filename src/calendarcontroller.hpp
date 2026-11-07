@@ -25,6 +25,7 @@ public:
     Q_INVOKABLE bool refreshReminders();
 
 signals:
+    void eventOccurred(const QString &action);
     void stateChanged();
     void activeChanged();
 

@@ -16,6 +16,7 @@ pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
 pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(PAM REQUIRED IMPORTED_TARGET pam)
 pkg_check_modules(LIBZIP REQUIRED IMPORTED_TARGET libzip)
+pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-unix-2.0)
 
 find_program(WAYLAND_SCANNER_EXECUTABLE wayland-scanner REQUIRED)
 find_file(WLR_DATA_CONTROL_PROTOCOL wlr-data-control-unstable-v1.xml
@@ -37,6 +38,11 @@ add_custom_command(
 
 qt_standard_project_setup(REQUIRES 6.8)
 
+set(EVENT_LOG_SOURCES
+    src/eventlogcontroller.cpp src/eventlogcontroller.hpp src/eventlogtext.cpp
+    src/endfield/modules/event_log.cpp src/endfield/core/data/event_log_store.cpp
+    src/endfield/core/data/json.cpp src/endfield/core/data/file_io.cpp src/endfield/data_platform.cpp)
+
 qt_add_executable(hyprendfield
     src/main.cpp
     src/applicationcontroller.cpp
@@ -53,6 +59,8 @@ qt_add_executable(hyprendfield
     src/profilecontroller.hpp
     src/orbipomcontroller.cpp
     src/orbipomcontroller.hpp
+    src/appshortcutscontroller.cpp src/appshortcutscontroller.hpp
+    ${EVENT_LOG_SOURCES}
     src/mediainfo.cpp
     src/mediainfo.hpp
     src/projectioncanvas.cpp
@@ -113,6 +121,8 @@ qt_add_qml_module(hyprendfield
         qml/ProfilePage.qml
         qml/ProfileField.qml
         qml/OrbiPomPage.qml
+        qml/EventLogPage.qml
+        qml/AppShortcutsPage.qml
         qml/WatchShell.qml
         qml/SystemPage.qml
         qml/DisplayPage.qml
@@ -211,6 +221,8 @@ target_compile_definitions(hyprendfield PRIVATE HYPR_VERSION="${PROJECT_VERSION}
 file(GLOB_RECURSE SETTINGS_ASSETS CONFIGURE_DEPENDS "assets/settings/*")
 file(GLOB_RECURSE MEDIA_ASSETS CONFIGURE_DEPENDS "assets/media-assembly/*")
 file(GLOB_RECURSE ORBIPOM_ASSETS CONFIGURE_DEPENDS "assets/orbipom/*")
+file(GLOB_RECURSE SHORTCUT_ASSETS CONFIGURE_DEPENDS "assets/app-shortcut/*")
+qt_add_resources(hyprendfield "shortcut_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SHORTCUT_ASSETS})
 qt_add_resources(hyprendfield "orbipom_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ORBIPOM_ASSETS})
 qt_add_resources(hyprendfield "media_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MEDIA_ASSETS})
 qt_add_resources(hyprendfield "settings_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS})
@@ -246,6 +258,7 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/icons/profile-frame.bgra
         assets/icons/projection.png
         assets/icons/minigame.png
+        assets/icons/event-log.png
         assets/icons/media-assembly.png
         assets/icons/file-shelf.png
         assets/icons/clipboard.png
@@ -261,6 +274,7 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
 )
 
 target_link_libraries(hyprendfield PRIVATE
+    PkgConfig::GIO
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -307,7 +321,7 @@ if(BUILD_TESTING)
         SETTINGS_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" SETTINGS_PREVIEW_DIR="${CMAKE_CURRENT_BINARY_DIR}/settings-preview")
     qt_add_resources(hyprendfield_settings_tests "settings_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS}
         assets/icons/notes.png assets/icons/file-shelf.png assets/icons/clipboard.png assets/icons/archive.png
-        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png assets/icons/projection.png assets/icons/media-assembly.png assets/icons/minigame.png)
+        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png assets/icons/projection.png assets/icons/media-assembly.png assets/icons/minigame.png assets/icons/event-log.png)
     add_test(NAME settings COMMAND hyprendfield_settings_tests)
     set_tests_properties(settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 45)
 endif()
@@ -441,6 +455,19 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_orbipom_tests PRIVATE ORBIPOM_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" ORBIPOM_PREVIEW_DIR="${CMAKE_BINARY_DIR}")
     qt_add_resources(hyprendfield_orbipom_tests "orbipom_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ORBIPOM_ASSETS})
     add_test(NAME orbipom COMMAND hyprendfield_orbipom_tests)
+    qt_add_executable(hyprendfield_event_log_tests tests/event_log.cpp ${EVENT_LOG_SOURCES})
+    target_include_directories(hyprendfield_event_log_tests PRIVATE src src/endfield)
+    target_link_libraries(hyprendfield_event_log_tests PRIVATE Qt6::Quick Qt6::Concurrent Qt6::Test)
+    target_compile_definitions(hyprendfield_event_log_tests PRIVATE EVENT_LOG_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" EVENT_LOG_PREVIEW_DIR="${CMAKE_BINARY_DIR}")
+    add_test(NAME event_log COMMAND hyprendfield_event_log_tests)
+    qt_add_executable(hyprendfield_shortcut_tests tests/app_shortcuts.cpp src/appshortcutscontroller.cpp)
+    target_include_directories(hyprendfield_shortcut_tests PRIVATE src)
+    target_link_libraries(hyprendfield_shortcut_tests PRIVATE Qt6::Quick Qt6::Widgets Qt6::Test PkgConfig::GIO)
+    target_compile_definitions(hyprendfield_shortcut_tests PRIVATE SHORTCUT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" SHORTCUT_PREVIEW_DIR="${CMAKE_BINARY_DIR}")
+    qt_add_resources(hyprendfield_shortcut_tests "shortcut_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SHORTCUT_ASSETS})
+    add_test(NAME app_shortcuts COMMAND hyprendfield_shortcut_tests)
+    set_tests_properties(app_shortcuts PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
+    set_tests_properties(event_log PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
     set_tests_properties(orbipom PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
     qt_add_executable(hyprendfield_media_tests tests/media_components.cpp
         src/projectioncanvas.cpp src/mediainfo.cpp src/storagecontroller.cpp src/notescontroller.cpp src/profilecontroller.cpp

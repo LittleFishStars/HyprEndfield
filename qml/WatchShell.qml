@@ -11,6 +11,7 @@ Item {
     height: 640
 
     property string selectedModule: "system"
+    onSelectedModuleChanged: if (typeof eventLogController !== "undefined") eventLogController.record("moduleOpened", {module: selectedModule === "activity" ? "activityMonitor" : selectedModule})
     readonly property bool bootLogActive: menuScene.bootActive
     property real rightScrollOffset: 0
     readonly property real maximumRightScrollOffset: Math.max(0, (Math.ceil(rightButtons.length / 2) - 5) * 15.5)
@@ -131,12 +132,23 @@ Item {
         },
         {
             key: "minigame", label: qsTr("可露希尔的小游戏"), icon: "qrc:/assets/icons/minigame.png"
+        },
+        {
+            key: "eventLog", label: qsTr("事件日志"), icon: "qrc:/assets/icons/event-log.png"
         }
     ]
 
     readonly property var rightButtons: displaySettings.moduleOrder
         .filter(key => !displaySettings.hiddenModules.includes(key))
         .map(key => availableRightButtons.find(entry => entry.key === key)).filter(Boolean)
+        .concat(typeof appShortcutsController === "undefined" ? [] : appShortcutsController.state.items.map(app => ({
+            key: "shortcut:" + app.id, shortcutId: app.id, label: app.name, icon: app.icon
+        })))
+        .concat([{key: "addApp", label: qsTr("+ 添加应用"), glyph: "addApp"}])
+    Connections {
+        target: typeof appShortcutsController === "undefined" ? null : appShortcutsController
+        function onLaunchFailed() { shell.selectedModule = "addApp" }
+    }
     onRightButtonsChanged: {
         rightScrollOffset = Math.min(maximumRightScrollOffset, rightScrollOffset);
         if (availableRightButtons.some(entry => entry.key === selectedModule)

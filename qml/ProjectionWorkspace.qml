@@ -12,6 +12,7 @@ Item {
     property real darkness: .63
     property bool confirmClear: false
     property alias ink: ink
+    onDottedChanged: if (opened && typeof eventLogController !== "undefined") eventLogController.recordAction("projectionAction", "backgroundChanged", true)
     visible: opened && presented
     onVisibleChanged: if (visible) forceActiveFocus()
     onOpenedChanged: { if (!opened) { toolbar.popup = ""; confirmClear = false; } appController.setProjectionActive(opened); }
@@ -60,7 +61,10 @@ Item {
             }
         }
     }
-    ProjectionCanvas { id: ink; objectName: "projectionInk"; anchors.fill: parent; z: 2; enabled: false; onMediaChanged: workspace.syncMedia() }
+    ProjectionCanvas { id: ink; objectName: "projectionInk"; anchors.fill: parent; z: 2; enabled: false; onMediaChanged: workspace.syncMedia()
+        onEventOccurred: action => { if (typeof eventLogController !== "undefined") eventLogController.recordAction("projectionAction", action, action === "erased") }
+        onPenChanged: if (workspace.opened && typeof eventLogController !== "undefined") eventLogController.recordAction("projectionAction", "brushChanged", true)
+    }
     DropArea { anchors.fill: parent; onEntered: drag => drag.accepted = drag.hasUrls && drag.urls.length === 1; onDropped: drop => { ink.importMedia(drop.urls[0]); drop.accepted = true; } }
     ProjectionTools { id: toolbar; workspace: parent; fullScreen: true; x: Math.max(6, (parent.width - width) / 2); y: Math.min(64, Math.max(6, parent.height - height - 8)); z: 100 }
     Text { x: Math.max(10, parent.width / 2 - 280); y: toolbar.y + toolbar.height + 18; width: Math.min(560, parent.width - 20); horizontalAlignment: Text.AlignHCenter; text: ink.message; color: "#DDDDDD"; font.family: harmonyRegular.name; font.pixelSize: 12; renderType: Text.CurveRendering; z: 99 }

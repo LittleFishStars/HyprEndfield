@@ -23,6 +23,7 @@ Item {
         case "back":return "M15 4l-8 8 8 8"
         case "trash":return "M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15"
         case "export":return "M12 15V3M7 8l5-5 5 5M4 14v7h16v-7"
+        case "ext":return "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"
         default:return ""
         }
     }

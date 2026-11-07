@@ -72,6 +72,7 @@ public:
         const QString &key, const QVariant &value);
 
 signals:
+    void eventOccurred(const QString &action);
     void stateChanged();
     void activeChanged();
     void actionFinished(const QString &action, bool success, const QString &message);

@@ -23,6 +23,7 @@ ProjectionCanvas::ProjectionCanvas(QQuickItem *parent) : QQuickPaintedItem(paren
             item["id"] = QUuid::createUuid().toString(QUuid::WithoutBraces);
             item["x"] = (width() - w) / 2; item["y"] = (height() - h) / 2; item["width"] = w; item["height"] = h;
             m_media.append(item); m_message.clear(); emit mediaChanged();
+            emit eventOccurred("mediaAdded");
         }
         emit messageChanged();
     });
@@ -63,7 +64,7 @@ void ProjectionCanvas::erase(QPointF point) {
         }
         return false;
     });
-    if (before != m_strokes.size()) { update(); emit contentChanged(); }
+    if (before != m_strokes.size()) { update(); emit contentChanged(); emit eventOccurred("erased"); }
 }
 void ProjectionCanvas::mousePressEvent(QMouseEvent *e) {
     if (e->button() == Qt::RightButton) { m_erasing = !m_erasing; emit penChanged(); return; }
@@ -77,11 +78,11 @@ void ProjectionCanvas::moveStroke(QPointF point) { if (m_drawing) { if (m_erasin
 void ProjectionCanvas::mouseMoveEvent(QMouseEvent *e) { moveStroke(e->position()); }
 void ProjectionCanvas::mouseReleaseEvent(QMouseEvent *) { endStroke(); }
 void ProjectionCanvas::endStroke() {
-    if (m_drawing && !m_erasing && !m_pending.points.isEmpty() && m_strokes.size() < 4096) { m_strokes.append(m_pending); emit contentChanged(); }
+    if (m_drawing && !m_erasing && !m_pending.points.isEmpty() && m_strokes.size() < 4096) { m_strokes.append(m_pending); emit contentChanged(); emit eventOccurred("drawingEdited"); }
     m_drawing = false; m_pending.points.clear(); update();
 }
 void ProjectionCanvas::wheelEvent(QWheelEvent *e) { m_width = std::clamp(m_width + e->angleDelta().y() / 120., 1., 80.); emit penChanged(); e->accept(); }
-void ProjectionCanvas::clearContent() { m_strokes.clear(); m_pending.points.clear(); m_media.clear(); update(); emit contentChanged(); emit mediaChanged(); }
+void ProjectionCanvas::clearContent() { const bool changed = !m_strokes.isEmpty() || !m_media.isEmpty(); m_strokes.clear(); m_pending.points.clear(); m_media.clear(); update(); emit contentChanged(); emit mediaChanged(); if (changed) emit eventOccurred("cleared"); }
 void ProjectionCanvas::importMedia(const QUrl &url) {
     if (m_import.isRunning()) return;
     if (m_media.size() >= 16) { m_message = tr("投影最多添加 16 个媒体文件。"); emit messageChanged(); return; }
@@ -89,7 +90,8 @@ void ProjectionCanvas::importMedia(const QUrl &url) {
     m_import.setFuture(QtConcurrent::run(inspectLocalMedia, url));
 }
 void ProjectionCanvas::removeMedia(const QString &id) {
-    m_media.removeIf([&](const QVariant &v) { return v.toMap().value("id").toString() == id; }); emit mediaChanged();
+    if (m_media.removeIf([&](const QVariant &v) { return v.toMap().value("id").toString() == id; })) emit eventOccurred("mediaRemoved");
+    emit mediaChanged();
 }
 void ProjectionCanvas::placeMedia(const QString &id, qreal x, qreal y, qreal w, qreal h) {
     if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(w) || !std::isfinite(h)) return;

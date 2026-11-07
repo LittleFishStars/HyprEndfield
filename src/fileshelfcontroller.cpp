@@ -274,15 +274,18 @@ bool FileShelfController::removeItems(const QStringList &ids)
 {
     if (m_busy || m_dragging || ids.isEmpty()) return false;
     auto next = m_entries;
+    QStringList removedNames;
+    for (const auto &entry : next) if (ids.contains(entry.id)) removedNames.append(QFileInfo(entry.path).fileName());
     next.removeIf([&ids](const Entry &entry) { return ids.contains(entry.id); });
-    if (save(next)) { emit actionFinished("remove", true, QCoreApplication::translate("HyprEndfield", "已从暂存架移除")); return true; }
+    if (save(next)) { for (const auto &name : removedNames) emit itemRemoved(name); emit actionFinished("remove", true, QCoreApplication::translate("HyprEndfield", "已从暂存架移除")); return true; }
     return false;
 }
 
 bool FileShelfController::clear()
 {
     if (m_busy || m_dragging) return false;
-    if (save({})) { emit actionFinished("clear", true, QCoreApplication::translate("HyprEndfield", "暂存架已清空")); return true; }
+    const int count = m_entries.size();
+    if (save({})) { if (count) emit shelfCleared(count); emit actionFinished("clear", true, QCoreApplication::translate("HyprEndfield", "暂存架已清空")); return true; }
     return false;
 }
 
