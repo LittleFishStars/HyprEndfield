@@ -25,6 +25,14 @@ Item {
                                                    ? sourceWatchAnimation.frame(animationPhase,
                                                                                 contentAnimationTime)
                                                    : animationFrame
+    readonly property real navigationAdvanceDuration: 0.40
+    readonly property var navigationAnimationFrame: animationPhase === 1
+                                                      ? sourceWatchAnimation.frame(
+                                                            animationPhase,
+                                                            Math.min(sourceWatchAnimation.openingDuration,
+                                                                     contentAnimationTime
+                                                                     + navigationAdvanceDuration))
+                                                      : animationFrame
     readonly property quaternion sceneRotation: sourceWatchAnimation.combinedRotation(
                                                     animationPhase, animationTime,
                                                     gyroRotation)
@@ -104,6 +112,16 @@ Item {
 
     function contentListValue(name, index, fallbackValue) {
         const values = contentAnimationFrame[name]
+        return values === undefined || index >= values.length ? fallbackValue : values[index]
+    }
+
+    function navigationFrameValue(name, fallbackValue) {
+        const value = navigationAnimationFrame[name]
+        return value === undefined ? fallbackValue : value
+    }
+
+    function navigationListValue(name, index, fallbackValue) {
+        const values = navigationAnimationFrame[name]
         return values === undefined || index >= values.length ? fallbackValue : values[index]
     }
 
@@ -496,8 +514,8 @@ Item {
                 designX: modelData.x
                 restRotation: modelData.rotation
                 leftSide: true
-                opacity: shell.contentListValue("leftAlpha", index,
-                                                shell.contentFrameValue("nativeOpacity", 1))
+                opacity: shell.navigationListValue("leftAlpha", index,
+                                                   shell.navigationFrameValue("nativeOpacity", 1))
                 selected: shell.selectedModule === modelData.key
                 onTriggered: shell.selectedModule = modelData.key
             }
@@ -526,8 +544,8 @@ Item {
                     iconSource: modelData.icon || ""
                     slant: -2
                     designX: shell.rightButtonX(index)
-                    opacity: shell.contentListValue("rightAlpha", index,
-                                                    shell.contentFrameValue("nativeOpacity", 1))
+                    opacity: shell.navigationListValue("rightAlpha", index,
+                                                       shell.navigationFrameValue("nativeOpacity", 1))
                     selected: shell.selectedModule === modelData.key
                     onTriggered: shell.selectedModule = modelData.key
                 }
