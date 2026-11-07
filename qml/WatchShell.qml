@@ -15,6 +15,7 @@ Item {
     property int animationPhase: 0
     property real animationTime: sourceWatchAnimation.openingDuration
     property real contentAnimationTime: sourceWatchAnimation.openingDuration
+    readonly property real contentAdvanceDuration: 0.40
     property quaternion gyroStart: sourceWatchAnimation.neutralGyro
     property quaternion gyroEnd: sourceWatchAnimation.neutralGyro
     property real gyroProgress: 1
@@ -22,16 +23,18 @@ Item {
                                                    gyroStart, gyroEnd, gyroProgress)
     readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, animationTime)
     readonly property var contentAnimationFrame: animationPhase === 1
-                                                   ? sourceWatchAnimation.frame(animationPhase,
-                                                                                contentAnimationTime)
+                                                   ? sourceWatchAnimation.frame(
+                                                         animationPhase,
+                                                         Math.min(sourceWatchAnimation.openingDuration,
+                                                                  contentAnimationTime
+                                                                  + contentAdvanceDuration))
                                                    : animationFrame
-    readonly property real navigationAdvanceDuration: 0.40
     readonly property var navigationAnimationFrame: animationPhase === 1
                                                       ? sourceWatchAnimation.frame(
                                                             animationPhase,
                                                             Math.min(sourceWatchAnimation.openingDuration,
                                                                      contentAnimationTime
-                                                                     + navigationAdvanceDuration))
+                                                                     + contentAdvanceDuration))
                                                       : animationFrame
     readonly property quaternion sceneRotation: sourceWatchAnimation.combinedRotation(
                                                     animationPhase, animationTime,
