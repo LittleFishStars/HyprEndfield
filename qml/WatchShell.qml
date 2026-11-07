@@ -16,17 +16,34 @@ Item {
     property real animationTime: sourceWatchAnimation.openingDuration
     property real contentAnimationTime: sourceWatchAnimation.openingDuration
     readonly property real contentAdvanceDuration: 0.40
+    readonly property real closingLeadDuration: sourceWatchAnimation.contentTransitionDuration
+    readonly property real closingSequenceDuration: closingLeadDuration
+                                                   + sourceWatchAnimation.closingDuration
+    readonly property real sourceAnimationTime: animationPhase === 2
+                                                 ? Math.max(0, animationTime)
+                                                 : animationTime
+    readonly property real centralClosingTime: animationPhase === 2
+                                                ? Math.max(0, Math.min(
+                                                               closingLeadDuration,
+                                                               animationTime
+                                                               + closingLeadDuration))
+                                                : sourceAnimationTime
     property quaternion gyroStart: sourceWatchAnimation.neutralGyro
     property quaternion gyroEnd: sourceWatchAnimation.neutralGyro
     property real gyroProgress: 1
     readonly property quaternion gyroRotation: sourceWatchAnimation.interpolateRotation(
                                                    gyroStart, gyroEnd, gyroProgress)
-    readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, animationTime)
+    readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase,
+                                                                      sourceAnimationTime)
     readonly property var baseContentAnimationFrame: animationPhase === 1
                                                        ? sourceWatchAnimation.frame(
                                                              animationPhase,
                                                              contentAnimationTime)
-                                                       : animationFrame
+                                                       : animationPhase === 2
+                                                         ? sourceWatchAnimation.frame(
+                                                               animationPhase,
+                                                               centralClosingTime)
+                                                         : animationFrame
     readonly property var contentAnimationFrame: animationPhase === 1
                                                    ? sourceWatchAnimation.frame(
                                                          animationPhase,
@@ -42,7 +59,7 @@ Item {
                                                                      + contentAdvanceDuration))
                                                       : animationFrame
     readonly property quaternion sceneRotation: sourceWatchAnimation.combinedRotation(
-                                                    animationPhase, animationTime,
+                                                    animationPhase, sourceAnimationTime,
                                                     gyroRotation)
     readonly property real sceneVectorLength: Math.sqrt(sceneRotation.x * sceneRotation.x
                                                         + sceneRotation.y * sceneRotation.y
@@ -118,6 +135,13 @@ Item {
         return value === undefined ? fallbackValue : value
     }
 
+    function remainingContentFrameValue(name, fallbackValue) {
+        const value = contentFrameValue(name, fallbackValue)
+        return animationPhase === 2
+                ? value * contentFrameValue("nativeOpacity", 1)
+                : value
+    }
+
     function baseContentFrameValue(name, fallbackValue) {
         const value = baseContentAnimationFrame[name]
         return value === undefined ? fallbackValue : value
@@ -165,10 +189,10 @@ Item {
             animationTime = sourceWatchAnimation.closingDuration
             return
         }
-        animationTime = 0
-        sourceClip.from = 0
+        animationTime = -closingLeadDuration
+        sourceClip.from = -closingLeadDuration
         sourceClip.to = sourceWatchAnimation.closingDuration
-        sourceClip.duration = Math.round(sourceWatchAnimation.closingDuration * 1000)
+        sourceClip.duration = Math.round(closingSequenceDuration * 1000)
         sourceClip.restart()
     }
 
@@ -627,7 +651,7 @@ Item {
             height: 65
             label: "存储"
             glyph: "storage"
-            opacity: shell.contentFrameValue("storageOpacity", 1)
+            opacity: shell.remainingContentFrameValue("storageOpacity", 1)
             selected: shell.selectedModule === "storage"
             onTriggered: shell.selectedModule = "storage"
         }
@@ -640,7 +664,7 @@ Item {
             label: "活动监视器"
             glyph: "activity"
             mirrored: true
-            opacity: shell.contentFrameValue("activityOpacity", 1)
+            opacity: shell.remainingContentFrameValue("activityOpacity", 1)
             selected: shell.selectedModule === "activity"
             onTriggered: shell.selectedModule = "activity"
         }

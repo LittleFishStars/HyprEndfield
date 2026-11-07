@@ -110,7 +110,7 @@ Window {
     Timer {
         id: concealTimer
         interval: (displaySettings.reduceMotion ? 0
-                                                : Math.ceil(sourceWatchAnimation.closingDuration * 1000)) + 20
+                                                : Math.ceil(watchShell.closingSequenceDuration * 1000)) + 20
         repeat: false
         onTriggered: appController.completeHide()
     }

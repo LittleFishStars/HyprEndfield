@@ -11,6 +11,7 @@ class WatchAnimationController final : public QObject
     Q_OBJECT
     Q_PROPERTY(double openingDuration READ openingDuration CONSTANT)
     Q_PROPERTY(double closingDuration READ closingDuration CONSTANT)
+    Q_PROPERTY(double contentTransitionDuration READ contentTransitionDuration CONSTANT)
     Q_PROPERTY(QQuaternion neutralGyro READ neutralGyro CONSTANT)
 
 public:
@@ -19,6 +20,7 @@ public:
 
     [[nodiscard]] double openingDuration() const;
     [[nodiscard]] double closingDuration() const;
+    [[nodiscard]] double contentTransitionDuration() const;
     [[nodiscard]] QQuaternion neutralGyro() const;
 
     Q_INVOKABLE QVariantMap frame(int phase, double time) const;

@@ -18,6 +18,8 @@ namespace
 {
 constexpr int OpeningPhase = 1;
 constexpr int ClosingPhase = 2;
+constexpr double ContentFadeStart = 0.20;
+constexpr double ContentFadeDuration = 0.24;
 
 double sourceNumber(const QJsonValue &value)
 {
@@ -360,16 +362,27 @@ struct WatchAnimationController::Data
 
     [[nodiscard]] double nativeOpacity(int phase, double time) const
     {
+        if (phase == ClosingPhase) {
+            if (time <= 0.0) {
+                return 1.0;
+            }
+            if (time >= ContentFadeDuration) {
+                return 0.0;
+            }
+            return timingCurve(1.0 - time / ContentFadeDuration,
+                               0.20, 0.72, 0.22, 1.0);
+        }
         if (phase != OpeningPhase) {
-            return phase == ClosingPhase ? 1.0 : 1.0;
-        }
-        if (time <= 0.20) {
-            return 0.0;
-        }
-        if (time >= 0.44) {
             return 1.0;
         }
-        return timingCurve((time - 0.20) / 0.24, 0.20, 0.72, 0.22, 1.0);
+        if (time <= ContentFadeStart) {
+            return 0.0;
+        }
+        if (time >= ContentFadeStart + ContentFadeDuration) {
+            return 1.0;
+        }
+        return timingCurve((time - ContentFadeStart) / ContentFadeDuration,
+                           0.20, 0.72, 0.22, 1.0);
     }
 
     void load()
@@ -460,6 +473,11 @@ double WatchAnimationController::openingDuration() const
 double WatchAnimationController::closingDuration() const
 {
     return m_data->exit.duration > 0.0 ? m_data->exit.duration : 1.0 / 3.0;
+}
+
+double WatchAnimationController::contentTransitionDuration() const
+{
+    return ContentFadeDuration;
 }
 
 QQuaternion WatchAnimationController::neutralGyro() const
