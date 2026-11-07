@@ -255,6 +255,15 @@ Item {
             presented: visible && appController.hudOpen
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        FileShelfPage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "fileShelf"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
     }
     MenuPlane {
         scene: menu.shell
@@ -322,6 +331,20 @@ Item {
                             leanY: menu.leanY
                             opacity: menu.shell.navigationListValue("rightAlpha", slot, 1)
                             onTriggered: menu.shell.selectedModule = entry.key
+                            DropArea {
+                                anchors.fill: parent
+                                enabled: parent.entry.key === "fileShelf"
+                                onEntered: drag => {
+                                    drag.accepted = drag.hasUrls && drag.urls.every(url => String(url).startsWith("file:"))
+                                }
+                                onDropped: drop => {
+                                    if (fileShelfController.addUrls(drop.urls)) {
+                                        menu.shell.selectedModule = "fileShelf"
+                                        drop.action = Qt.CopyAction
+                                        drop.accepted = true
+                                    }
+                                }
+                            }
                         }
                     }
                 }

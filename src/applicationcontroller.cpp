@@ -1,6 +1,7 @@
 #include "applicationcontroller.hpp"
 
 #include <QCoreApplication>
+#include <QDrag>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QProcess>
@@ -83,6 +84,7 @@ void ApplicationController::executeCommand(const QString &command)
 
 void ApplicationController::showHud()
 {
+    if (m_fileDragActive) return;
     setHudVisible(true);
     if (m_window) {
         m_window->show();
@@ -101,6 +103,7 @@ void ApplicationController::hideHud()
 
 void ApplicationController::toggleHud()
 {
+    if (m_fileDragActive) { QDrag::cancel(); return; }
     if (m_hudOpen) {
         hideHud();
     } else {
@@ -115,9 +118,47 @@ void ApplicationController::completeHide()
     }
 
     setHudVisible(false);
+    if (m_fileDragActive) {
+        // A Wayland drag must retain its source wl_surface. An out-of-bounds
+        // input region releases the desktop without unmapping that surface.
+        m_fileDragRetracted = true;
+        if (m_window) { m_window->setMask(QRegion(-2, -2, 1, 1)); m_window->update(); }
+        if (m_fileDragFinished) finishFileDrag();
+        return;
+    }
     if (m_window) {
         m_window->hide();
     }
+}
+
+// Same order as EndfieldHUD ShelfDragPresentationState: retract fully, then
+// remain closed after a delivered copy or restore after cancellation.
+void ApplicationController::beginFileDrag()
+{
+    if (m_fileDragActive || !m_hudOpen) return;
+    m_fileDragActive = true;
+    m_fileDragFinished = false;
+    m_fileDragDelivered = false;
+    m_fileDragRetracted = false;
+    hideHud();
+}
+
+void ApplicationController::endFileDrag(bool delivered)
+{
+    if (!m_fileDragActive) return;
+    m_fileDragFinished = true;
+    m_fileDragDelivered = delivered;
+    if (m_fileDragRetracted) finishFileDrag();
+}
+
+void ApplicationController::finishFileDrag()
+{
+    m_fileDragActive = false;
+    if (m_fileDragDelivered) {
+        if (m_window) m_window->hide();
+    }
+    if (m_window) m_window->setMask(QRegion());
+    if (!m_fileDragDelivered) showHud();
 }
 
 void ApplicationController::quitApplication()

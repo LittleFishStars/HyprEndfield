@@ -60,6 +60,8 @@ qt_add_executable(hyprendfield
     src/clipboardcontroller.hpp
     src/notescontroller.cpp
     src/notescontroller.hpp
+    src/fileshelfcontroller.cpp
+    src/fileshelfcontroller.hpp
     ${WLR_DATA_CONTROL_HEADER}
     ${WLR_DATA_CONTROL_SOURCE}
 )
@@ -104,6 +106,10 @@ qt_add_qml_module(hyprendfield
         qml/NotesFormatBar.qml
         qml/NotesAddButton.qml
         qml/NotesGlyph.qml
+        qml/FileShelfPage.qml
+        qml/ShelfTile.qml
+        qml/ShelfDocument.qml
+        qml/ShelfProperties.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -262,6 +268,14 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_notes_tests PRIVATE NOTES_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME notes COMMAND hyprendfield_notes_tests)
     set_tests_properties(notes PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    qt_add_executable(hyprendfield_shelf_tests tests/file_shelf.cpp
+        src/fileshelfcontroller.cpp src/fileshelfcontroller.hpp
+        src/applicationcontroller.cpp src/applicationcontroller.hpp)
+    target_include_directories(hyprendfield_shelf_tests PRIVATE src)
+    target_link_libraries(hyprendfield_shelf_tests PRIVATE Qt6::Quick Qt6::DBus Qt6::Concurrent Qt6::Test)
+    target_compile_definitions(hyprendfield_shelf_tests PRIVATE SHELF_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    add_test(NAME file_shelf COMMAND hyprendfield_shelf_tests)
+    set_tests_properties(file_shelf PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 install(TARGETS hyprendfield

@@ -9,6 +9,7 @@
 #include "calendarcontroller.hpp"
 #include "clipboardcontroller.hpp"
 #include "notescontroller.hpp"
+#include "fileshelfcontroller.hpp"
 
 #include <QGuiApplication>
 #include <QIcon>
@@ -135,6 +136,7 @@ int main(int argc, char *argv[])
     CalendarController calendar;
     ClipboardController clipboard;
     NotesController notes;
+    FileShelfController fileShelf;
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
@@ -158,6 +160,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("calendarController"), &calendar);
     engine.rootContext()->setContextProperty(QStringLiteral("clipboardController"), &clipboard);
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
+    engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
     engine.addImageProvider(QStringLiteral("activity-icons"), new ActivityIconProvider);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
@@ -173,6 +176,10 @@ int main(int argc, char *argv[])
     }
 
     controller.setWindow(window);
+    fileShelf.setWindow(window);
+    QObject::connect(&fileShelf, &FileShelfController::externalOpened, &controller, &ApplicationController::hideHud);
+    QObject::connect(&fileShelf, &FileShelfController::dragStarted, &controller, &ApplicationController::beginFileDrag);
+    QObject::connect(&fileShelf, &FileShelfController::dragFinished, &controller, &ApplicationController::endFileDrag);
     QTimer::singleShot(0, &controller, [&controller, command] {
         controller.executeCommand(command);
     });

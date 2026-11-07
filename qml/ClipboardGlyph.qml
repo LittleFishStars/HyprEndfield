@@ -13,6 +13,8 @@ Item {
         case "link": return "M10 14l4-4M8.5 11.5l-2 2a3.5 3.5 0 0 0 5 5l2-2M15.5 12.5l2-2a3.5 3.5 0 0 0-5-5l-2 2";
         case "image": return "M3 4h18v16H3z";
         case "file": return "M5 3h9l5 5v13H5zM14 3v5h5";
+        case "folder": return "M3 5h7l2 2h9v13H3z";
+        case "x": return "M5.5 5.5l13 13M18.5 5.5l-13 13";
         case "trash": return "M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15";
         case "pin": return "M7 3h10M9.5 3v6.5L6 14h12l-3.5-4.5V3M12 14v7";
         default: return "";
