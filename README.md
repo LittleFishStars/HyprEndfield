@@ -1,4 +1,6 @@
 # HyprEndfield （源项目:[EndfieldHUD](https://github.com/DDDuoDuo/EndfieldHUD)）
+<img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/2b3e0c09-18b4-426d-b2cf-ec177305d778" />
+
 
 # 欢迎Linux用户提交Issue/Pr
 
