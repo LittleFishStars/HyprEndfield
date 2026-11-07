@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network Qml Quick)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network Qml Quick ShaderTools)
 find_package(LayerShellQt REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -30,10 +30,22 @@ qt_add_qml_module(hyprendfield
         qml/DisplayPage.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
-        qml/HudNavButton.qml
-        qml/HudBottomButton.qml
         qml/HudGlyph.qml
+        qml/MenuArt.qml
+        qml/MenuPlane.qml
+        qml/MenuCard.qml
+        qml/MenuTile.qml
+        qml/MenuClock.qml
+        qml/MenuBadge.qml
+        qml/MenuScene.qml
+        qml/MenuGeometry.js
 )
+
+file(GLOB MENU_VECTOR_ASSETS CONFIGURE_DEPENDS "assets/menu/*.svg" "assets/menu/*.png")
+qt_add_resources(hyprendfield "menu_vectors"
+    PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MENU_VECTOR_ASSETS})
+qt_add_shaders(hyprendfield "menu_shaders" PREFIX "/"
+    FILES shaders/viewport-mask.frag)
 
 qt_add_resources(hyprendfield "hyprendfield_assets"
     PREFIX "/"
@@ -60,7 +72,6 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/icons/map.png
         assets/icons/event-log.png
         assets/icons/SOURCES.json
-        assets/menu/card-contours.json
         assets/fonts/HarmonyOS_Sans_Regular.ttf
         assets/fonts/HarmonyOS_Sans_Medium.ttf
         assets/fonts/HarmonyOS_Sans_Bold.ttf
@@ -88,6 +99,18 @@ set_target_properties(hyprendfield PROPERTIES
 )
 
 include(GNUInstallDirs)
+include(CTest)
+if(BUILD_TESTING)
+    qt_add_executable(hyprendfield_visual_tests
+        tests/scene_projection.cpp src/watchanimationcontroller.cpp src/watchanimationcontroller.hpp)
+    target_include_directories(hyprendfield_visual_tests PRIVATE src)
+    target_link_libraries(hyprendfield_visual_tests PRIVATE Qt6::Core Qt6::Gui)
+    qt_add_resources(hyprendfield_visual_tests "test_watch_data" PREFIX "/" FILES
+        assets/watch/clips.json assets/watch/watch-blur.json
+        assets/watch/runtime-root-camera.json assets/watch/scene.json)
+    add_test(NAME scene_projection COMMAND hyprendfield_visual_tests)
+endif()
+
 install(TARGETS hyprendfield
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
 )

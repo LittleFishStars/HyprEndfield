@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Window
 
 Item {
     id: shell
@@ -13,215 +14,221 @@ Item {
     readonly property real maximumRightScrollOffset: 15.5
     property string clockText: "00:00:00"
     property string dateText: ""
+    property int clockSeconds: 0
+    // shared-scene.js camera and spring, with the existing user intensity controls.
+    property real cameraPitch: 20
+    property real cameraYaw: 0
+    property real targetPitch: 20
+    property real targetYaw: 0
+    property real pitchVelocity: 0
+    property real yawVelocity: 0
+    readonly property real rasterScale: Math.max(1, scale * 1000 / 1920 * 1.10) * Screen.devicePixelRatio * 2
     property int animationPhase: 0
     property real animationTime: sourceWatchAnimation.openingDuration
     property real contentAnimationTime: sourceWatchAnimation.openingDuration
     readonly property real contentAdvanceDuration: 0.40
     readonly property real closingLeadDuration: sourceWatchAnimation.contentTransitionDuration
     readonly property real closingDurationScale: 0.80
-    readonly property real closingSequenceDuration: closingDurationScale
-                                                   * (closingLeadDuration
-                                                      + sourceWatchAnimation.closingDuration)
-    readonly property real sourceAnimationTime: animationPhase === 2
-                                                 ? Math.max(0, animationTime)
-                                                 : animationTime
-    readonly property real centralClosingTime: animationPhase === 2
-                                                ? Math.max(0, Math.min(
-                                                               closingLeadDuration,
-                                                               animationTime
-                                                               + closingLeadDuration))
-                                                : sourceAnimationTime
-    property quaternion gyroStart: sourceWatchAnimation.neutralGyro
-    property quaternion gyroEnd: sourceWatchAnimation.neutralGyro
-    property real gyroProgress: 1
-    readonly property quaternion gyroRotation: sourceWatchAnimation.interpolateRotation(
-                                                   gyroStart, gyroEnd, gyroProgress)
-    readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase,
-                                                                      sourceAnimationTime)
-    readonly property var baseContentAnimationFrame: animationPhase === 1
-                                                       ? sourceWatchAnimation.frame(
-                                                             animationPhase,
-                                                             contentAnimationTime)
-                                                       : animationPhase === 2
-                                                         ? sourceWatchAnimation.frame(
-                                                               animationPhase,
-                                                               centralClosingTime)
-                                                         : animationFrame
-    readonly property var contentAnimationFrame: animationPhase === 1
-                                                   ? sourceWatchAnimation.frame(
-                                                         animationPhase,
-                                                         Math.min(sourceWatchAnimation.openingDuration,
-                                                                  contentAnimationTime
-                                                                  + contentAdvanceDuration))
-                                                   : animationFrame
-    readonly property var navigationAnimationFrame: animationPhase === 1
-                                                      ? sourceWatchAnimation.frame(
-                                                            animationPhase,
-                                                            Math.min(sourceWatchAnimation.openingDuration,
-                                                                     contentAnimationTime
-                                                                     + contentAdvanceDuration))
-                                                      : animationFrame
-    readonly property quaternion sceneRotation: sourceWatchAnimation.combinedRotation(
-                                                    animationPhase, sourceAnimationTime,
-                                                    gyroRotation)
-    readonly property real sceneVectorLength: Math.sqrt(sceneRotation.x * sceneRotation.x
-                                                        + sceneRotation.y * sceneRotation.y
-                                                        + sceneRotation.z * sceneRotation.z)
-    readonly property real sceneAxisX: sceneVectorLength > 0.000001
-                                       ? sceneRotation.x / sceneVectorLength : 0
-    readonly property real sceneAxisY: sceneVectorLength > 0.000001
-                                       ? sceneRotation.y / sceneVectorLength : 0
-    readonly property real sceneAxisZ: sceneVectorLength > 0.000001
-                                       ? sceneRotation.z / sceneVectorLength : 1
-    readonly property real sceneAngle: 2 * Math.atan2(sceneVectorLength,
-                                                      sceneRotation.scalar) * 180 / Math.PI
+    readonly property real closingSequenceDuration: closingDurationScale * (closingLeadDuration + sourceWatchAnimation.closingDuration)
+    readonly property real sourceAnimationTime: animationPhase === 2 ? Math.max(0, animationTime) : animationTime
+    readonly property real centralClosingTime: animationPhase === 2 ? Math.max(0, Math.min(closingLeadDuration, animationTime + closingLeadDuration)) : sourceAnimationTime
+    readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, sourceAnimationTime)
+    readonly property var settledFrame: sourceWatchAnimation.frame(0, sourceWatchAnimation.openingDuration)
+    readonly property var baseContentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, contentAnimationTime) : animationPhase === 2 ? sourceWatchAnimation.frame(animationPhase, centralClosingTime) : animationFrame
+    readonly property var contentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, contentAnimationTime + contentAdvanceDuration)) : animationFrame
+    readonly property var navigationAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, contentAnimationTime + contentAdvanceDuration)) : animationFrame
     readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
     readonly property bool transitioning: sourceClip.running || contentClip.running
     readonly property real contentOverlapDuration: 0.40
-    readonly property real motionIntensity: 1.25
-                                                * Math.max(0, Math.min(2, displaySettings.parallaxIntensity))
-                                                * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity))
 
     readonly property var leftButtons: [
-        { key: "system", label: "系统", x: 42.61, y: 128.81 },
-        { key: "display", label: "显示", x: 11.32, y: 218.31 },
-        { key: "hotkeys", label: "快捷键", x: 7.92, y: 308.97 },
-        { key: "about", label: "关于", x: 27.89, y: 389.72 }
+        {
+            key: "system",
+            label: "系统"
+        },
+        {
+            key: "display",
+            label: "显示"
+        },
+        {
+            key: "hotkeys",
+            label: "快捷键"
+        },
+        {
+            key: "about",
+            label: "关于"
+        }
     ]
 
     readonly property var rightButtons: [
-        { key: "notes", label: "便笺", icon: "qrc:/assets/icons/notes.png" },
-        { key: "fileShelf", label: "文件暂存架", icon: "qrc:/assets/icons/file-shelf.png" },
-        { key: "clipboard", label: "剪贴板", icon: "qrc:/assets/icons/clipboard.png" },
-        { key: "archive", label: "档案库", icon: "qrc:/assets/icons/archive.png" },
-        { key: "nowPlaying", label: "当前播放", glyph: "nowPlaying" },
-        { key: "volume", label: "音量", glyph: "volume" },
-        { key: "reader", label: "阅读器", icon: "qrc:/assets/icons/reader.png" },
-        { key: "workMode", label: "工作模式", icon: "qrc:/assets/icons/work-mode.png" },
-        { key: "calendar", label: "日历", icon: "qrc:/assets/icons/calendar.png" },
-        { key: "map", label: "地图", icon: "qrc:/assets/icons/map.png" },
-        { key: "eventLog", label: "事件日志", icon: "qrc:/assets/icons/event-log.png" },
-        { key: "addApp", label: "+ 添加应用", glyph: "addApp" }
+        {
+            key: "notes",
+            label: "便笺",
+            icon: "qrc:/assets/icons/notes.png"
+        },
+        {
+            key: "fileShelf",
+            label: "文件暂存架",
+            icon: "qrc:/assets/icons/file-shelf.png"
+        },
+        {
+            key: "clipboard",
+            label: "剪贴板",
+            icon: "qrc:/assets/icons/clipboard.png"
+        },
+        {
+            key: "archive",
+            label: "档案库",
+            icon: "qrc:/assets/icons/archive.png"
+        },
+        {
+            key: "nowPlaying",
+            label: "当前播放",
+            glyph: "nowPlaying"
+        },
+        {
+            key: "volume",
+            label: "音量",
+            glyph: "volume"
+        },
+        {
+            key: "reader",
+            label: "阅读器",
+            icon: "qrc:/assets/icons/reader.png"
+        },
+        {
+            key: "workMode",
+            label: "工作模式",
+            icon: "qrc:/assets/icons/work-mode.png"
+        },
+        {
+            key: "calendar",
+            label: "日历",
+            icon: "qrc:/assets/icons/calendar.png"
+        },
+        {
+            key: "map",
+            label: "地图",
+            icon: "qrc:/assets/icons/map.png"
+        },
+        {
+            key: "eventLog",
+            label: "事件日志",
+            icon: "qrc:/assets/icons/event-log.png"
+        },
+        {
+            key: "addApp",
+            label: "+ 添加应用",
+            glyph: "addApp"
+        }
     ]
 
-    function rightButtonX(index) {
-        const row = Math.floor(index / 2)
-        const angle = (22.52 - row * 15.5 + rightScrollOffset) * Math.PI / 180
-        return (960 + (492 * 0.96 + 110) * Math.cos(angle)) * (1000 / 1920)
-                + (index % 2) * 128 * (1000 / 1920)
-    }
-
-    function rightButtonY(index) {
-        const row = Math.floor(index / 2)
-        const angle = (22.52 - row * 15.5 + rightScrollOffset) * Math.PI / 180
-        return (540 - 50 - 490 * angle - 22) * (1000 / 1920)
-                + (640 - 1080 * (1000 / 1920)) / 2
-    }
-
     function updateClock() {
-        const now = new Date()
-        clockText = Qt.formatTime(now, displaySettings.clock24Hour ? "HH:mm:ss" : "hh:mm:ss AP")
-        dateText = Qt.formatDate(now, "yyyy.MM.dd  ddd")
+        const now = new Date();
+        clockText = Qt.formatTime(now, displaySettings.clock24Hour ? "HH:mm:ss" : "hh:mm:ss AP");
+        dateText = Qt.formatDate(now, "ddd MMM d");
+        clockSeconds = now.getSeconds();
     }
 
     function scrollRightList(direction) {
-        rightScrollOffset = Math.max(0, Math.min(maximumRightScrollOffset,
-                                                  rightScrollOffset + direction * 15.5))
+        rightScrollOffset = Math.max(0, Math.min(maximumRightScrollOffset, rightScrollOffset + direction * 15.5));
     }
 
     function frameValue(name, fallbackValue) {
-        const value = animationFrame[name]
-        return value === undefined ? fallbackValue : value
+        const value = animationFrame[name];
+        return value === undefined ? fallbackValue : value;
+    }
+
+    function ringOpacity(name) {
+        // The original texture's material alpha is already in the imported SVG.
+        // Apply the clip's relative fade, so it is not multiplied in a second time.
+        const settled = settledFrame[name];
+        return Math.max(0, Math.min(1, frameValue(name, 1) / (settled > .00001 ? settled : 1)));
     }
 
     function listValue(name, index, fallbackValue) {
-        const values = animationFrame[name]
-        return values === undefined || index >= values.length ? fallbackValue : values[index]
+        const values = animationFrame[name];
+        return values === undefined || index >= values.length ? fallbackValue : values[index];
     }
 
     function contentFrameValue(name, fallbackValue) {
-        const value = contentAnimationFrame[name]
-        return value === undefined ? fallbackValue : value
+        const value = contentAnimationFrame[name];
+        return value === undefined ? fallbackValue : value;
     }
 
     function remainingContentFrameValue(name, fallbackValue) {
-        const value = contentFrameValue(name, fallbackValue)
-        return animationPhase === 2
-                ? value * contentFrameValue("nativeOpacity", 1)
-                : value
+        const value = contentFrameValue(name, fallbackValue);
+        return animationPhase === 2 ? value * contentFrameValue("nativeOpacity", 1) : value;
     }
 
     function baseContentFrameValue(name, fallbackValue) {
-        const value = baseContentAnimationFrame[name]
-        return value === undefined ? fallbackValue : value
+        const value = baseContentAnimationFrame[name];
+        return value === undefined ? fallbackValue : value;
     }
 
     function contentListValue(name, index, fallbackValue) {
-        const values = contentAnimationFrame[name]
-        return values === undefined || index >= values.length ? fallbackValue : values[index]
+        const values = contentAnimationFrame[name];
+        return values === undefined || index >= values.length ? fallbackValue : values[index];
     }
 
     function navigationFrameValue(name, fallbackValue) {
-        const value = navigationAnimationFrame[name]
-        return value === undefined ? fallbackValue : value
+        const value = navigationAnimationFrame[name];
+        return value === undefined ? fallbackValue : value;
     }
 
     function navigationListValue(name, index, fallbackValue) {
-        const values = navigationAnimationFrame[name]
-        return values === undefined || index >= values.length ? fallbackValue : values[index]
+        const values = navigationAnimationFrame[name];
+        return values === undefined || index >= values.length ? fallbackValue : values[index];
     }
 
     function animateEntrance() {
-        sourceClip.stop()
-        contentClip.stop()
-        animationPhase = 1
+        sourceClip.stop();
+        contentClip.stop();
+        animationPhase = 1;
         if (displaySettings.reduceMotion) {
-            animationTime = sourceWatchAnimation.openingDuration
-            contentAnimationTime = sourceWatchAnimation.openingDuration
-            animationPhase = 0
-            return
+            animationTime = sourceWatchAnimation.openingDuration;
+            contentAnimationTime = sourceWatchAnimation.openingDuration;
+            animationPhase = 0;
+            return;
         }
-        animationTime = 0
-        contentAnimationTime = 0
-        sourceClip.from = 0
-        sourceClip.to = sourceWatchAnimation.openingDuration
-        sourceClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000)
-        sourceClip.restart()
-        contentClip.restart()
+        animationTime = 0;
+        contentAnimationTime = 0;
+        sourceClip.from = 0;
+        sourceClip.to = sourceWatchAnimation.openingDuration;
+        sourceClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000);
+        sourceClip.restart();
+        contentClip.restart();
     }
 
     function animateExit() {
-        sourceClip.stop()
-        contentClip.stop()
-        animationPhase = 2
+        sourceClip.stop();
+        contentClip.stop();
+        animationPhase = 2;
         if (displaySettings.reduceMotion) {
-            animationTime = sourceWatchAnimation.closingDuration
-            return
+            animationTime = sourceWatchAnimation.closingDuration;
+            return;
         }
-        animationTime = -closingLeadDuration
-        sourceClip.from = -closingLeadDuration
-        sourceClip.to = sourceWatchAnimation.closingDuration
-        sourceClip.duration = Math.round(closingSequenceDuration * 1000)
-        sourceClip.restart()
+        animationTime = -closingLeadDuration;
+        sourceClip.from = -closingLeadDuration;
+        sourceClip.to = sourceWatchAnimation.closingDuration;
+        sourceClip.duration = Math.round(closingSequenceDuration * 1000);
+        sourceClip.restart();
     }
 
     function retargetPointer(normalizedX, normalizedY) {
-        gyroStart = gyroRotation
-        gyroEnd = displaySettings.reduceMotion
-                ? sourceWatchAnimation.neutralGyro
-                : sourceWatchAnimation.gyroTarget(normalizedX, normalizedY, motionIntensity)
-        gyroProgress = 0
-        gyroMotion.restart()
+        const intensity = displaySettings.reduceMotion ? 0 : Math.max(0, Math.min(2, displaySettings.parallaxIntensity)) * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity));
+        targetPitch = 20 - normalizedY * 2.5 * intensity;
+        targetYaw = -normalizedX * 4 * intensity;
     }
 
-    NumberAnimation {
-        id: gyroMotion
-        target: shell
-        property: "gyroProgress"
-        from: 0
-        to: 1
-        duration: 500
-        easing.type: Easing.OutQuad
+    FrameAnimation {
+        running: appController.hudVisible && !shell.displaySettings.reduceMotion && (Math.abs(shell.cameraPitch - shell.targetPitch) > 0.002 || Math.abs(shell.cameraYaw - shell.targetYaw) > 0.002 || Math.abs(shell.pitchVelocity) > 0.0006 || Math.abs(shell.yawVelocity) > 0.0006)
+        onTriggered: {
+            shell.pitchVelocity = (shell.pitchVelocity + (shell.targetPitch - shell.cameraPitch) * .008) * .8;
+            shell.yawVelocity = (shell.yawVelocity + (shell.targetYaw - shell.cameraYaw) * .008) * .8;
+            shell.cameraPitch += shell.pitchVelocity;
+            shell.cameraYaw += shell.yawVelocity;
+        }
     }
 
     NumberAnimation {
@@ -235,8 +242,7 @@ Item {
         id: contentClip
 
         PauseAnimation {
-            duration: Math.max(0, Math.round((sourceWatchAnimation.openingDuration
-                                             - shell.contentOverlapDuration) * 1000))
+            duration: Math.max(0, Math.round((sourceWatchAnimation.openingDuration - shell.contentOverlapDuration) * 1000))
         }
 
         NumberAnimation {
@@ -257,651 +263,11 @@ Item {
         onTriggered: shell.updateClock()
     }
 
-    MouseArea {
-        anchors.fill: parent
-    }
-
-    Item {
-        id: scene
-        anchors.fill: parent
-        transformOrigin: Item.Center
-        enabled: !shell.transitioning
-
-        transform: [
-            Rotation {
-                origin.x: 500
-                origin.y: 320
-                axis.x: shell.sceneAxisX
-                axis.y: shell.sceneAxisY
-                axis.z: shell.sceneAxisZ
-                angle: shell.sceneAngle
-            }
-        ]
-
-    Image {
-        id: outerRing
-        x: 150
-        y: -30
-        width: 700
-        height: 700
-        source: "qrc:/assets/watch/ui_out_ring.png"
-        fillMode: Image.PreserveAspectFit
-        opacity: shell.frameValue("outerOpacity", 1)
-        scale: shell.frameValue("outerScale", 1)
-        rotation: shell.frameValue("outerRotation", 0)
-        transformOrigin: Item.Center
-        smooth: true
-        mipmap: true
-    }
-
-    Image {
-        id: secondaryRing
-        x: 200
-        y: 20
-        width: 600
-        height: 600
-        source: "qrc:/assets/watch/ui_out1_ring.png"
-        fillMode: Image.PreserveAspectFit
-        opacity: shell.frameValue("secondaryOpacity", 1)
-        scale: shell.frameValue("secondaryScale", 1)
-        rotation: shell.frameValue("secondaryRotation", 0)
-        transformOrigin: Item.Center
-        smooth: true
-        mipmap: true
-    }
-
-    Item {
-        anchors.fill: parent
-        scale: shell.frameValue("meshScale", 1)
-        rotation: shell.frameValue("meshRotation", 0)
-        transformOrigin: Item.Center
-
-        Item {
-            x: 0
-            y: (640 - 1080 * (1000 / 1920)) / 2
-            width: 1920
-            height: 1080
-            scale: 1000 / 1920
-            transformOrigin: Item.TopLeft
-
-            Shape {
-                width: 1920
-                height: 1080
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeColor: "#22ffffff"
-                    strokeWidth: 2.5
-                    fillColor: "transparent"
-                    PathSvg { path: "M1711.9 184.1A811.8 811.8 0 0 1 1561.1 1109.2" }
-                }
-                ShapePath {
-                    strokeColor: "#26ffffff"
-                    strokeWidth: 3.9
-                    fillColor: "transparent"
-                    PathSvg { path: "M1470.9 -101.6A1323.8 1323.8 0 0 1 1889.6 517.4" }
-                }
-                ShapePath {
-                    strokeColor: "#20ffffff"
-                    strokeWidth: 2
-                    fillColor: "transparent"
-                    PathSvg { path: "M226.2 175.6A798.5 798.5 0 0 0 490.9 -120.7" }
-                }
-                ShapePath {
-                    strokeColor: "#1fffffff"
-                    strokeWidth: 2
-                    fillColor: "transparent"
-                    PathSvg { path: "M50 813.9A753.3 753.3 0 0 0 190.8 229" }
-                }
-                ShapePath {
-                    strokeColor: "#28ffffff"
-                    strokeWidth: 3.6
-                    fillColor: "transparent"
-                    PathSvg { path: "M1607.8 909.4L1755.7 1011.5" }
-                }
-            }
-        }
-    }
-
-    Item {
-        id: panelPlane
-        anchors.fill: parent
-        transform: [
-            Scale {
-                origin.x: 500
-                origin.y: 320
-                xScale: 0.82
-                yScale: 0.82
-            }
-        ]
-
-        Rectangle {
-            x: 250
-            y: 70
-            width: 500
-            height: 500
-            radius: 250
-            color: "#151617"
-            border.width: 1
-            border.color: "#6bfad41f"
-            scale: shell.frameValue("mainScale", 1)
-            transformOrigin: Item.Center
-        }
-
-        Image {
-            id: mainRingImage
-            x: 235
-            y: 55
-            width: 530
-            height: 530
-            source: "qrc:/assets/watch/ui_main_loop_bg.png"
-            fillMode: Image.PreserveAspectFit
-            opacity: shell.frameValue("mainOpacity", 1)
-            scale: shell.frameValue("mainScale", 1)
-            rotation: shell.frameValue("mainRotation", 0)
-            transformOrigin: Item.Center
-            smooth: true
-            mipmap: true
-        }
-
-        Image {
-            id: middleDecoration
-            x: 251
-            y: 71
-            width: 498
-            height: 499
-            source: "qrc:/assets/watch/deco_04.png"
-            fillMode: Image.PreserveAspectFit
-            opacity: 0.20
-            scale: shell.frameValue("yellowScale", 1)
-            transformOrigin: Item.Center
-            smooth: true
-            mipmap: true
-        }
-
-        Image {
-            id: middleRingImage
-            x: 247
-            y: 67
-            width: 506
-            height: 506
-            source: "qrc:/assets/watch/ui_mid_ring.png"
-            fillMode: Image.PreserveAspectFit
-            opacity: shell.frameValue("blueOpacity", 1)
-            scale: shell.frameValue("blueScale", 1)
-            rotation: shell.frameValue("blueRotation", 0)
-            transformOrigin: Item.Center
-            smooth: true
-            mipmap: true
-        }
-
-        Image {
-            id: triangleDecoration
-            x: 428
-            y: 55
-            width: 143
-            height: 123
-            source: "qrc:/assets/watch/ui_triangle_fx.png"
-            fillMode: Image.PreserveAspectFit
-            opacity: 0.38
-            scale: shell.frameValue("triangleScale", 1)
-            rotation: shell.frameValue("triangleRotation", 0)
-            transformOrigin: Item.Center
-            smooth: true
-            mipmap: true
-        }
-
-        Item {
-            x: 270
-            y: 2
-            width: 600
-            height: 74
-            opacity: shell.contentFrameValue("nativeOpacity", 1)
-
-            Text {
-                x: 0
-                y: 0
-                width: 300
-                height: 27
-                text: "ENDFIELDHUD"
-                color: "#f2f2f2"
-                font.family: harmonyBold.name
-                font.pixelSize: 20
-                font.weight: Font.DemiBold
-                verticalAlignment: Text.AlignVCenter
-            }
-
-            Text {
-                x: 0
-                y: 31
-                width: 300
-                height: 18
-                text: "SYSTEM INTERFACE"
-                color: "#8f9496"
-                font.family: harmonyMedium.name
-                font.pixelSize: 9
-                font.letterSpacing: 0.8
-                verticalAlignment: Text.AlignVCenter
-            }
-        }
-
-        Item {
-            x: 652
-            y: 0
-            width: 205
-            height: 78
-            rotation: -1.4
-            opacity: shell.baseContentFrameValue("nativeOpacity", 1)
-
-            Rectangle {
-                anchors.fill: parent
-                color: "#e80b0c0d"
-                border.width: 1.5
-                border.color: "#d6fad41f"
-                radius: 5
-            }
-
-            Rectangle {
-                x: 8
-                y: 8
-                width: parent.width - 16
-                height: 4
-                color: "#fad41f"
-            }
-
-            Text {
-                x: 11
-                y: 14
-                width: parent.width - 22
-                height: 18
-                text: shell.dateText
-                color: "#d6fad41f"
-                font.family: harmonyMedium.name
-                font.pixelSize: 9
-                font.weight: Font.Medium
-                verticalAlignment: Text.AlignVCenter
-            }
-
-            Text {
-                x: 11
-                y: 30
-                width: parent.width - 22
-                height: 34
-                text: shell.clockText
-                color: "#f5f5f5"
-                font.family: harmonyBold.name
-                font.pixelSize: 24
-                font.weight: Font.Bold
-                font.letterSpacing: 1.1
-                verticalAlignment: Text.AlignVCenter
-            }
-
-            Rectangle {
-                x: 11
-                y: 67
-                width: parent.width - 22
-                height: 1
-                color: "#71fad41f"
-            }
-        }
-
-        SystemPage {
-            x: 303.6
-            y: 116.9
-            scale: 0.66576
-            transformOrigin: Item.TopLeft
-            visible: shell.selectedModule === "system"
-            opacity: shell.baseContentFrameValue("nativeOpacity", 1)
-        }
-
-        DisplayPage {
-            x: 303.6
-            y: 116.9
-            scale: 0.66576
-            transformOrigin: Item.TopLeft
-            visible: shell.selectedModule === "display"
-            opacity: shell.baseContentFrameValue("nativeOpacity", 1)
-            settings: shell.displaySettings
-        }
-
-        Repeater {
-            model: shell.leftButtons
-
-            delegate: HudNavButton {
-                required property int index
-                required property var modelData
-                x: modelData.x
-                y: modelData.y
-                width: 229.17
-                height: 89.58
-                label: modelData.label
-                glyph: modelData.key
-                designX: modelData.x
-                leftSide: true
-                shapeIndex: index
-                opacity: shell.navigationListValue("leftAlpha", index,
-                                                   shell.navigationFrameValue("nativeOpacity", 1))
-                selected: shell.selectedModule === modelData.key
-                onTriggered: shell.selectedModule = modelData.key
-            }
-        }
-
-        Item {
-            id: rightViewport
-            x: 1290 * (1000 / 1920)
-            y: 200 * (1000 / 1920) + (640 - 1080 * (1000 / 1920)) / 2
-            width: 512 * (1000 / 1920)
-            height: 805 * (1000 / 1920)
-            clip: true
-
-            Repeater {
-                model: shell.rightButtons
-
-                delegate: HudNavButton {
-                    required property int index
-                    required property var modelData
-                    x: shell.rightButtonX(index) - rightViewport.x
-                    y: shell.rightButtonY(index) - rightViewport.y
-                    width: 107 * (1000 / 1920)
-                    height: 104 * (1000 / 1920)
-                    label: modelData.label
-                    glyph: modelData.glyph || ""
-                    iconSource: modelData.icon || ""
-                    designX: shell.rightButtonX(index)
-                    restRotation: -3
-                    opacity: shell.navigationListValue("rightAlpha", index,
-                                                       shell.navigationFrameValue("nativeOpacity", 1))
-                    selected: shell.selectedModule === modelData.key
-                    onTriggered: shell.selectedModule = modelData.key
-                }
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.NoButton
-                onWheel: wheel => {
-                    shell.scrollRightList(wheel.angleDelta.y < 0 ? 1 : -1)
-                    wheel.accepted = true
-                }
-            }
-        }
-
-        Item {
-            x: 860
-            y: 124
-            width: 36
-            height: 20
-            opacity: (shell.rightScrollOffset > 0 ? 0.82 : 0.18)
-                     * shell.contentFrameValue("nativeOpacity", 1)
-
-            Text {
-                anchors.centerIn: parent
-                text: "⌃"
-                color: "#e5e5e5"
-                font.pixelSize: 22
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                enabled: shell.rightScrollOffset > 0
-                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: shell.scrollRightList(-1)
-            }
-        }
-
-        Item {
-            x: 860
-            y: 530
-            width: 36
-            height: 20
-            opacity: (shell.rightScrollOffset < shell.maximumRightScrollOffset ? 0.82 : 0.18)
-                     * shell.contentFrameValue("nativeOpacity", 1)
-
-            Text {
-                anchors.centerIn: parent
-                text: "⌄"
-                color: "#e5e5e5"
-                font.pixelSize: 22
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                enabled: shell.rightScrollOffset < shell.maximumRightScrollOffset
-                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: shell.scrollRightList(1)
-            }
-        }
-
-        HudBottomButton {
-            x: 350
-            y: 463
-            width: 144
-            height: 65
-            label: "存储"
-            glyph: "storage"
-            opacity: shell.remainingContentFrameValue("storageOpacity", 1)
-            selected: shell.selectedModule === "storage"
-            onTriggered: shell.selectedModule = "storage"
-        }
-
-        HudBottomButton {
-            x: 506
-            y: 463
-            width: 144
-            height: 65
-            label: "活动监视器"
-            glyph: "activity"
-            mirrored: true
-            opacity: shell.remainingContentFrameValue("activityOpacity", 1)
-            selected: shell.selectedModule === "activity"
-            onTriggered: shell.selectedModule = "activity"
-        }
-
-        Rectangle {
-            x: 392
-            y: 430
-            width: 216
-            height: 31
-            radius: 15.5
-            color: "#d91b1c1d"
-            border.width: 1
-            border.color: "#7d8f9292"
-            visible: shell.selectedModule === ""
-            opacity: shell.contentFrameValue("nativeOpacity", 1)
-
-            Row {
-                anchors.centerIn: parent
-                spacing: 8
-
-                Rectangle {
-                    width: 11
-                    height: 11
-                    radius: 5.5
-                    color: "transparent"
-                    border.width: 2
-                    border.color: "#f0f0f0"
-                }
-
-                Text {
-                    text: "CHARGE MODE"
-                    color: "#e8e8e8"
-                    font.family: harmonyMedium.name
-                    font.pixelSize: 8
-                    font.letterSpacing: 0.7
-                }
-            }
-        }
-
-        Rectangle {
-            x: 493
-            y: 426
-            width: 14
-            height: 14
-            radius: 7
-            color: "#EFEFEF"
-            visible: shell.selectedModule !== ""
-            opacity: shell.contentFrameValue("nativeOpacity", 1)
-
-            Text {
-                anchors.centerIn: parent
-                text: "ϟ"
-                color: "#202020"
-                font.family: harmonyBold.name
-                font.pixelSize: 10
-                font.weight: Font.Bold
-            }
-        }
-
-        Rectangle {
-            x: 78
-            y: 564
-            width: 240
-            height: 82
-            radius: 12
-            gradient: Gradient {
-                GradientStop { position: 0; color: "#aa939393" }
-                GradientStop { position: 0.63; color: "#c0404040" }
-                GradientStop { position: 1; color: "#946d6d6d" }
-            }
-            border.width: 0.8
-            border.color: "#61f5f5f5"
-            opacity: shell.contentFrameValue("identityOpacity", 1)
-
-            Rectangle {
-                x: 13
-                y: 12
-                width: 52
-                height: 56
-                radius: 6
-                color: "#3b3c3d"
-                border.width: 1
-                border.color: "#8efad41f"
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "E"
-                    color: "#f1f1f1"
-                    font.family: harmonyBold.name
-                    font.pixelSize: 31
-                    font.weight: Font.Bold
-                }
-            }
-
-            Text {
-                x: 82
-                y: 10
-                width: 146
-                height: 24
-                text: "Endministrator"
-                color: "#f7f7f7"
-                font.family: harmonyMedium.name
-                font.pixelSize: 17
-                font.italic: true
-                elide: Text.ElideRight
-            }
-
-            Text {
-                x: 82
-                y: 39
-                width: 50
-                height: 25
-                text: "60"
-                color: "#f7f7f7"
-                font.family: harmonyBold.name
-                font.pixelSize: 21
-                font.weight: Font.DemiBold
-            }
-
-            Text {
-                x: 140
-                y: 41
-                width: 72
-                height: 14
-                text: "权限等级  MAX"
-                color: "#fad41f"
-                font.family: harmonyMedium.name
-                font.pixelSize: 8
-                horizontalAlignment: Text.AlignRight
-            }
-
-            Rectangle {
-                x: 84
-                y: 65
-                width: 112
-                height: 2.5
-                radius: 1.25
-                color: "#fad41f"
-            }
-
-            Text {
-                x: 84
-                y: 69
-                width: 120
-                height: 11
-                text: "UID: —"
-                color: "#a8cecece"
-                font.family: harmonyRegular.name
-                font.pixelSize: 7
-            }
-        }
-
-        Rectangle {
-            x: 22
-            y: 591
-            width: 35
-            height: 35
-            radius: 4
-            color: closePointer.containsMouse ? "#4de83333" : "#24e83333"
-            border.width: 1
-            border.color: "#b8e83333"
-            opacity: shell.contentFrameValue("closeOpacity", 1)
-
-            HudGlyph {
-                anchors.centerIn: parent
-                width: 24
-                height: 24
-                kind: "power"
-                ink: "#f7f7f7"
-            }
-
-            MouseArea {
-                id: closePointer
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
-                cursorShape: Qt.PointingHandCursor
-            }
-        }
-
-        Image {
-            x: 425
-            y: 544
-            width: 150
-            height: 29
-            source: "qrc:/assets/watch/endfield_industries.png"
-            sourceClipRect: Qt.rect(0, 142, 430, 83)
-            fillMode: Image.Stretch
-            opacity: shell.contentFrameValue("wordmarkOpacity", 1)
-            smooth: true
-            mipmap: true
-        }
-    }
-
-    Text {
-        x: 275
-        y: 622
-        width: 450
-        height: 18
-        text: "ESC TO CLOSE"
-        color: "#747879"
-        font.family: harmonyRegular.name
-        font.pixelSize: 8
-        font.letterSpacing: 0.5
-        opacity: shell.contentFrameValue("nativeOpacity", 1)
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-    }
-
+    MenuScene {
+        shell: parent
+        y: (640 - 1080 * (1000 / 1920)) / 2
+        scale: 1000 / 1920
+        transformOrigin: Item.TopLeft
     }
 
     Component.onCompleted: updateClock()

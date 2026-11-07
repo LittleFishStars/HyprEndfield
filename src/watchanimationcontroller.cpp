@@ -594,3 +594,49 @@ QQuaternion WatchAnimationController::combinedRotation(int phase, double time,
     const QQuaternion watch = m_data->rotation(phase, time, QStringLiteral("Content/WatchNode"));
     return (gyro.normalized() * m_data->contentRotation * watch).normalized();
 }
+
+QMatrix4x4 WatchAnimationController::projectPlane(double height, bool compensate,
+                                                 double pitch, double yaw,
+                                                 int phase, double time,
+                                                 const QMatrix4x4 &local) const
+{
+    // endfield_menu/shared-scene.js: CSS perspective, world transform and
+    // rest-view compensation. Lengths use the original 1920 x 1080 stage.
+    constexpr float distance = 1600.f;
+    QMatrix4x4 rest;
+    rest.translate(29.f, -40.f);
+    rest.rotate(-1.f, 0.f, 0.f, 1.f);
+    rest.rotate(20.f, 1.f, 0.f, 0.f);
+    const QVector3D eye = rest.inverted().map(QVector3D(0.f, 0.f, distance))
+                           + QVector3D(960.f, 540.f, 0.f);
+    QMatrix4x4 perspective;
+    perspective(3, 2) = -1.f / distance;
+    QMatrix4x4 projection;
+    projection.translate(960.f, 540.f);
+    projection.scale(1.10f);
+    projection *= perspective;
+    projection.translate(29.f, -40.f);
+    projection.rotate(-1.f, 0.f, 0.f, 1.f);
+    projection.rotate(float(pitch), 1.f, 0.f, 0.f);
+    projection.rotate(float(yaw), 0.f, 1.f, 0.f);
+    // Preserve the extracted Unity clip and approved timing; its resting pose
+    // is represented by the camera above, so apply only the animated delta.
+    const auto pose = m_data->rotation(phase, time, QStringLiteral("Content/WatchNode"));
+    const auto settled = m_data->rotation(0, openingDuration(), QStringLiteral("Content/WatchNode"));
+    projection.rotate((pose * settled.conjugated()).normalized());
+    projection.translate(-960.f, -540.f);
+    projection.translate(0.f, 0.f, float(height));
+    if (compensate) {
+        const float k = (eye.z() - float(height)) / eye.z();
+        projection.translate((1.f - k) * eye.x(), (1.f - k) * eye.y());
+        projection.scale(k, k, 1.f);
+    }
+    projection *= local;
+    // QQuickItem hit testing uses this same homography. Retain W for perspective,
+    // flatten clip-space Z and paint the separate planes in elevation order.
+    for (int column = 0; column < 4; ++column) projection(2, column) = 0.f;
+    // Keep the transform invertible. The curve renderer and pointer unprojection
+    // both need its inverse, even though all source vertices have local Z = 0.
+    projection(2, 2) = 1.f;
+    return projection;
+}

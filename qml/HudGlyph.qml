@@ -1,146 +1,83 @@
 import QtQuick
+import QtQuick.Shapes
 
+// EndfieldHUD/Sources/HUDNavigation.swift, iconPath(for:).
+// Preserve the authored 32 px silhouettes and even-odd holes as vector paths.
 Item {
     id: root
-
     property string kind: ""
     property color ink: "#202020"
-
-    onKindChanged: glyph.requestPaint()
-    onInkChanged: glyph.requestPaint()
-
-    function roundedRect(context, x, y, width, height, radius) {
-        context.beginPath()
-        context.moveTo(x + radius, y)
-        context.lineTo(x + width - radius, y)
-        context.quadraticCurveTo(x + width, y, x + width, y + radius)
-        context.lineTo(x + width, y + height - radius)
-        context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-        context.lineTo(x + radius, y + height)
-        context.quadraticCurveTo(x, y + height, x, y + height - radius)
-        context.lineTo(x, y + radius)
-        context.quadraticCurveTo(x, y, x + radius, y)
-        context.closePath()
+    function box(x, y, w, h) {
+        return "M" + x + " " + y + "h" + w + "v" + h + "h" + (-w) + "Z";
     }
-
-    function circle(context, x, y, radius) {
-        context.beginPath()
-        context.arc(x, y, radius, 0, Math.PI * 2, false)
-        context.closePath()
+    function roundBox(x, y, w, h, r) {
+        return "M" + (x + r) + " " + y + "h" + (w - 2 * r) + "a" + r + " " + r + " 0 0 1 " + r + " " + r + "v" + (h - 2 * r) + "a" + r + " " + r + " 0 0 1 " + (-r) + " " + r + "h" + (2 * r - w) + "a" + r + " " + r + " 0 0 1 " + (-r) + " " + (-r) + "v" + (2 * r - h) + "a" + r + " " + r + " 0 0 1 " + r + " " + (-r) + "Z";
     }
-
-    Canvas {
-        id: glyph
-        anchors.fill: parent
-        antialiasing: true
-
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-
-        onPaint: {
-            const context = getContext("2d")
-            context.reset()
-            context.save()
-            context.scale(width / 32, height / 32)
-            context.fillStyle = root.ink
-            context.strokeStyle = root.ink
-            context.lineJoin = "miter"
-
-            if (root.kind === "system") {
-                context.fillRect(7, 7, 18, 18)
-                context.clearRect(12, 12, 8, 8)
-                for (const position of [9, 19]) {
-                    context.fillRect(position, 1, 4, 5)
-                    context.fillRect(position, 26, 4, 5)
-                    context.fillRect(1, position, 5, 4)
-                    context.fillRect(26, position, 5, 4)
-                }
-            } else if (root.kind === "display") {
-                root.roundedRect(context, 2, 4, 28, 20, 2)
-                context.fill()
-                context.clearRect(6, 8, 20, 12)
-                context.fillRect(13, 25, 6, 2)
-                context.fillRect(8, 28, 16, 3)
-            } else if (root.kind === "hotkeys") {
-                root.roundedRect(context, 1, 6, 30, 21, 2)
-                context.fill()
-                for (const position of [5, 11, 17, 23])
-                    context.clearRect(position, 10, 4, 4)
-                context.clearRect(6, 19, 20, 3)
-            } else if (root.kind === "about") {
-                root.circle(context, 16, 16, 14)
-                context.fill()
-                context.clearRect(14, 7, 4, 4)
-                context.clearRect(14, 14, 4, 11)
-            } else if (root.kind === "nowPlaying") {
-                root.circle(context, 16, 16, 14)
-                context.fill()
-                context.globalCompositeOperation = "destination-out"
-                root.circle(context, 16, 16, 11)
-                context.fill()
-                context.globalCompositeOperation = "source-over"
-                context.beginPath()
-                context.moveTo(12, 9)
-                context.lineTo(24, 16)
-                context.lineTo(12, 23)
-                context.closePath()
-                context.fill()
-            } else if (root.kind === "volume") {
-                context.beginPath()
-                context.moveTo(2, 12)
-                context.lineTo(8, 12)
-                context.lineTo(17, 5)
-                context.lineTo(17, 27)
-                context.lineTo(8, 20)
-                context.lineTo(2, 20)
-                context.closePath()
-                context.fill()
-                context.lineWidth = 3
-                context.beginPath()
-                context.arc(17, 16, 7, -Math.PI / 4, Math.PI / 4, false)
-                context.stroke()
-                context.beginPath()
-                context.arc(17, 16, 12, -Math.PI / 4, Math.PI / 4, false)
-                context.stroke()
-            } else if (root.kind === "addApp") {
-                root.roundedRect(context, 3, 3, 26, 26, 3)
-                context.fill()
-                context.clearRect(7, 7, 18, 18)
-                context.fillRect(14, 10, 4, 12)
-                context.fillRect(10, 14, 12, 4)
-            } else if (root.kind === "storage") {
-                context.fillRect(12, 2, 8, 8)
-                context.fillRect(14.5, 11, 3, 4)
-                context.fillRect(5, 15, 22, 3)
-                for (const position of [5, 15, 25])
-                    context.fillRect(position, 19, 2, 3)
-                for (const position of [2, 12, 22])
-                    context.fillRect(position, 23, 8, 7)
-            } else if (root.kind === "activity") {
-                context.fillRect(3, 23, 5, 7)
-                context.fillRect(13, 18, 5, 12)
-                context.fillRect(23, 12, 5, 18)
-                context.lineWidth = 2.8
-                context.beginPath()
-                context.moveTo(3, 17)
-                context.lineTo(12, 8)
-                context.lineTo(19, 13)
-                context.lineTo(28, 2)
-                context.moveTo(20, 2)
-                context.lineTo(28, 2)
-                context.lineTo(28, 10)
-                context.stroke()
-            } else if (root.kind === "power") {
-                context.lineWidth = 4.2
-                context.lineCap = "round"
-                context.beginPath()
-                context.arc(16, 17, 11, -Math.PI * 0.28, Math.PI * 1.28, false)
-                context.stroke()
-                context.lineCap = "butt"
-                context.fillRect(14, 1, 4, 15)
+    function circle(r) {
+        return "M" + (16 - r) + " 16a" + r + " " + r + " 0 1 0 " + 2 * r + " 0a" + r + " " + r + " 0 1 0 " + (-2 * r) + " 0Z";
+    }
+    function silhouette() {
+        switch (kind) {
+        case "system":
+            {
+                let p = box(7, 7, 18, 18) + box(12, 12, 8, 8);
+                for (const v of [9, 19])
+                    p += box(v, 1, 4, 5) + box(v, 26, 4, 5) + box(1, v, 5, 4) + box(26, v, 5, 4);
+                return p;
             }
-
-            context.restore()
+        case "display":
+            return roundBox(2, 4, 28, 20, 2) + box(6, 8, 20, 12) + box(13, 25, 6, 2) + box(8, 28, 16, 3);
+        case "hotkeys":
+            {
+                let p = roundBox(1, 6, 30, 21, 2) + box(6, 19, 20, 3);
+                for (const x of [5, 11, 17, 23])
+                    p += box(x, 10, 4, 4);
+                return p;
+            }
+        case "about":
+            return circle(14) + box(14, 7, 4, 4) + box(14, 14, 4, 11);
+        case "nowPlaying":
+            return circle(14) + circle(11) + "M12 9L24 16L12 23Z";
+        case "volume":
+            return "M2 12H8L17 5V27L8 20H2Z";
+        case "addApp":
+            return roundBox(3, 3, 26, 26, 3) + box(7, 7, 18, 18) + "M14 10H18V14H22V18H18V22H14V18H10V14H14Z";
+        case "storage":
+            return box(12, 2, 8, 8) + box(14.5, 11, 3, 4) + box(5, 15, 22, 3) + box(5, 19, 2, 3) + box(15, 19, 2, 3) + box(25, 19, 2, 3) + box(2, 23, 8, 7) + box(12, 23, 8, 7) + box(22, 23, 8, 7);
+        case "activity":
+            return box(3, 23, 5, 7) + box(13, 18, 5, 12) + box(23, 12, 5, 18);
+        case "power":
+            return box(14, 1, 4, 15);
+        }
+        return "";
+    }
+    Item {
+        width: 32
+        height: 32
+        transform: Scale {
+            xScale: root.width / 32
+            yScale: root.height / 32
+        }
+        Shape {
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                fillRule: ShapePath.OddEvenFill
+                strokeWidth: -1
+                fillColor: root.ink
+                PathSvg {
+                    path: root.silhouette()
+                }
+            }
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.ink
+                strokeWidth: root.kind === "power" ? 4.2 : root.kind === "activity" ? 2.8 : 3
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathSvg {
+                    path: root.kind === "volume" ? "M21.9497 11.0503A7 7 0 0 1 21.9497 20.9497M25.4853 7.5147A12 12 0 0 1 25.4853 24.4853" : root.kind === "activity" ? "M3 17L12 8L19 13L28 2M20 2H28V10" : root.kind === "power" ? "M23.0117 8.5244A11 11 0 1 1 8.9883 8.5244" : ""
+                }
+            }
         }
     }
 }

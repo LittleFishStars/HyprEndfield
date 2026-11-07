@@ -17,26 +17,137 @@ Item {
     signal pageRequested(string page)
 
     readonly property var rows: [
-        { key: "uiScale", title: "界面缩放", mode: "slider", minimum: 0.2, maximum: 2, step: 0.01, format: "scale" },
-        { key: "positionX", title: "界面位置 X", mode: "slider", minimum: -50, maximum: 50, step: 1, format: "signedPercent", zero: 0 },
-        { key: "positionY", title: "界面位置 Y", mode: "slider", minimum: -50, maximum: 50, step: 1, format: "signedPercent", zero: 0 },
-        { key: "parallax", title: "视差强度", mode: "slider", minimum: 0, maximum: 200, step: 1, format: "percent" },
-        { key: "perspective", title: "透视强度", mode: "slider", minimum: 0, maximum: 200, step: 1, format: "percent" },
-        { key: "brightness", title: "背景亮度", mode: "slider", minimum: 0, maximum: 100, step: 1, format: "percent" },
-        { key: "blur", title: "模糊程度", mode: "slider", minimum: 0, maximum: 100, step: 1, format: "percent" },
-        { key: "theme", title: "主题", mode: "dropdown" },
-        { key: "clockFormat", title: "时间格式", mode: "segmented" },
-        { key: "clockStyle", title: "时钟样式", mode: "dropdown" },
-        { key: "centerLogo", title: "中心标志", mode: "dropdown" },
-        { key: "appIcon", title: "应用 / 菜单栏图标", mode: "nav" },
-        { key: "palette", title: "主题颜色", mode: "swatches" },
-        { key: "battery", title: "电池提醒", mode: "nav", chip: "电池" },
-        { key: "ambient", title: "持续环境动画", mode: "toggle" },
-        { key: "reduceMotion", title: "减少动态效果", mode: "toggle" },
-        { key: "lowPower", title: "低功耗视觉模式", mode: "toggle" },
-        { key: "recording", title: "录制模式", mode: "toggle" },
-        { key: "bootLog", title: "每日启动日志", mode: "toggle" },
-        { key: "facility", title: "设施警报", mode: "toggle" }
+        {
+            key: "uiScale",
+            title: "界面缩放",
+            mode: "slider",
+            minimum: 0.2,
+            maximum: 2,
+            step: 0.01,
+            format: "scale"
+        },
+        {
+            key: "positionX",
+            title: "界面位置 X",
+            mode: "slider",
+            minimum: -50,
+            maximum: 50,
+            step: 1,
+            format: "signedPercent",
+            zero: 0
+        },
+        {
+            key: "positionY",
+            title: "界面位置 Y",
+            mode: "slider",
+            minimum: -50,
+            maximum: 50,
+            step: 1,
+            format: "signedPercent",
+            zero: 0
+        },
+        {
+            key: "parallax",
+            title: "视差强度",
+            mode: "slider",
+            minimum: 0,
+            maximum: 200,
+            step: 1,
+            format: "percent"
+        },
+        {
+            key: "perspective",
+            title: "透视强度",
+            mode: "slider",
+            minimum: 0,
+            maximum: 200,
+            step: 1,
+            format: "percent"
+        },
+        {
+            key: "brightness",
+            title: "背景亮度",
+            mode: "slider",
+            minimum: 0,
+            maximum: 100,
+            step: 1,
+            format: "percent"
+        },
+        {
+            key: "blur",
+            title: "模糊程度",
+            mode: "slider",
+            minimum: 0,
+            maximum: 100,
+            step: 1,
+            format: "percent"
+        },
+        {
+            key: "theme",
+            title: "主题",
+            mode: "dropdown"
+        },
+        {
+            key: "clockFormat",
+            title: "时间格式",
+            mode: "segmented"
+        },
+        {
+            key: "clockStyle",
+            title: "时钟样式",
+            mode: "dropdown"
+        },
+        {
+            key: "centerLogo",
+            title: "中心标志",
+            mode: "dropdown"
+        },
+        {
+            key: "appIcon",
+            title: "应用 / 菜单栏图标",
+            mode: "nav"
+        },
+        {
+            key: "palette",
+            title: "主题颜色",
+            mode: "swatches"
+        },
+        {
+            key: "battery",
+            title: "电池提醒",
+            mode: "nav",
+            chip: "电池"
+        },
+        {
+            key: "ambient",
+            title: "持续环境动画",
+            mode: "toggle"
+        },
+        {
+            key: "reduceMotion",
+            title: "减少动态效果",
+            mode: "toggle"
+        },
+        {
+            key: "lowPower",
+            title: "低功耗视觉模式",
+            mode: "toggle"
+        },
+        {
+            key: "recording",
+            title: "录制模式",
+            mode: "toggle"
+        },
+        {
+            key: "bootLog",
+            title: "每日启动日志",
+            mode: "toggle"
+        },
+        {
+            key: "facility",
+            title: "设施警报",
+            mode: "toggle"
+        }
     ]
 
     readonly property var themes: ["深色", "浅色", "跟随系统"]
@@ -48,121 +159,161 @@ Item {
 
     function sliderValue(key) {
         switch (key) {
-        case "uiScale": return settings.uiScale
-        case "positionX": return settings.hudOffsetX * 100
-        case "positionY": return settings.hudOffsetY * 100
-        case "parallax": return settings.parallaxIntensity * 100
-        case "perspective": return settings.perspectiveIntensity * 100
-        case "brightness": return settings.backgroundBrightness * 100
-        case "blur": return settings.blurAmount * 100
+        case "uiScale":
+            return settings.uiScale;
+        case "positionX":
+            return settings.hudOffsetX * 100;
+        case "positionY":
+            return settings.hudOffsetY * 100;
+        case "parallax":
+            return settings.parallaxIntensity * 100;
+        case "perspective":
+            return settings.perspectiveIntensity * 100;
+        case "brightness":
+            return settings.backgroundBrightness * 100;
+        case "blur":
+            return settings.blurAmount * 100;
         }
-        return 0
+        return 0;
     }
 
     function writeSlider(key, value) {
         switch (key) {
-        case "uiScale": settings.uiScale = value; break
-        case "positionX": settings.hudOffsetX = value / 100; break
-        case "positionY": settings.hudOffsetY = value / 100; break
-        case "parallax": settings.parallaxIntensity = value / 100; break
-        case "perspective": settings.perspectiveIntensity = value / 100; break
-        case "brightness": settings.backgroundBrightness = value / 100; break
-        case "blur": settings.blurAmount = value / 100; break
+        case "uiScale":
+            settings.uiScale = value;
+            break;
+        case "positionX":
+            settings.hudOffsetX = value / 100;
+            break;
+        case "positionY":
+            settings.hudOffsetY = value / 100;
+            break;
+        case "parallax":
+            settings.parallaxIntensity = value / 100;
+            break;
+        case "perspective":
+            settings.perspectiveIntensity = value / 100;
+            break;
+        case "brightness":
+            settings.backgroundBrightness = value / 100;
+            break;
+        case "blur":
+            settings.blurAmount = value / 100;
+            break;
         }
     }
 
     function toggleValue(key) {
         switch (key) {
-        case "ambient": return settings.ambientAnimation
-        case "reduceMotion": return settings.reduceMotion
-        case "lowPower": return settings.lowPowerVisualMode
-        case "recording": return settings.recordingMode
-        case "bootLog": return settings.dailyBootLog
-        case "facility": return settings.facilityAlerts
+        case "ambient":
+            return settings.ambientAnimation;
+        case "reduceMotion":
+            return settings.reduceMotion;
+        case "lowPower":
+            return settings.lowPowerVisualMode;
+        case "recording":
+            return settings.recordingMode;
+        case "bootLog":
+            return settings.dailyBootLog;
+        case "facility":
+            return settings.facilityAlerts;
         }
-        return false
+        return false;
     }
 
     function writeToggle(key, value) {
         switch (key) {
-        case "ambient": settings.ambientAnimation = value; break
-        case "reduceMotion": settings.reduceMotion = value; break
-        case "lowPower": settings.lowPowerVisualMode = value; break
-        case "recording": settings.recordingMode = value; break
-        case "bootLog": settings.dailyBootLog = value; break
-        case "facility": settings.facilityAlerts = value; break
+        case "ambient":
+            settings.ambientAnimation = value;
+            break;
+        case "reduceMotion":
+            settings.reduceMotion = value;
+            break;
+        case "lowPower":
+            settings.lowPowerVisualMode = value;
+            break;
+        case "recording":
+            settings.recordingMode = value;
+            break;
+        case "bootLog":
+            settings.dailyBootLog = value;
+            break;
+        case "facility":
+            settings.facilityAlerts = value;
+            break;
         }
     }
 
     function dropdownValue(key) {
         if (key === "theme")
-            return themes[settings.themeIndex]
+            return themes[settings.themeIndex];
         if (key === "clockStyle")
-            return clockStyles[settings.clockStyleIndex]
+            return clockStyles[settings.clockStyleIndex];
         if (key === "centerLogo")
-            return centerLogos[settings.centerLogoIndex]
-        return ""
+            return centerLogos[settings.centerLogoIndex];
+        return "";
     }
 
     function optionsFor(key) {
         if (key === "theme")
-            return themes
+            return themes;
         if (key === "clockStyle")
-            return clockStyles
+            return clockStyles;
         if (key === "centerLogo")
-            return centerLogos
-        return []
+            return centerLogos;
+        return [];
     }
 
     function selectedOption(key) {
         if (key === "theme")
-            return settings.themeIndex
+            return settings.themeIndex;
         if (key === "clockStyle")
-            return settings.clockStyleIndex
+            return settings.clockStyleIndex;
         if (key === "centerLogo")
-            return settings.centerLogoIndex
-        return 0
+            return settings.centerLogoIndex;
+        return 0;
     }
 
     function pickOption(index) {
         if (openMenu === "theme")
-            settings.themeIndex = index
+            settings.themeIndex = index;
         else if (openMenu === "clockStyle")
-            settings.clockStyleIndex = index
+            settings.clockStyleIndex = index;
         else if (openMenu === "centerLogo")
-            settings.centerLogoIndex = index
-        openMenu = ""
+            settings.centerLogoIndex = index;
+        openMenu = "";
     }
 
     function activate(key, point) {
         if (key === "appIcon" || key === "battery") {
-            pageRequested(key)
-            return
+            pageRequested(key);
+            return;
         }
-        const options = optionsFor(key)
+        const options = optionsFor(key);
         if (!options.length)
-            return
+            return;
         if (openMenu === key) {
-            openMenu = ""
-            return
+            openMenu = "";
+            return;
         }
-        menuItems = options
-        menuX = Math.min(width - 178, point.x)
-        const menuHeight = options.length * 30 + 8
-        const below = point.y + 34
-        menuY = below + menuHeight > height + 20 ? point.y - 4 - menuHeight : below
-        openMenu = key
+        menuItems = options;
+        menuX = Math.min(width - 178, point.x);
+        const menuHeight = options.length * 30 + 8;
+        const below = point.y + 34;
+        menuY = below + menuHeight > height + 20 ? point.y - 4 - menuHeight : below;
+        openMenu = key;
     }
 
     function showBubble(shown, text, x, y) {
-        bubbleShown = shown
-        bubbleText = text
-        bubbleX = x
-        bubbleY = y
+        bubbleShown = shown;
+        bubbleText = text;
+        bubbleX = x;
+        bubbleY = y;
     }
 
     Text {
         id: displayTitle
+        renderType: Text.CurveRendering
         x: 0
         y: 0
         height: 14
@@ -175,6 +326,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 69
         y: 0
         height: 14
@@ -187,6 +339,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 500
         y: 0
         width: 49
@@ -222,6 +375,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 0
         y: 18
         width: 140
@@ -236,6 +390,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: displayTitle.implicitWidth + 12
         y: 21
         width: 100
@@ -249,8 +404,20 @@ Item {
         verticalAlignment: Text.AlignVCenter
     }
 
-    Rectangle { x: 0; y: 64; width: 590; height: 1; color: "#38FFFFFF" }
-    Rectangle { x: 0; y: 63; width: 56; height: 3; color: "#FFFA00" }
+    Rectangle {
+        x: 0
+        y: 64
+        width: 590
+        height: 1
+        color: "#38FFFFFF"
+    }
+    Rectangle {
+        x: 0
+        y: 63
+        width: 56
+        height: 3
+        color: "#FFFA00"
+    }
 
     Repeater {
         model: 11
@@ -271,6 +438,7 @@ Item {
         height: 12
         color: "#151515"
         Text {
+            renderType: Text.CurveRendering
             anchors.fill: parent
             text: "20"
             color: "#FFFA00"
@@ -295,10 +463,10 @@ Item {
         flickDeceleration: 3200
 
         onContentYChanged: {
-            root.scrollBarShown = true
-            scrollHideTimer.restart()
-            root.openMenu = ""
-            root.bubbleShown = false
+            root.scrollBarShown = true;
+            scrollHideTimer.restart();
+            root.openMenu = "";
+            root.bubbleShown = false;
         }
 
         Repeater {
@@ -344,7 +512,11 @@ Item {
             color: "#222222"
             opacity: root.scrollBarShown || scrollBarHover.hovered ? 1 : 0
 
-            Behavior on opacity { NumberAnimation { duration: opacity > 0 ? 150 : 300 } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: opacity > 0 ? 150 : 300
+                }
+            }
 
             Rectangle {
                 x: 0
@@ -354,7 +526,9 @@ Item {
                 color: "#D7BC18"
             }
 
-            HoverHandler { id: scrollBarHover }
+            HoverHandler {
+                id: scrollBarHover
+            }
         }
     }
 
@@ -387,8 +561,20 @@ Item {
             border.width: 1
             border.color: "#3D3D3D"
         }
-        Rectangle { x: 0; y: 0; width: 10; height: 2; color: "#D7BC18" }
-        Rectangle { x: 0; y: 0; width: 2; height: 10; color: "#D7BC18" }
+        Rectangle {
+            x: 0
+            y: 0
+            width: 10
+            height: 2
+            color: "#D7BC18"
+        }
+        Rectangle {
+            x: 0
+            y: 0
+            width: 2
+            height: 10
+            color: "#D7BC18"
+        }
 
         Repeater {
             model: root.menuItems
@@ -401,7 +587,10 @@ Item {
                 width: 170
                 height: 30
 
-                Rectangle { anchors.fill: parent; color: menuPointer.containsMouse ? "#D3D4CF" : "transparent" }
+                Rectangle {
+                    anchors.fill: parent
+                    color: menuPointer.containsMouse ? "#D3D4CF" : "transparent"
+                }
                 Rectangle {
                     x: 9
                     y: 11
@@ -420,6 +609,7 @@ Item {
                     color: "#111111"
                 }
                 Text {
+                    renderType: Text.CurveRendering
                     x: 28
                     y: 0
                     width: 132
@@ -456,8 +646,17 @@ Item {
             opacity: root.bubbleShown ? 1 : 0
             scale: root.bubbleShown ? 1 : 0.9
 
-            Behavior on opacity { NumberAnimation { duration: 140 } }
-            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 140
+                }
+            }
+            Behavior on scale {
+                NumberAnimation {
+                    duration: 180
+                    easing.type: Easing.OutBack
+                }
+            }
 
             Rectangle {
                 x: 0
@@ -469,6 +668,7 @@ Item {
             }
             Text {
                 id: bubbleLabel
+                renderType: Text.CurveRendering
                 x: 8
                 y: 0
                 height: 21
@@ -485,15 +685,15 @@ Item {
                 width: 8
                 height: 4
                 onPaint: {
-                    const context = getContext("2d")
-                    context.reset()
-                    context.beginPath()
-                    context.moveTo(0, 0)
-                    context.lineTo(8, 0)
-                    context.lineTo(4, 4)
-                    context.closePath()
-                    context.fillStyle = "#FAFAFA"
-                    context.fill()
+                    const context = getContext("2d");
+                    context.reset();
+                    context.beginPath();
+                    context.moveTo(0, 0);
+                    context.lineTo(8, 0);
+                    context.lineTo(4, 4);
+                    context.closePath();
+                    context.fillStyle = "#FAFAFA";
+                    context.fill();
                 }
             }
         }

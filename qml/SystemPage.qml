@@ -14,20 +14,21 @@ Item {
     readonly property string languageValue: languageOptions[languageIndex]
     readonly property string displayValue: displayOptions[displayIndex]
 
-    signal modulesRequested()
+    signal modulesRequested
 
     width: 590
     height: 510
 
     function resetSettings() {
-        languageIndex = 0
-        displayIndex = 0
-        launchAtLogin = true
-        closeOnFocusLost = true
-        openMenu = ""
+        languageIndex = 0;
+        displayIndex = 0;
+        launchAtLogin = true;
+        closeOnFocusLost = true;
+        openMenu = "";
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 0
         y: 0
         height: 14
@@ -40,6 +41,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 69
         y: 0
         height: 14
@@ -52,6 +54,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 500
         y: 0
         width: 49
@@ -88,6 +91,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 0
         y: 18
         width: 140
@@ -102,6 +106,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 151
         y: 21
         width: 100
@@ -152,6 +157,7 @@ Item {
         color: "#151515"
 
         Text {
+            renderType: Text.CurveRendering
             anchors.fill: parent
             text: "06"
             color: "#FFFA00"
@@ -241,8 +247,20 @@ Item {
             border.color: "#3D3D3D"
         }
 
-        Rectangle { x: 0; y: 0; width: 10; height: 2; color: "#D7BC18" }
-        Rectangle { x: 0; y: 0; width: 2; height: 10; color: "#D7BC18" }
+        Rectangle {
+            x: 0
+            y: 0
+            width: 10
+            height: 2
+            color: "#D7BC18"
+        }
+        Rectangle {
+            x: 0
+            y: 0
+            width: 2
+            height: 10
+            color: "#D7BC18"
+        }
 
         Repeater {
             model: root.languageOptions
@@ -271,6 +289,7 @@ Item {
                 }
 
                 Text {
+                    renderType: Text.CurveRendering
                     x: 28
                     y: 0
                     width: 132
@@ -289,8 +308,8 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        root.languageIndex = index
-                        root.openMenu = ""
+                        root.languageIndex = index;
+                        root.openMenu = "";
                     }
                 }
             }
@@ -313,8 +332,20 @@ Item {
             border.color: "#3D3D3D"
         }
 
-        Rectangle { x: 0; y: 0; width: 10; height: 2; color: "#D7BC18" }
-        Rectangle { x: 0; y: 0; width: 2; height: 10; color: "#D7BC18" }
+        Rectangle {
+            x: 0
+            y: 0
+            width: 10
+            height: 2
+            color: "#D7BC18"
+        }
+        Rectangle {
+            x: 0
+            y: 0
+            width: 2
+            height: 10
+            color: "#D7BC18"
+        }
 
         Repeater {
             model: root.displayOptions
@@ -343,6 +374,7 @@ Item {
                 }
 
                 Text {
+                    renderType: Text.CurveRendering
                     x: 28
                     y: 0
                     width: 132
@@ -361,8 +393,8 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        root.displayIndex = index
-                        root.openMenu = ""
+                        root.displayIndex = index;
+                        root.openMenu = "";
                     }
                 }
             }

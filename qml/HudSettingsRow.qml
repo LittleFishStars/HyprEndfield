@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 
 Item {
     id: root
@@ -22,7 +23,7 @@ Item {
     property int swatchIndex: 0
     property real hoverShift: hoverHandler.hovered ? 3 : 0
 
-    signal activated()
+    signal activated
     signal toggleRequested(bool value)
     signal sliderMoved(real value, bool final)
     signal sliderBubbleRequested(bool shown, string text, real x, real y)
@@ -32,10 +33,15 @@ Item {
     width: 590
     height: 50
 
-    transform: Translate { x: root.hoverShift }
+    transform: Translate {
+        x: root.hoverShift
+    }
 
     Behavior on hoverShift {
-        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: 220
+            easing.type: Easing.OutCubic
+        }
     }
 
     HoverHandler {
@@ -43,35 +49,40 @@ Item {
         cursorShape: root.mode === "plain" ? Qt.ArrowCursor : Qt.PointingHandCursor
     }
 
-    Canvas {
-        id: plate
+    Shape {
         anchors.fill: parent
-        antialiasing: true
-
-        onPaint: {
-            const context = getContext("2d")
-            context.reset()
-            context.beginPath()
-            context.moveTo(0, 0)
-            context.lineTo(width - 11, 0)
-            context.lineTo(width, 11)
-            context.lineTo(width, height)
-            context.lineTo(0, height)
-            context.closePath()
-
-            const gradient = context.createLinearGradient(0, 0, 0, height)
-            gradient.addColorStop(0, hoverHandler.hovered ? "#ECEDE8" : "#E4E5E0")
-            gradient.addColorStop(0.55, hoverHandler.hovered ? "#DADBD6" : "#D3D4CF")
-            gradient.addColorStop(1, hoverHandler.hovered ? "#CCCDC8" : "#C6C7C2")
-            context.fillStyle = gradient
-            context.fill()
-
-            context.strokeStyle = "#B9FFFFFF"
-            context.lineWidth = 1
-            context.beginPath()
-            context.moveTo(0, 0.5)
-            context.lineTo(width - 11, 0.5)
-            context.stroke()
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeWidth: -1
+            fillGradient: LinearGradient {
+                x1: 0
+                y1: 0
+                x2: 0
+                y2: root.height
+                GradientStop {
+                    position: 0
+                    color: hoverHandler.hovered ? "#ECEDE8" : "#E4E5E0"
+                }
+                GradientStop {
+                    position: .55
+                    color: hoverHandler.hovered ? "#DADBD6" : "#D3D4CF"
+                }
+                GradientStop {
+                    position: 1
+                    color: hoverHandler.hovered ? "#CCCDC8" : "#C6C7C2"
+                }
+            }
+            PathSvg {
+                path: "M0 0H" + (root.width - 11) + "L" + root.width + " 11V" + root.height + "H0Z"
+            }
+        }
+        ShapePath {
+            strokeWidth: 1
+            strokeColor: "#B9FFFFFF"
+            fillColor: "transparent"
+            PathSvg {
+                path: "M0 .5H" + (root.width - 11)
+            }
         }
     }
 
@@ -82,9 +93,21 @@ Item {
         height: hoverHandler.hovered ? 40 : 32
         color: hoverHandler.hovered ? "#D7BC18" : "#2A2A2A"
 
-        Behavior on y { NumberAnimation { duration: 220 } }
-        Behavior on height { NumberAnimation { duration: 220 } }
-        Behavior on color { ColorAnimation { duration: 220 } }
+        Behavior on y {
+            NumberAnimation {
+                duration: 220
+            }
+        }
+        Behavior on height {
+            NumberAnimation {
+                duration: 220
+            }
+        }
+        Behavior on color {
+            ColorAnimation {
+                duration: 220
+            }
+        }
     }
 
     Item {
@@ -99,6 +122,7 @@ Item {
             color: "#161616"
 
             Text {
+                renderType: Text.CurveRendering
                 anchors.fill: parent
                 anchors.leftMargin: 4
                 text: "ENDFIELD"
@@ -134,6 +158,7 @@ Item {
     }
 
     Text {
+        renderType: Text.CurveRendering
         x: 18
         y: 16
         width: 350
@@ -169,11 +194,20 @@ Item {
             height: root.dropdownOpened || dropdownPointer.containsMouse ? 30 : 0
             color: "#D7BC18"
 
-            Behavior on y { NumberAnimation { duration: 140 } }
-            Behavior on height { NumberAnimation { duration: 140 } }
+            Behavior on y {
+                NumberAnimation {
+                    duration: 140
+                }
+            }
+            Behavior on height {
+                NumberAnimation {
+                    duration: 140
+                }
+            }
         }
 
         Text {
+            renderType: Text.CurveRendering
             x: 12
             y: 0
             width: 133
@@ -187,28 +221,25 @@ Item {
             elide: Text.ElideRight
         }
 
-        Canvas {
+        Shape {
             x: 155
             y: 12
             width: 9
             height: 6
             rotation: root.dropdownOpened ? 180 : dropdownPointer.containsMouse ? 8 : 0
-            antialiasing: true
-
+            preferredRendererType: Shape.CurveRenderer
             Behavior on rotation {
-                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                NumberAnimation {
+                    duration: 160
+                    easing.type: Easing.OutCubic
+                }
             }
-
-            onPaint: {
-                const context = getContext("2d")
-                context.reset()
-                context.beginPath()
-                context.moveTo(0, 0)
-                context.lineTo(9, 0)
-                context.lineTo(4.5, 6)
-                context.closePath()
-                context.fillStyle = "#D7BC18"
-                context.fill()
+            ShapePath {
+                strokeWidth: -1
+                fillColor: "#D7BC18"
+                PathSvg {
+                    path: "M0 0H9L4.5 6Z"
+                }
             }
         }
 
@@ -237,6 +268,7 @@ Item {
         }
 
         Text {
+            renderType: Text.CurveRendering
             x: 0
             y: 0
             width: 44
@@ -253,6 +285,7 @@ Item {
         }
 
         Text {
+            renderType: Text.CurveRendering
             x: 44
             y: 0
             width: 44
@@ -277,10 +310,17 @@ Item {
             z: 1
 
             Behavior on x {
-                NumberAnimation { duration: 180; easing.type: Easing.OutBack }
+                NumberAnimation {
+                    duration: 180
+                    easing.type: Easing.OutBack
+                }
             }
 
-            Behavior on color { ColorAnimation { duration: 180 } }
+            Behavior on color {
+                ColorAnimation {
+                    duration: 180
+                }
+            }
         }
 
         MouseArea {
@@ -319,17 +359,19 @@ Item {
             delegate: Rectangle {
                 required property int index
                 required property string modelData
-                readonly property real segmentWidth: (178 - 4 * Math.max(0, root.segmentOptions.length - 1))
-                                                     / Math.max(1, root.segmentOptions.length)
+                readonly property real segmentWidth: (178 - 4 * Math.max(0, root.segmentOptions.length - 1)) / Math.max(1, root.segmentOptions.length)
                 x: index * (segmentWidth + 4)
                 width: segmentWidth
                 height: 30
-                color: index === root.segmentIndex ? "#D3D4CF"
-                                                   : segmentPointer.containsMouse ? "#2B2B2B" : "#212121"
+                color: index === root.segmentIndex ? "#D3D4CF" : segmentPointer.containsMouse ? "#2B2B2B" : "#212121"
                 border.width: index === root.segmentIndex ? 0 : 1
                 border.color: segmentPointer.containsMouse ? "#777777" : "#3A3A3A"
 
-                Behavior on color { ColorAnimation { duration: 220 } }
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 220
+                    }
+                }
 
                 Rectangle {
                     visible: index === root.segmentIndex
@@ -341,6 +383,7 @@ Item {
                 }
 
                 Text {
+                    renderType: Text.CurveRendering
                     anchors.fill: parent
                     anchors.leftMargin: 6
                     anchors.rightMargin: 6
@@ -382,7 +425,10 @@ Item {
                 scale: swatchPointer.containsMouse ? 1.08 : 1
 
                 Behavior on scale {
-                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                    NumberAnimation {
+                        duration: 220
+                        easing.type: Easing.OutCubic
+                    }
                 }
 
                 Rectangle {
@@ -413,33 +459,37 @@ Item {
                     border.color: "#111111"
                 }
 
-                Canvas {
+                Item {
                     visible: modelData === "custom"
                     anchors.fill: parent
-                    antialiasing: true
-
-                    onPaint: {
-                        const context = getContext("2d")
-                        context.reset()
-                        const center = width / 2
-                        const colors = ["#FF5A5A", "#FFD84A", "#7BE37B", "#4AC6FF", "#A77BFF", "#FF5A5A"]
-                        for (let slice = 0; slice < 60; ++slice) {
-                            const angle0 = slice * Math.PI * 2 / 60 - Math.PI / 2
-                            const angle1 = (slice + 1.2) * Math.PI * 2 / 60 - Math.PI / 2
-                            const scaled = slice / 60 * (colors.length - 1)
-                            const colorIndex = Math.floor(scaled)
-                            context.beginPath()
-                            context.moveTo(center, center)
-                            context.arc(center, center, center, angle0, angle1)
-                            context.closePath()
-                            context.fillStyle = colors[Math.min(colors.length - 1, colorIndex)]
-                            context.fill()
+                    Repeater {
+                        model: 60
+                        Shape {
+                            id: swatchSegment
+                            required property int index
+                            anchors.fill: parent
+                            preferredRendererType: Shape.CurveRenderer
+                            ShapePath {
+                                strokeWidth: -1
+                                fillColor: ["#FF5A5A", "#FFD84A", "#7BE37B", "#4AC6FF", "#A77BFF"][Math.floor(index / 12)]
+                                PathSvg {
+                                    path: {
+                                        const r = swatchSegment.width / 2;
+                                        const a = index * Math.PI * 2 / 60 - Math.PI / 2;
+                                        const b = (index + 1.2) * Math.PI * 2 / 60 - Math.PI / 2;
+                                        return "M" + r + " " + r + "L" + (r + r * Math.cos(a)) + " " + (r + r * Math.sin(a)) + "A" + r + " " + r + " 0 0 1 " + (r + r * Math.cos(b)) + " " + (r + r * Math.sin(b)) + "Z";
+                                    }
+                                }
+                            }
                         }
-                        context.strokeStyle = "#111111"
-                        context.lineWidth = 1
-                        context.beginPath()
-                        context.arc(center, center, center - 0.5, 0, Math.PI * 2)
-                        context.stroke()
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: width / 2
+                        color: "transparent"
+                        border.width: 1
+                        border.color: "#111111"
+                        antialiasing: true
                     }
                 }
 
@@ -469,6 +519,7 @@ Item {
 
             Text {
                 id: chipLabel
+                renderType: Text.CurveRendering
                 anchors.centerIn: parent
                 text: root.chipText
                 color: "#EEEEEE"
@@ -480,6 +531,7 @@ Item {
         }
 
         Text {
+            renderType: Text.CurveRendering
             x: 558
             y: 0
             width: 20
@@ -512,7 +564,11 @@ Item {
             anchors.fill: parent
             color: restorePointer.containsMouse ? "#484848" : "#383838"
 
-            Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on color {
+                ColorAnimation {
+                    duration: 220
+                }
+            }
         }
 
         Rectangle {
@@ -522,10 +578,15 @@ Item {
             height: 12
             color: "#D7BC18"
 
-            Behavior on width { NumberAnimation { duration: 200 } }
+            Behavior on width {
+                NumberAnimation {
+                    duration: 200
+                }
+            }
         }
 
         Text {
+            renderType: Text.CurveRendering
             x: 21
             y: 0
             width: 15
@@ -539,6 +600,7 @@ Item {
         }
 
         Text {
+            renderType: Text.CurveRendering
             x: 41
             y: 0
             width: 31

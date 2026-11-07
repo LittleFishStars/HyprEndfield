@@ -11,12 +11,8 @@ Item {
     property string valueFormat: "percent"
     property Item bubbleHost: null
     readonly property real trackWidth: Math.max(40, width - 66)
-    readonly property real fraction: maximum > minimum
-                                         ? Math.max(0, Math.min(1, (value - minimum) / (maximum - minimum)))
-                                         : 0
-    readonly property real zeroFraction: maximum > minimum && Number.isFinite(zeroValue)
-                                             ? Math.max(0, Math.min(1, (zeroValue - minimum) / (maximum - minimum)))
-                                             : 0
+    readonly property real fraction: maximum > minimum ? Math.max(0, Math.min(1, (value - minimum) / (maximum - minimum))) : 0
+    readonly property real zeroFraction: maximum > minimum && Number.isFinite(zeroValue) ? Math.max(0, Math.min(1, (zeroValue - minimum) / (maximum - minimum))) : 0
     property bool dragging: false
 
     signal valueModified(real value, bool final)
@@ -26,34 +22,32 @@ Item {
     height: 30
 
     function clampedValue(candidate) {
-        const bounded = Math.max(minimum, Math.min(maximum, candidate))
+        const bounded = Math.max(minimum, Math.min(maximum, candidate));
         if (stepSize <= 0)
-            return bounded
-        return Math.max(minimum, Math.min(maximum,
-                    Math.round((bounded - minimum) / stepSize) * stepSize + minimum))
+            return bounded;
+        return Math.max(minimum, Math.min(maximum, Math.round((bounded - minimum) / stepSize) * stepSize + minimum));
     }
 
     function formattedValue(candidate) {
         if (valueFormat === "scale")
-            return Number(candidate).toFixed(2) + "×"
-        const rounded = Math.round(candidate)
+            return Number(candidate).toFixed(2) + "×";
+        const rounded = Math.round(candidate);
         if (valueFormat === "signedPercent")
-            return (rounded > 0 ? "+" : "") + rounded + "%"
-        return rounded + "%"
+            return (rounded > 0 ? "+" : "") + rounded + "%";
+        return rounded + "%";
     }
 
     function valueAt(pointerX) {
-        return clampedValue(minimum + Math.max(0, Math.min(1, pointerX / Math.max(1, trackWidth)))
-                            * (maximum - minimum))
+        return clampedValue(minimum + Math.max(0, Math.min(1, pointerX / Math.max(1, trackWidth))) * (maximum - minimum));
     }
 
     function reportBubble(shown) {
         if (!bubbleHost) {
-            bubbleRequested(false, "", 0, 0)
-            return
+            bubbleRequested(false, "", 0, 0);
+            return;
         }
-        const point = mapToItem(bubbleHost, fraction * trackWidth, 2)
-        bubbleRequested(shown, formattedValue(value), point.x, point.y)
+        const point = mapToItem(bubbleHost, fraction * trackWidth, 2);
+        bubbleRequested(shown, formattedValue(value), point.x, point.y);
     }
 
     Rectangle {
@@ -67,17 +61,20 @@ Item {
     }
 
     Rectangle {
-        x: Number.isFinite(root.zeroValue)
-               ? Math.min(root.fraction, root.zeroFraction) * root.trackWidth : 0
+        x: Number.isFinite(root.zeroValue) ? Math.min(root.fraction, root.zeroFraction) * root.trackWidth : 0
         y: 11
-        width: Number.isFinite(root.zeroValue)
-                   ? Math.abs(root.fraction - root.zeroFraction) * root.trackWidth
-                   : root.fraction * root.trackWidth
+        width: Number.isFinite(root.zeroValue) ? Math.abs(root.fraction - root.zeroFraction) * root.trackWidth : root.fraction * root.trackWidth
         height: 5
         gradient: Gradient {
             orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: "#E9CF12" }
-            GradientStop { position: 1; color: "#FFFA00" }
+            GradientStop {
+                position: 0
+                color: "#E9CF12"
+            }
+            GradientStop {
+                position: 1
+                color: "#FFFA00"
+            }
         }
     }
 
@@ -112,10 +109,16 @@ Item {
         color: "#151515"
 
         Behavior on y {
-            NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+            NumberAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
         }
         Behavior on height {
-            NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+            NumberAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
         }
 
         Rectangle {
@@ -135,6 +138,7 @@ Item {
         layoutDirection: Qt.LeftToRight
 
         Text {
+            renderType: Text.CurveRendering
             text: "[ "
             color: "#8A8B86"
             font.family: harmonyMedium.name
@@ -142,6 +146,7 @@ Item {
             font.weight: Font.Bold
         }
         Text {
+            renderType: Text.CurveRendering
             text: root.formattedValue(root.value)
             color: "#121212"
             font.family: harmonyMedium.name
@@ -149,6 +154,7 @@ Item {
             font.weight: Font.Bold
         }
         Text {
+            renderType: Text.CurveRendering
             text: " ]"
             color: "#8A8B86"
             font.family: harmonyMedium.name
@@ -167,26 +173,26 @@ Item {
         cursorShape: Qt.PointingHandCursor
 
         onPressed: mouse => {
-            root.dragging = true
-            root.value = root.valueAt(mouse.x - 4.5)
-            root.valueModified(root.value, false)
-            root.reportBubble(true)
+            root.dragging = true;
+            root.value = root.valueAt(mouse.x - 4.5);
+            root.valueModified(root.value, false);
+            root.reportBubble(true);
         }
         onPositionChanged: mouse => {
             if (!pressed)
-                return
-            root.value = root.valueAt(mouse.x - 4.5)
-            root.valueModified(root.value, false)
-            root.reportBubble(true)
+                return;
+            root.value = root.valueAt(mouse.x - 4.5);
+            root.valueModified(root.value, false);
+            root.reportBubble(true);
         }
         onReleased: {
-            root.dragging = false
-            root.valueModified(root.value, true)
-            root.reportBubble(false)
+            root.dragging = false;
+            root.valueModified(root.value, true);
+            root.reportBubble(false);
         }
         onCanceled: {
-            root.dragging = false
-            root.reportBubble(false)
+            root.dragging = false;
+            root.reportBubble(false);
         }
     }
 }
