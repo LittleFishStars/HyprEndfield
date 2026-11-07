@@ -410,3 +410,29 @@ QUrl FileShelfController::mediaUrl(const QString &id) const
     return mime.startsWith(QStringLiteral("image/")) || mime.startsWith(QStringLiteral("video/"))
         ? QUrl::fromLocalFile(current.path) : QUrl();
 }
+
+QVariantList FileShelfController::readerChoices() const
+{
+    QVariantList result;
+    for (const auto &entry : m_entries) {
+        const Entry current = inspect(entry.path, &entry);
+        const QString extension = QFileInfo(current.path).suffix().toLower();
+        if (!current.error.isEmpty() || current.directory
+            || !QStringList{QStringLiteral("pdf"), QStringLiteral("epub"), QStringLiteral("txt")}.contains(extension))
+            continue;
+        result.append(QVariantMap{{QStringLiteral("id"), current.id}, {QStringLiteral("title"), current.name},
+                                  {QStringLiteral("format"), extension.toUpper()}});
+    }
+    return result;
+}
+
+QUrl FileShelfController::readerUrl(const QString &id) const
+{
+    const Entry *entry = find(id);
+    if (!entry) return {};
+    const Entry current = inspect(entry->path, entry);
+    const QString extension = QFileInfo(current.path).suffix().toLower();
+    return current.error.isEmpty() && !current.directory
+        && QStringList{QStringLiteral("pdf"), QStringLiteral("epub"), QStringLiteral("txt")}.contains(extension)
+        ? QUrl::fromLocalFile(current.path) : QUrl();
+}

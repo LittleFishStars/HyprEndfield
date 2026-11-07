@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools Concurrent Sql Multimedia)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools Concurrent Sql Multimedia Pdf)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
@@ -15,6 +15,7 @@ pkg_check_modules(VTERM REQUIRED IMPORTED_TARGET vterm>=0.3.3)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
 pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
 pkg_check_modules(PAM REQUIRED IMPORTED_TARGET pam)
+pkg_check_modules(LIBZIP REQUIRED IMPORTED_TARGET libzip)
 
 find_program(WAYLAND_SCANNER_EXECUTABLE wayland-scanner REQUIRED)
 find_file(WLR_DATA_CONTROL_PROTOCOL wlr-data-control-unstable-v1.xml
@@ -66,6 +67,8 @@ qt_add_executable(hyprendfield
     src/fileshelfcontroller.hpp
     src/archivecontroller.cpp
     src/archivecontroller.hpp
+    src/readercontroller.cpp
+    src/readercontroller.hpp
     ${WLR_DATA_CONTROL_HEADER}
     ${WLR_DATA_CONTROL_SOURCE}
 )
@@ -119,6 +122,11 @@ qt_add_qml_module(hyprendfield
         qml/ArchiveTile.qml
         qml/ArchiveMediaStrip.qml
         qml/ArchiveLockedPanel.qml
+        qml/ReaderPage.qml
+        qml/ReaderTabs.qml
+        qml/ReaderGlyph.qml
+        qml/ReaderBookTile.qml
+        qml/ReaderPageSlider.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -186,12 +194,14 @@ target_link_libraries(hyprendfield PRIVATE
     Qt6::Concurrent
     Qt6::Sql
     Qt6::Multimedia
+    Qt6::Pdf
     LayerShellQt::Interface
     PkgConfig::PULSE
     PkgConfig::VTERM
     PkgConfig::WAYLAND_CLIENT
     PkgConfig::LIBSECRET
     PkgConfig::PAM
+    PkgConfig::LIBZIP
     util
 )
 
@@ -299,6 +309,18 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_archive_tests PRIVATE ARCHIVE_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME archive COMMAND hyprendfield_archive_tests)
     set_tests_properties(archive PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
+    qt_add_executable(hyprendfield_reader_tests tests/reader.cpp
+        src/readercontroller.cpp src/readercontroller.hpp
+        src/fileshelfcontroller.cpp src/fileshelfcontroller.hpp)
+    target_include_directories(hyprendfield_reader_tests PRIVATE src)
+    target_link_libraries(hyprendfield_reader_tests PRIVATE
+        Qt6::Quick Qt6::Concurrent Qt6::Pdf Qt6::DBus Qt6::Test PkgConfig::LIBZIP)
+    target_compile_definitions(hyprendfield_reader_tests PRIVATE
+        READER_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
+        READER_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-preview.png"
+        READER_READING_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-reading-preview.png")
+    add_test(NAME reader COMMAND hyprendfield_reader_tests)
+    set_tests_properties(reader PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
 endif()
 
 install(TARGETS hyprendfield

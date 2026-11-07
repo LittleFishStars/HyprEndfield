@@ -273,6 +273,15 @@ Item {
             presented: visible && appController.hudOpen
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        ReaderPage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "reader"
+            presented: visible && appController.hudOpen
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
     }
     MenuPlane {
         scene: menu.shell

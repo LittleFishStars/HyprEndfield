@@ -11,6 +11,7 @@
 #include "notescontroller.hpp"
 #include "fileshelfcontroller.hpp"
 #include "archivecontroller.hpp"
+#include "readercontroller.hpp"
 
 #include <QGuiApplication>
 #include <QIcon>
@@ -184,6 +185,8 @@ int main(int argc, char *argv[])
     NotesController notes;
     FileShelfController fileShelf;
     ArchiveController archive;
+    auto *readerImages = new ReaderImageProvider;
+    ReaderController reader(nullptr, readerImages);
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
@@ -209,9 +212,11 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
     engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
     engine.rootContext()->setContextProperty(QStringLiteral("archiveController"), &archive);
+    engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &reader);
     engine.addImageProvider(QStringLiteral("activity-icons"), new ActivityIconProvider);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.addImageProvider(QStringLiteral("archive-thumbnails"), new ArchiveThumbnailProvider);
+    engine.addImageProvider(QStringLiteral("reader-pages"), readerImages);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 
     if (engine.rootObjects().isEmpty()) {
