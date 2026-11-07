@@ -35,6 +35,8 @@ qt_add_executable(hyprendfield
     src/activitycollector.hpp
     src/activitycontroller.cpp
     src/activitycontroller.hpp
+    src/calendarcontroller.cpp
+    src/calendarcontroller.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -56,6 +58,14 @@ qt_add_qml_module(hyprendfield
         qml/ActivityPage.qml
         qml/ActivityMetricRow.qml
         qml/ActivityFormat.js
+        qml/CalendarPage.qml
+        qml/CalendarFormat.js
+        qml/CalendarButton.qml
+        qml/CalendarDayCell.qml
+        qml/CalendarTextField.qml
+        qml/CalendarEventPlate.qml
+        qml/CalendarMonthPicker.qml
+        qml/CalendarConfirmBar.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -191,6 +201,12 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_activity_tests PRIVATE ACTIVITY_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME activity COMMAND hyprendfield_activity_tests)
     set_tests_properties(activity PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    qt_add_executable(hyprendfield_calendar_tests tests/calendar.cpp src/calendarcontroller.cpp src/calendarcontroller.hpp)
+    target_include_directories(hyprendfield_calendar_tests PRIVATE src)
+    target_link_libraries(hyprendfield_calendar_tests PRIVATE Qt6::Quick Qt6::DBus Qt6::Test)
+    target_compile_definitions(hyprendfield_calendar_tests PRIVATE CALENDAR_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    add_test(NAME calendar COMMAND hyprendfield_calendar_tests)
+    set_tests_properties(calendar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 install(TARGETS hyprendfield
