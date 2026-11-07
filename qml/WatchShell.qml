@@ -41,7 +41,7 @@ Item {
                                                       sceneRotation.scalar) * 180 / Math.PI
     readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
     readonly property bool transitioning: sourceClip.running || contentClip.running
-    readonly property real contentOverlapDuration: 0.10
+    readonly property real contentOverlapDuration: 0.40
     readonly property real motionIntensity: 1.25
                                                 * Math.max(0, Math.min(2, displaySettings.parallaxIntensity))
                                                 * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity))
