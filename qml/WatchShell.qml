@@ -111,11 +111,6 @@ Item {
             icon: "qrc:/assets/icons/calendar.png"
         },
         {
-            key: "map",
-            label: "地图",
-            icon: "qrc:/assets/icons/map.png"
-        },
-        {
             key: "eventLog",
             label: "事件日志",
             icon: "qrc:/assets/icons/event-log.png"

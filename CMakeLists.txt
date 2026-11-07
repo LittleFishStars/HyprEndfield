@@ -174,7 +174,6 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/icons/reader.png
         assets/icons/work-mode.png
         assets/icons/calendar.png
-        assets/icons/map.png
         assets/icons/event-log.png
         assets/icons/SOURCES.json
         assets/fonts/HarmonyOS_Sans_Regular.ttf

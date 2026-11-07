@@ -321,7 +321,7 @@ Item {
                 fragmentShader: "qrc:/shaders/viewport-mask.frag.qsb"
             }
             Repeater {
-                model: 6
+                model: Math.ceil(menu.shell.rightButtons.length / 2)
                 delegate: Item {
                     id: row
                     required property int index
@@ -336,7 +336,7 @@ Item {
                         angle: -3
                     }
                     Repeater {
-                        model: 2
+                        model: Math.min(2, menu.shell.rightButtons.length - row.index * 2)
                         delegate: MenuTile {
                             required property int index
                             readonly property int slot: row.index * 2 + index

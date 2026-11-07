@@ -48,12 +48,6 @@
       "sha256": "1e2051b240bbbf8999cbe3f653ac9b7a205eb456d749099126b01b80efbd918f"
     },
     {
-      "file": "map.png",
-      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Region_icon.png",
-      "source_sha256": "d65910fb49e47a666fb476301efe5b6fd372b812ee076c79a5c2c5fbfec37394",
-      "sha256": "0d6b52875d0493c926d7d1e03b92f3890392ca449cbe7bc95c4d2114f776d04f"
-    },
-    {
       "file": "event-log.png",
       "source_project_file": "Resources/AppIconSources/EndfieldWiki/Questionnaire_Icon.png",
       "source_sha256": "262f16f035f7a03f00f79668b9c09175e65112f9c8763167c09ef29024ecb2c4",
