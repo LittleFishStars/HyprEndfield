@@ -236,7 +236,11 @@ private slots:
         auto *verticalColumn = view.rootObject()->findChild<QQuickItem *>(QStringLiteral("readerVerticalColumn"));
         QVERIFY(verticalColumn);
         QVERIFY(verticalColumn->isVisible());
-        QTest::wheelEvent(&view, QPointF(294, 295), QPoint(0, 120), QPoint(), Qt::ControlModifier);
+        QVERIFY(view.rootObject()->findChild<QQuickItem *>(QStringLiteral("readerVerticalWheelPointer")));
+        const double contentY = verticalColumn->property("contentY").toDouble();
+        QTest::wheelEvent(&view, QPointF(294, 295), QPoint(0, -120));
+        QTRY_VERIFY_WITH_TIMEOUT(verticalColumn->property("contentY").toDouble() > contentY, 5000);
+        QTest::wheelEvent(&view, QPointF(294, 295), QPoint(0, 120), QPoint(), Qt::ControlModifier | Qt::ShiftModifier);
         QTRY_VERIFY_WITH_TIMEOUT(visualController.state().value(QStringLiteral("zoom")).toDouble() > 1, 5000);
         visualController.resetZoom();
         QTRY_VERIFY_WITH_TIMEOUT(verticalColumn->isVisible(), 5000);

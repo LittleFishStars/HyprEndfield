@@ -342,20 +342,6 @@ FocusScope {
                     visible: paper.verticalMode; clip: true; contentWidth: width
                     contentHeight: columnContent.height; boundsBehavior: Flickable.StopAtBounds; flickDeceleration: 2600
                     onContentYChanged: paper.inspectColumn()
-                    WheelHandler {
-                        target: null
-                        enabled: paper.verticalMode && !!readerPage.currentPage.key
-                        acceptedModifiers: Qt.ControlModifier
-                        orientation: Qt.Vertical
-                        blocking: true
-                        onWheel: event => {
-                            const delta = event.angleDelta.y || event.pixelDelta.y
-                            if (!delta) return
-                            const point = column.mapToItem(paper, event.x, event.y)
-                            readerController.zoomAt(delta > 0 ? 1.12 : 1 / 1.12, point.x - 1, point.y - 1)
-                            event.accepted = true
-                        }
-                    }
                     Column {
                         id: columnContent; width: 588
                         Repeater {
@@ -364,6 +350,19 @@ FocusScope {
                                 required property var modelData; width: 588; height: Number(modelData.columnHeight || 1); clip: true
                                 Image { x: 0; y: -paper.columnInset; width: 588; height: 349; source: readingPage.visible ? modelData.source : ""; sourceSize: Qt.size(1260, 748); fillMode: Image.Stretch; smooth: true; mipmap: true; asynchronous: false }
                             }
+                        }
+                    }
+                    MouseArea {
+                        id: columnWheelPointer; objectName: "readerVerticalWheelPointer"; z: 10
+                        x: 0; y: 0; width: column.width; height: Math.max(column.height, column.contentHeight)
+                        acceptedButtons: Qt.NoButton; scrollGestureEnabled: true
+                        onWheel: wheel => {
+                            const modifier = wheel.modifiers & Qt.ControlModifier
+                            const delta = wheel.angleDelta.y || wheel.pixelDelta.y
+                            if (!modifier || !delta) { wheel.accepted = false; return }
+                            const point = columnWheelPointer.mapToItem(paper, wheel.x, wheel.y)
+                            readerController.zoomAt(delta > 0 ? 1.12 : 1 / 1.12, point.x - 1, point.y - 1)
+                            wheel.accepted = true
                         }
                     }
                 }
