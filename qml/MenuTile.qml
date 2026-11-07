@@ -79,6 +79,7 @@ Item {
             ink: "#313131"
         }
         Text {
+            objectName: "menuTileLabel"
             x: 2
             y: 70
             width: 103
@@ -87,6 +88,9 @@ Item {
             color: "#313131"
             font.family: harmonyMedium.name
             font.pixelSize: text.length > 4 ? 17 : 21
+            fontSizeMode: Text.HorizontalFit
+            minimumPixelSize: 12
+            elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             renderType: Text.CurveRendering
         }

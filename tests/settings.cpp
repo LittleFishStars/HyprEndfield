@@ -211,6 +211,24 @@ private slots:
         QCOMPARE(item->scale(), std::min({1600. / 1100, 900. / 740, 1.75}) * 1.18);
         QVERIFY(warnings.isEmpty());
     }
+    void longMenuTitleFits() {
+        QFile file(QString(SETTINGS_QML_DIR) + "/MenuTile.qml"); QVERIFY(file.open(QIODevice::ReadOnly));
+        const QString source = QString::fromUtf8(file.readAll());
+        const auto start = source.indexOf("        Text {"); QVERIFY(start >= 0);
+        const auto end = source.indexOf("\n        }", start); QVERIFY(end > start);
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("harmonyMedium", QVariantMap{{"name", "HarmonyOS Sans"}});
+        engine.rootContext()->setContextProperty("tile", QVariantMap{{"entry", QVariantMap{{"label", "可露希尔的小游戏"}}}});
+        QQmlComponent component(&engine);
+        component.setData(("import QtQuick\n" + source.mid(start, end - start + 10)).toUtf8(), QUrl());
+        std::unique_ptr<QObject> object(component.create()); QVERIFY2(object, qPrintable(component.errorString()));
+        QQuickWindow window; window.resize(120, 110); auto *item = qobject_cast<QQuickItem *>(object.get());
+        QVERIFY(item); item->setParentItem(window.contentItem()); window.show(); QTest::qWait(40);
+        QCOMPARE(item->property("text").toString(), QString("可露希尔的小游戏"));
+        QVERIFY(!item->property("truncated").toBool());
+        QVERIFY(item->property("contentWidth").toDouble() <= item->width());
+        item->setParentItem(nullptr);
+    }
     void overlaysAndClock() {
         QTemporaryDir dir; SettingsController settings(nullptr, dir.filePath("s.ini"), dir.filePath("startup"), dir.path());
         settings.set("languageIndex", 2); settings.set("reduceMotion", true);
