@@ -180,7 +180,7 @@ private slots:
         context->setContextProperty("focusModeController", QVariantMap{{"state", QVariantMap{{"trackedWorkSeconds", 3600}}}});
         context->setContextProperty("appController", QVariantMap{{"localUserName", "TEST"}});
         QQuickWindow window; window.setColor(QColor("#191B1D")); window.resize(630, 540); window.show(); QVERIFY(QTest::qWaitForWindowExposed(&window));
-        for (const auto &name : {"BootLog", "FacilityTags", "FacilityBanner", "RedactionBlock", "MenuClock"}) {
+        for (const auto &name : {"BootLog", "FacilityTags", "FacilityBanner", "RedactionBlock", "NotesFormatBar", "MenuClock"}) {
             QQmlComponent component(&engine, QUrl::fromLocalFile(QString(SETTINGS_QML_DIR) + '/' + name + ".qml"));
             QVERIFY2(component.isReady(), qPrintable(component.errorString()));
             QVariantMap initial;
