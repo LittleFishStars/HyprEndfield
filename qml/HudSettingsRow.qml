@@ -9,10 +9,25 @@ Item {
     property bool switched: false
     property bool dropdownOpened: false
     property string chipText: ""
+    property real sliderValue: 0
+    property real sliderMinimum: 0
+    property real sliderMaximum: 100
+    property real sliderStep: 1
+    property real sliderZero: Number.NaN
+    property string sliderFormat: "percent"
+    property Item sliderBubbleHost: null
+    property var segmentOptions: ["24 小时制", "12 小时制"]
+    property int segmentIndex: 0
+    property var swatchColors: ["#FAD41F", "#6EDFE8", "#A8E58B", "#C9A2FF", "#FF8F78", "custom"]
+    property int swatchIndex: 0
     property real hoverShift: hoverHandler.hovered ? 3 : 0
 
     signal activated()
     signal toggleRequested(bool value)
+    signal sliderMoved(real value, bool final)
+    signal sliderBubbleRequested(bool shown, string text, real x, real y)
+    signal segmentRequested(int index)
+    signal swatchRequested(int index)
 
     width: 590
     height: 50
@@ -275,12 +290,177 @@ Item {
         }
     }
 
+    HudSlider {
+        visible: root.mode === "slider"
+        x: 202
+        y: 10
+        width: 366
+        value: root.sliderValue
+        minimum: root.sliderMinimum
+        maximum: root.sliderMaximum
+        stepSize: root.sliderStep
+        zeroValue: root.sliderZero
+        valueFormat: root.sliderFormat
+        bubbleHost: root.sliderBubbleHost
+        onValueModified: (value, final) => root.sliderMoved(value, final)
+        onBubbleRequested: (shown, text, x, y) => root.sliderBubbleRequested(shown, text, x, y)
+    }
+
+    Item {
+        visible: root.mode === "segmented"
+        x: 400
+        y: 10
+        width: 178
+        height: 30
+
+        Repeater {
+            model: root.segmentOptions
+
+            delegate: Rectangle {
+                required property int index
+                required property string modelData
+                readonly property real segmentWidth: (178 - 4 * Math.max(0, root.segmentOptions.length - 1))
+                                                     / Math.max(1, root.segmentOptions.length)
+                x: index * (segmentWidth + 4)
+                width: segmentWidth
+                height: 30
+                color: index === root.segmentIndex ? "#D3D4CF"
+                                                   : segmentPointer.containsMouse ? "#2B2B2B" : "#212121"
+                border.width: index === root.segmentIndex ? 0 : 1
+                border.color: segmentPointer.containsMouse ? "#777777" : "#3A3A3A"
+
+                Behavior on color { ColorAnimation { duration: 220 } }
+
+                Rectangle {
+                    visible: index === root.segmentIndex
+                    x: 0
+                    y: 0
+                    width: 3
+                    height: 30
+                    color: "#111111"
+                }
+
+                Text {
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    text: modelData
+                    color: index === root.segmentIndex ? "#111111" : "#CCCCCC"
+                    font.family: harmonyMedium.name
+                    font.pixelSize: 13
+                    font.weight: Font.Medium
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+
+                MouseArea {
+                    id: segmentPointer
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.segmentRequested(index)
+                }
+            }
+        }
+    }
+
+    Row {
+        visible: root.mode === "swatches"
+        x: 384
+        y: 13
+        spacing: 8
+
+        Repeater {
+            model: root.swatchColors
+
+            delegate: Item {
+                required property int index
+                required property string modelData
+                width: 24
+                height: 24
+                scale: swatchPointer.containsMouse ? 1.08 : 1
+
+                Behavior on scale {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                }
+
+                Rectangle {
+                    visible: index === root.swatchIndex
+                    x: -5
+                    y: -5
+                    width: 34
+                    height: 34
+                    color: "transparent"
+                    border.width: 3
+                    border.color: "#FFFA00"
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 3
+                        color: "transparent"
+                        border.width: 2
+                        border.color: "#111111"
+                    }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: modelData !== "custom"
+                    radius: modelData === "custom" ? 12 : 0
+                    color: modelData
+                    border.width: 1
+                    border.color: "#111111"
+                }
+
+                Canvas {
+                    visible: modelData === "custom"
+                    anchors.fill: parent
+                    antialiasing: true
+
+                    onPaint: {
+                        const context = getContext("2d")
+                        context.reset()
+                        const center = width / 2
+                        const colors = ["#FF5A5A", "#FFD84A", "#7BE37B", "#4AC6FF", "#A77BFF", "#FF5A5A"]
+                        for (let slice = 0; slice < 60; ++slice) {
+                            const angle0 = slice * Math.PI * 2 / 60 - Math.PI / 2
+                            const angle1 = (slice + 1.2) * Math.PI * 2 / 60 - Math.PI / 2
+                            const scaled = slice / 60 * (colors.length - 1)
+                            const colorIndex = Math.floor(scaled)
+                            context.beginPath()
+                            context.moveTo(center, center)
+                            context.arc(center, center, center, angle0, angle1)
+                            context.closePath()
+                            context.fillStyle = colors[Math.min(colors.length - 1, colorIndex)]
+                            context.fill()
+                        }
+                        context.strokeStyle = "#111111"
+                        context.lineWidth = 1
+                        context.beginPath()
+                        context.arc(center, center, center - 0.5, 0, Math.PI * 2)
+                        context.stroke()
+                    }
+                }
+
+                MouseArea {
+                    id: swatchPointer
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.swatchRequested(index)
+                }
+            }
+        }
+    }
+
     Item {
         visible: root.mode === "nav"
         anchors.fill: parent
 
         Rectangle {
             id: countChip
+            visible: root.chipText.length > 0
             x: 548 - width
             y: 16
             width: chipLabel.implicitWidth + 14

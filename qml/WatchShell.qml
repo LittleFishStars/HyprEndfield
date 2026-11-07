@@ -3,6 +3,7 @@ import QtQuick
 Item {
     id: shell
 
+    required property var displaySettings
     width: 1000
     height: 640
 
@@ -35,6 +36,9 @@ Item {
                                                       sceneRotation.scalar) * 180 / Math.PI
     readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
     readonly property bool transitioning: sourceClip.running
+    readonly property real motionIntensity: 1.25
+                                                * Math.max(0, Math.min(2, displaySettings.parallaxIntensity))
+                                                * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity))
 
     readonly property var leftButtons: [
         { key: "system", label: "系统", x: 54, y: 147, slant: 9, rotation: -0.859 },
@@ -68,7 +72,7 @@ Item {
 
     function updateClock() {
         const now = new Date()
-        clockText = Qt.formatTime(now, "HH:mm:ss")
+        clockText = Qt.formatTime(now, displaySettings.clock24Hour ? "HH:mm:ss" : "hh:mm:ss AP")
         dateText = Qt.formatDate(now, "yyyy.MM.dd  ddd")
     }
 
@@ -90,6 +94,11 @@ Item {
     function animateEntrance() {
         sourceClip.stop()
         animationPhase = 1
+        if (displaySettings.reduceMotion) {
+            animationTime = sourceWatchAnimation.openingDuration
+            animationPhase = 0
+            return
+        }
         animationTime = 0
         sourceClip.from = 0
         sourceClip.to = sourceWatchAnimation.openingDuration
@@ -100,6 +109,10 @@ Item {
     function animateExit() {
         sourceClip.stop()
         animationPhase = 2
+        if (displaySettings.reduceMotion) {
+            animationTime = sourceWatchAnimation.closingDuration
+            return
+        }
         animationTime = 0
         sourceClip.from = 0
         sourceClip.to = sourceWatchAnimation.closingDuration
@@ -109,7 +122,9 @@ Item {
 
     function retargetPointer(normalizedX, normalizedY) {
         gyroStart = gyroRotation
-        gyroEnd = sourceWatchAnimation.gyroTarget(normalizedX, normalizedY)
+        gyroEnd = displaySettings.reduceMotion
+                ? sourceWatchAnimation.neutralGyro
+                : sourceWatchAnimation.gyroTarget(normalizedX, normalizedY, motionIntensity)
         gyroProgress = 0
         gyroMotion.restart()
     }
@@ -414,6 +429,16 @@ Item {
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "system"
             opacity: shell.frameValue("nativeOpacity", 1)
+        }
+
+        DisplayPage {
+            x: 303.6
+            y: 116.9
+            scale: 0.66576
+            transformOrigin: Item.TopLeft
+            visible: shell.selectedModule === "display"
+            opacity: shell.frameValue("nativeOpacity", 1)
+            settings: shell.displaySettings
         }
 
         Repeater {

@@ -22,7 +22,8 @@ public:
     [[nodiscard]] QQuaternion neutralGyro() const;
 
     Q_INVOKABLE QVariantMap frame(int phase, double time) const;
-    Q_INVOKABLE QQuaternion gyroTarget(double normalizedX, double normalizedY) const;
+    Q_INVOKABLE QQuaternion gyroTarget(double normalizedX, double normalizedY,
+                                       double intensity = 1.0) const;
     Q_INVOKABLE QQuaternion interpolateRotation(const QQuaternion &start,
                                                 const QQuaternion &end,
                                                 double progress) const;

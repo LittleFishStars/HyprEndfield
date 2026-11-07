@@ -545,15 +545,18 @@ QVariantMap WatchAnimationController::frame(int phase, double time) const
     return frame;
 }
 
-QQuaternion WatchAnimationController::gyroTarget(double normalizedX, double normalizedY) const
+QQuaternion WatchAnimationController::gyroTarget(double normalizedX, double normalizedY,
+                                                  double intensity) const
 {
-    if (!m_data->valid || !std::isfinite(normalizedX) || !std::isfinite(normalizedY)) {
+    if (!m_data->valid || !std::isfinite(normalizedX) || !std::isfinite(normalizedY)
+        || !std::isfinite(intensity)) {
         return neutralGyro();
     }
+    const double clampedIntensity = std::clamp(intensity, 0.0, 5.0);
     const double pitch = m_data->gyroPitch.sample(std::clamp(normalizedY, -1.0, 1.0))
-        * m_data->maximumPitch;
+        * m_data->maximumPitch * clampedIntensity;
     const double yaw = m_data->gyroYaw.sample(std::clamp(normalizedX, -1.0, 1.0))
-        * m_data->maximumYaw;
+        * m_data->maximumYaw * clampedIntensity;
     const QQuaternion pitchRotation = QQuaternion::fromAxisAndAngle(1.0f, 0.0f, 0.0f, float(pitch));
     const QQuaternion yawRotation = QQuaternion::fromAxisAndAngle(0.0f, 1.0f, 0.0f, float(yaw));
     return (yawRotation * pitchRotation).normalized();

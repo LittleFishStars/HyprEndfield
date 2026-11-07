@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import QtCore
 import org.kde.layershell 1.0 as LayerShell
 
 Window {
@@ -44,10 +45,34 @@ Window {
         onActivated: appController.hideHud()
     }
 
+    Settings {
+        id: displaySettings
+        category: "display"
+        property real uiScale: 1.0
+        property real hudOffsetX: 0.0
+        property real hudOffsetY: 0.0
+        property real parallaxIntensity: 1.0
+        property real perspectiveIntensity: 1.0
+        property real backgroundBrightness: 0.37
+        property real blurAmount: 0.75
+        property int themeIndex: 0
+        property bool clock24Hour: true
+        property int clockStyleIndex: 0
+        property int centerLogoIndex: 0
+        property int accentIndex: 0
+        property bool ambientAnimation: true
+        property bool reduceMotion: false
+        property bool lowPowerVisualMode: false
+        property bool recordingMode: false
+        property bool dailyBootLog: true
+        property bool facilityAlerts: true
+    }
+
     Rectangle {
         id: backdrop
         anchors.fill: parent
-        color: "#d91b1c1e"
+        color: Qt.rgba(0.106, 0.110, 0.118,
+                       Math.max(0, Math.min(1, 1 - displaySettings.backgroundBrightness)))
         opacity: root.backdropOpacity
 
         MouseArea {
@@ -59,8 +84,11 @@ Window {
     WatchShell {
         id: watchShell
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: -30 * scale
-        scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.75))
+        anchors.horizontalCenterOffset: root.width * displaySettings.hudOffsetX
+        anchors.verticalCenterOffset: -30 * scale + root.height * displaySettings.hudOffsetY
+        displaySettings: displaySettings
+        scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.75)
+                              * displaySettings.uiScale)
     }
 
     HoverHandler {
@@ -81,7 +109,8 @@ Window {
 
     Timer {
         id: concealTimer
-        interval: Math.ceil(sourceWatchAnimation.closingDuration * 1000) + 20
+        interval: (displaySettings.reduceMotion ? 0
+                                                : Math.ceil(sourceWatchAnimation.closingDuration * 1000)) + 20
         repeat: false
         onTriggered: appController.completeHide()
     }

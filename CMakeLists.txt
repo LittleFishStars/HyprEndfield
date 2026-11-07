@@ -27,7 +27,9 @@ qt_add_qml_module(hyprendfield
         qml/Main.qml
         qml/WatchShell.qml
         qml/SystemPage.qml
+        qml/DisplayPage.qml
         qml/HudSettingsRow.qml
+        qml/HudSlider.qml
         qml/HudNavButton.qml
         qml/HudBottomButton.qml
         qml/HudGlyph.qml
