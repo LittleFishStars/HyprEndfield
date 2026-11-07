@@ -336,7 +336,11 @@ set_target_properties(hyprendfield PROPERTIES
 )
 
 include(GNUInstallDirs)
+option(BUILD_TESTING "Build local-only HyprEndfield tests" OFF)
 include(CTest)
+if(BUILD_TESTING AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/settings.cpp")
+    message(FATAL_ERROR "BUILD_TESTING requires the local tests/ directory, which is not distributed. Configure with -DBUILD_TESTING=OFF.")
+endif()
 if(BUILD_TESTING)
     qt_add_executable(hyprendfield_settings_tests tests/settings.cpp
         src/settingscontroller.cpp src/settingscontroller.hpp src/centerlogo.cpp src/centerlogo.hpp
