@@ -1,9 +1,12 @@
 #pragma once
+#include "profileimageitem.hpp"
 #include <QFutureWatcher>
 #include <QImage>
+#include <QPointer>
 #include <QQuickPaintedItem>
 #include <QVariantMap>
 #include <QUrl>
+#include <memory>
 
 class ProfileController final : public QObject {
     Q_OBJECT
@@ -35,7 +38,7 @@ private:
 };
 
 // Portrait crop and backdrop geometry from HUDPortraitArtwork / PersonalProfileCanvas.
-class ProfileArtwork : public QQuickPaintedItem {
+class ProfileArtwork : public ProfileImageItem {
     Q_OBJECT
     Q_PROPERTY(ProfileController *controller READ controller WRITE setController NOTIFY appearanceChanged)
     Q_PROPERTY(QString kind MEMBER m_kind NOTIFY appearanceChanged)
@@ -48,7 +51,13 @@ public:
 signals:
     void appearanceChanged();
 private:
-    ProfileController *m_controller = nullptr;
+    void refreshImage();
+    struct Cache;
+    std::shared_ptr<Cache> m_cache;
+    QPointer<ProfileController> m_controller;
     QString m_kind = "avatar";
+    QString m_lastKind;
     QColor m_accent = Qt::yellow;
+    QVariantList m_geometry;
+    double m_zoom = 1, m_offsetX = 0, m_offsetY = 0;
 };

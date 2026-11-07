@@ -71,6 +71,7 @@ qt_add_executable(hyprendfield
     src/storagecontroller.hpp
     src/profilecontroller.cpp
     src/profilecontroller.hpp
+    src/profileimageitem.cpp src/profileimageitem.hpp
     src/accountcontroller.cpp src/accountcontroller.hpp
     src/accountlogin.cpp src/accountlogin.hpp
     src/accountartwork.cpp src/accountartwork.hpp
@@ -500,7 +501,7 @@ if(BUILD_TESTING)
     set_tests_properties(event_log PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
     set_tests_properties(orbipom PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
     qt_add_executable(hyprendfield_media_tests tests/media_components.cpp
-        src/projectioncanvas.cpp src/mediainfo.cpp src/storagecontroller.cpp src/notescontroller.cpp src/profilecontroller.cpp
+        src/projectioncanvas.cpp src/mediainfo.cpp src/storagecontroller.cpp src/notescontroller.cpp src/profilecontroller.cpp src/profileimageitem.cpp
         src/mediaeditor.cpp src/mediaengine.cpp
         src/endfield/modules/media_assembly_model.cpp src/endfield/modules/media_assembly_geometry.cpp src/endfield/modules/media_assembly_processor.cpp)
     target_include_directories(hyprendfield_media_tests PRIVATE src src/endfield)
@@ -514,7 +515,7 @@ if(BUILD_TESTING)
     target_link_libraries(hyprendfield_account_api_tests PRIVATE hyprendfield_account_core)
     add_test(NAME account_api COMMAND hyprendfield_account_api_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/hypergryph-account-source.json")
     qt_add_executable(hyprendfield_account_tests tests/account_components.cpp
-        src/accountcontroller.cpp src/accountlogin.cpp src/accountartwork.cpp src/profilecontroller.cpp src/watchanimationcontroller.cpp
+        src/accountcontroller.cpp src/accountlogin.cpp src/accountartwork.cpp src/profilecontroller.cpp src/profileimageitem.cpp src/watchanimationcontroller.cpp
         src/endfield/core/data/json.cpp src/endfield/core/data/file_io.cpp src/endfield/data_platform.cpp)
     target_include_directories(hyprendfield_account_tests PRIVATE src)
     target_link_libraries(hyprendfield_account_tests PRIVATE hyprendfield_account_core Qt6::Quick Qt6::Test Qt6::WebEngineWidgets Qt6::Concurrent PkgConfig::LIBSECRET)

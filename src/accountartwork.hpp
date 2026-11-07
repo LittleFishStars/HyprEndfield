@@ -1,9 +1,12 @@
 #pragma once
 #include "profilecontroller.hpp"
+#include "profileimageitem.hpp"
+#include <QPointer>
 #include <QQuickPaintedItem>
+#include <memory>
 
 // Rasterize only on content changes. The original camera projects these items.
-class GameProfileArtwork : public QQuickPaintedItem {
+class GameProfileArtwork : public ProfileImageItem {
     Q_OBJECT
     Q_PROPERTY(ProfileController *controller READ controller WRITE setController NOTIFY appearanceChanged)
     Q_PROPERTY(QVariantMap spec MEMBER m_spec NOTIFY appearanceChanged)
@@ -17,11 +20,14 @@ public:
 signals:
     void appearanceChanged();
 private:
-    ProfileController *m_controller = nullptr;
+    void refreshImage();
+    struct Cache;
+    std::shared_ptr<Cache> m_cache;
+    QPointer<ProfileController> m_controller;
     QVariantMap m_spec;
     QColor m_accent = Qt::yellow;
-    bool m_recording = false, m_dirty = true;
-    QImage m_image;
+    bool m_recording = false;
+    int m_level = 1;
 };
 
 class AccountGaugeArtwork : public QQuickPaintedItem {

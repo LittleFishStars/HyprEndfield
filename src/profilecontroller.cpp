@@ -159,6 +159,7 @@ bool ProfileController::setField(const QString &field, const QVariant &value, bo
     }
     if (!valid) { m_error = tr("输入内容超出允许范围，或格式不正确。"); emit changed(); return false; }
     const bool changedValue = m_values.value(field) != accepted;
+    if (!changedValue && !commit && m_error.isEmpty()) return true;
     m_values[field] = accepted; m_error.clear(); const bool saved = !commit || save(); emit changed();
     if (saved && commit && changedValue && (field.startsWith("avatar") || field.startsWith("thumbnail") || field.startsWith("background")))
         emit cropChanged(field.startsWith("background") ? "background" : "thumbnail");
@@ -187,46 +188,88 @@ bool ProfileController::resetImage(const QString &kind) {
     if (kind == "avatar") m_avatar = {}; else m_background = {};
     emit changed(); return true;
 }
-ProfileArtwork::ProfileArtwork(QQuickItem *parent) : QQuickPaintedItem(parent) {
+struct ProfileArtwork::Cache { QImage mask; };
+ProfileArtwork::ProfileArtwork(QQuickItem *parent) : ProfileImageItem(parent), m_cache(std::make_shared<Cache>()) {
     setAntialiasing(true);
-    connect(this, &ProfileArtwork::appearanceChanged, this, [this] { update(); });
-    const auto resizeTexture = [this] { setTextureSize(QSize(qCeil(width() * 2), qCeil(height() * 2))); update(); };
+    connect(this, &ProfileArtwork::appearanceChanged, this, &ProfileArtwork::refreshImage);
+    const auto resizeTexture = [this] { setTextureSize(QSize(qCeil(width() * 2), qCeil(height() * 2))); refreshImage(); update(); };
     connect(this, &QQuickItem::widthChanged, this, resizeTexture); connect(this, &QQuickItem::heightChanged, this, resizeTexture);
 }
 void ProfileArtwork::setController(ProfileController *value) {
     if (m_controller == value) return;
     if (m_controller) disconnect(m_controller, nullptr, this, nullptr);
     m_controller = value;
-    if (value) connect(value, &ProfileController::changed, this, [this] { update(); });
+    clearImage();
+    if (value) {
+        connect(value, &ProfileController::changed, this, &ProfileArtwork::refreshImage);
+        connect(value, &QObject::destroyed, this, [this] { m_controller=nullptr; clearImage(); });
+    }
     emit appearanceChanged();
 }
-void ProfileArtwork::paint(QPainter *p) {
-    if (!m_controller || width() <= 0 || height() <= 0) return;
-    const auto state = m_controller->state(); p->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+void ProfileArtwork::refreshImage() {
+    if (!m_controller || width()<=0 || height()<=0) { clearImage(); return; }
+    if (m_lastKind!=m_kind) { clearImage();m_lastKind=m_kind; }
     if (m_kind == "frame") {
-        static const QImage original = [] { QFile f(":/assets/icons/profile-frame.bgra"); if (!f.open(QIODevice::ReadOnly)) return QImage(); const auto bytes = f.read(256 * 256 * 4); if (bytes.size() != 256 * 256 * 4) return QImage(); return QImage(reinterpret_cast<const uchar *>(bytes.constData()), 256, 256, QImage::Format_ARGB32).copy(1, 1, 254, 254).flipped(Qt::Vertical); }();
-        QImage frame = original;
-        for (int y = 0; y < frame.height(); ++y) for (int x = 0; x < frame.width(); ++x) { auto c = frame.pixelColor(x, y); c.setRedF(c.redF() * m_accent.redF()); c.setGreenF(c.greenF() * m_accent.greenF()); c.setBlueF(c.blueF() * m_accent.blueF()); frame.setPixelColor(x, y, c); }
-        p->drawImage(boundingRect(), frame); return;
+        const auto accent=m_accent;
+        requestImage({m_kind,QVariant::fromValue(accent)},[accent] {
+            static const QImage original = [] { QFile f(":/assets/icons/profile-frame.bgra"); if (!f.open(QIODevice::ReadOnly)) return QImage(); const auto bytes = f.read(256 * 256 * 4); if (bytes.size() != 256 * 256 * 4) return QImage(); return QImage(reinterpret_cast<const uchar *>(bytes.constData()), 256, 256, QImage::Format_ARGB32).copy(1, 1, 254, 254).flipped(Qt::Vertical); }();
+            QImage frame=original;
+            for(int y=0;y<frame.height();++y) for(int x=0;x<frame.width();++x) {
+                auto c=frame.pixelColor(x,y);c.setRedF(c.redF()*accent.redF());c.setGreenF(c.greenF()*accent.greenF());c.setBlueF(c.blueF()*accent.blueF());frame.setPixelColor(x,y,c);
+            }
+            return frame;
+        });
+        return;
     }
-    const bool avatar = m_kind == "avatar";
-    const auto &image = m_controller->image(avatar ? "avatar" : "background");
-    const QString prefix = avatar ? "avatar" : m_kind == "thumbnail" ? "thumbnail" : "background";
-    const double zoom = state.value(prefix + "Zoom").toDouble();
-    if (image.isNull()) {
-        if (avatar) {
-            p->save(); p->translate(width() / 2 + state.value("avatarOffsetX").toDouble() * width() * .5, height() / 2 + state.value("avatarOffsetY").toDouble() * height() * .5);
-            p->scale(width() / 55 * zoom, height() / 55 * zoom); p->translate(-27.5, -27.5);
+    const auto state=m_controller->state();
+    const auto photo=m_controller->image(m_kind=="avatar" ? "avatar" : "background");
+    const QString prefix=m_kind=="avatar" ? "avatar" : m_kind=="thumbnail" ? "thumbnail" : "background";
+    m_zoom=state.value(prefix+"Zoom").toDouble();
+    m_offsetX=state.value(prefix+"OffsetX").toDouble();m_offsetY=state.value(prefix+"OffsetY").toDouble();
+    if(m_kind!="background") {
+        // The small portrait retains its source pixels; panning and zooming
+        // only change the draw rectangle, as in the source page's layer transform.
+        const QVariantList geometry{m_zoom,m_offsetX,m_offsetY};
+        if(geometry!=m_geometry) { m_geometry=geometry;update(); }
+        requestImage({m_kind,photo.cacheKey()},[photo] { return photo; });
+        return;
+    }
+    const auto size=textureSize();
+    const double zoom=m_zoom,w=state.value("backgroundWidth").toDouble()*1.58,h=w*.685;
+    const QRectF box((950-w)/2+m_offsetX*1.58,(650-h)/2+m_offsetY*1.3+87,w,h);
+    const auto cache=m_cache;
+    requestImage({m_kind,photo.cacheKey(),size,zoom,box},[photo,size,zoom,box,cache] {
+        if(photo.isNull()) return QImage{};
+        // The radial fade is fixed in page coordinates; cache it independently
+        // of the photo's position, zoom and size. Keep the original pixels.
+        if(cache->mask.size()!=size) {
+            cache->mask=QImage(size,QImage::Format_ARGB32_Premultiplied);cache->mask.fill(Qt::transparent);
+            QPainter maskPainter(&cache->mask);maskPainter.scale(size.width()/950.,size.height()/860.);
+            QRadialGradient mask(QPointF(475,430),430);mask.setColorAt(0,Qt::white);mask.setColorAt(.52,Qt::white);mask.setColorAt(.74,QColor(255,255,255,140));mask.setColorAt(1,Qt::transparent);
+            maskPainter.fillRect(QRectF(0,0,950,860),mask);
+        }
+        QImage buffer(size,QImage::Format_ARGB32_Premultiplied);buffer.fill(Qt::transparent);
+        QPainter art(&buffer);art.setRenderHint(QPainter::SmoothPixmapTransform);art.scale(size.width()/950.,size.height()/860.);
+        art.drawImage(box,photo,crop(photo,box.size(),zoom,0,0));
+        art.resetTransform();art.setCompositionMode(QPainter::CompositionMode_DestinationIn);art.drawImage(QPoint(),cache->mask);art.end();
+        return buffer;
+    },{m_kind,photo.cacheKey(),size});
+}
+void ProfileArtwork::paint(QPainter *p) {
+    if(!m_controller || width()<=0 || height()<=0) return;
+    p->setRenderHints(QPainter::Antialiasing|QPainter::SmoothPixmapTransform);
+    const auto &picture=renderedImage();
+    if(m_kind=="frame" || m_kind=="background") {
+        if(!picture.isNull()) p->drawImage(boundingRect(),picture);
+        return;
+    }
+    if(picture.isNull()) {
+        if(m_kind=="avatar") {
+            p->save();p->translate(width()/2+m_offsetX*width()*.5,height()/2+m_offsetY*height()*.5);
+            p->scale(width()/55*m_zoom,height()/55*m_zoom);p->translate(-27.5,-27.5);
             QPainterPath silhouette; silhouette.addEllipse(QRectF(19.8, 11, 16.5, 17)); silhouette.moveTo(9.9,47.3); silhouette.cubicTo(13.2,24.75,42.35,24.75,45.65,47.3); silhouette.closeSubpath(); p->fillPath(silhouette, QColor(245,245,245,161)); p->restore();
         }
         return;
     }
-    if (m_kind != "background") { p->drawImage(boundingRect(), image, crop(image, QSizeF(width(),height()), zoom, state.value(prefix + "OffsetX").toDouble(), state.value(prefix + "OffsetY").toDouble())); return; }
-    QImage buffer(textureSize(), QImage::Format_ARGB32_Premultiplied); buffer.fill(Qt::transparent);
-    QPainter art(&buffer); art.setRenderHint(QPainter::SmoothPixmapTransform); art.scale(buffer.width() / 950., buffer.height() / 860.);
-    const double w = state.value("backgroundWidth").toDouble() * 1.58, h = w * .685;
-    const QRectF box((950 - w) / 2 + state.value("backgroundOffsetX").toDouble() * 1.58, (650 - h) / 2 + state.value("backgroundOffsetY").toDouble() * 1.3 + 87, w, h);
-    art.drawImage(box, image, crop(image, box.size(), zoom, 0, 0));
-    QRadialGradient mask(QPointF(475,430), 430); mask.setColorAt(0, Qt::white); mask.setColorAt(.52, Qt::white); mask.setColorAt(.74, QColor(255,255,255,140)); mask.setColorAt(1, Qt::transparent);
-    art.setCompositionMode(QPainter::CompositionMode_DestinationIn); art.fillRect(QRectF(0,0,950,860), mask); art.end(); p->drawImage(boundingRect(), buffer);
+    p->drawImage(boundingRect(),picture,crop(picture,QSizeF(width(),height()),m_zoom,m_offsetX,m_offsetY));
 }
