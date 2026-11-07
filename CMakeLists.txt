@@ -47,6 +47,21 @@ qt_add_executable(hyprendfield
     src/centerlogo.hpp
     src/facilitycontroller.cpp
     src/facilitycontroller.hpp
+    src/storagecontroller.cpp
+    src/storagecontroller.hpp
+    src/profilecontroller.cpp
+    src/profilecontroller.hpp
+    src/mediainfo.cpp
+    src/mediainfo.hpp
+    src/projectioncanvas.cpp
+    src/projectioncanvas.hpp
+    src/mediaeditor.cpp
+    src/mediaeditor.hpp
+    src/mediaengine.cpp
+    src/mediaengine.hpp
+    src/endfield/modules/media_assembly_model.cpp
+    src/endfield/modules/media_assembly_geometry.cpp
+    src/endfield/modules/media_assembly_processor.cpp
     src/watchanimationcontroller.cpp
     src/watchanimationcontroller.hpp
     src/sourcedial.cpp
@@ -85,7 +100,7 @@ qt_add_executable(hyprendfield
     ${WLR_DATA_CONTROL_SOURCE}
 )
 
-target_include_directories(hyprendfield PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_include_directories(hyprendfield PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated" src/endfield)
 
 set_source_files_properties(qml/Appearance.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY TRUE)
 qt_add_qml_module(hyprendfield
@@ -93,6 +108,8 @@ qt_add_qml_module(hyprendfield
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/ProfilePage.qml
+        qml/ProfileField.qml
         qml/WatchShell.qml
         qml/SystemPage.qml
         qml/DisplayPage.qml
@@ -118,6 +135,12 @@ qt_add_qml_module(hyprendfield
         qml/VolumeDropdown.qml
         qml/TerminalPage.qml
         qml/ActivityPage.qml
+        qml/StoragePage.qml
+        qml/ProjectionPage.qml
+        qml/ProjectionTools.qml
+        qml/ProjectionWorkspace.qml
+        qml/MediaAssemblyPage.qml
+        qml/SourceGlyph.qml
         qml/ActivityMetricRow.qml
         qml/ActivityFormat.js
         qml/CalendarPage.qml
@@ -137,6 +160,10 @@ qt_add_qml_module(hyprendfield
         qml/NotesPage.qml
         qml/NotesWorkspace.qml
         qml/NoteCard.qml
+        qml/MediaPreview.qml
+        qml/MediaSourceMenu.qml
+        qml/NoteFormatMenu.qml
+        qml/ColorWheel.qml
         qml/NotesTaskCard.qml
         qml/NotesFormatBar.qml
         qml/NotesAddButton.qml
@@ -179,6 +206,8 @@ if(NOT HYPR_BUILD_ID)
 endif()
 target_compile_definitions(hyprendfield PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="${HYPR_BUILD_ID}")
 file(GLOB_RECURSE SETTINGS_ASSETS CONFIGURE_DEPENDS "assets/settings/*")
+file(GLOB_RECURSE MEDIA_ASSETS CONFIGURE_DEPENDS "assets/media-assembly/*")
+qt_add_resources(hyprendfield "media_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MEDIA_ASSETS})
 qt_add_resources(hyprendfield "settings_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS})
 file(GLOB MENU_VECTOR_ASSETS CONFIGURE_DEPENDS "assets/menu/*.svg" "assets/menu/*.png")
 qt_add_resources(hyprendfield "menu_vectors"
@@ -209,6 +238,9 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/watch/scene.json
         assets/watch/SOURCES.json
         assets/icons/notes.png
+        assets/icons/profile-frame.bgra
+        assets/icons/projection.png
+        assets/icons/media-assembly.png
         assets/icons/file-shelf.png
         assets/icons/clipboard.png
         assets/icons/archive.png
@@ -262,14 +294,14 @@ include(CTest)
 if(BUILD_TESTING)
     qt_add_executable(hyprendfield_settings_tests tests/settings.cpp
         src/settingscontroller.cpp src/settingscontroller.hpp src/centerlogo.cpp src/centerlogo.hpp
-        src/facilitycontroller.cpp src/facilitycontroller.hpp)
+        src/facilitycontroller.cpp src/facilitycontroller.hpp src/applicationcontroller.cpp src/applicationcontroller.hpp)
     target_include_directories(hyprendfield_settings_tests PRIVATE src)
     target_link_libraries(hyprendfield_settings_tests PRIVATE Qt6::Quick Qt6::Test Qt6::Network Qt6::Concurrent LayerShellQt::Interface)
     target_compile_definitions(hyprendfield_settings_tests PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="test"
         SETTINGS_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" SETTINGS_PREVIEW_DIR="${CMAKE_CURRENT_BINARY_DIR}/settings-preview")
     qt_add_resources(hyprendfield_settings_tests "settings_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS}
         assets/icons/notes.png assets/icons/file-shelf.png assets/icons/clipboard.png assets/icons/archive.png
-        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png)
+        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png assets/icons/projection.png assets/icons/media-assembly.png)
     add_test(NAME settings COMMAND hyprendfield_settings_tests)
     set_tests_properties(settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 45)
 endif()
@@ -361,7 +393,7 @@ if(BUILD_TESTING)
     qt_add_executable(hyprendfield_notes_tests tests/notes.cpp
         src/notescontroller.cpp src/notescontroller.hpp)
     target_include_directories(hyprendfield_notes_tests PRIVATE src)
-    target_link_libraries(hyprendfield_notes_tests PRIVATE Qt6::Quick Qt6::Test)
+    target_link_libraries(hyprendfield_notes_tests PRIVATE Qt6::Quick Qt6::Concurrent Qt6::Test)
     target_compile_definitions(hyprendfield_notes_tests PRIVATE NOTES_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME notes COMMAND hyprendfield_notes_tests)
     set_tests_properties(notes PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
@@ -397,6 +429,16 @@ if(BUILD_TESTING)
         READER_ZOOM_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-zoom-preview.png")
     add_test(NAME reader COMMAND hyprendfield_reader_tests)
     set_tests_properties(reader PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
+    qt_add_executable(hyprendfield_media_tests tests/media_components.cpp
+        src/projectioncanvas.cpp src/mediainfo.cpp src/storagecontroller.cpp src/notescontroller.cpp src/profilecontroller.cpp
+        src/mediaeditor.cpp src/mediaengine.cpp
+        src/endfield/modules/media_assembly_model.cpp src/endfield/modules/media_assembly_geometry.cpp src/endfield/modules/media_assembly_processor.cpp)
+    target_include_directories(hyprendfield_media_tests PRIVATE src src/endfield)
+    target_link_libraries(hyprendfield_media_tests PRIVATE Qt6::Quick Qt6::Concurrent Qt6::Multimedia Qt6::Test)
+    target_compile_definitions(hyprendfield_media_tests PRIVATE MEDIA_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" MEDIA_PREVIEW_DIR="${CMAKE_BINARY_DIR}")
+    qt_add_resources(hyprendfield_media_tests "media_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MEDIA_ASSETS} assets/icons/profile-frame.bgra)
+    add_test(NAME media_components COMMAND hyprendfield_media_tests)
+    set_tests_properties(media_components PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 90)
 endif()
 
 install(TARGETS hyprendfield

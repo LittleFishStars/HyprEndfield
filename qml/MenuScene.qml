@@ -120,6 +120,26 @@ Item {
             presented: visible && appController.hudOpen
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        StoragePage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "storage"
+            presented: visible && appController.hudOpen
+        }
+        ProfilePage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "profile"
+            presented: visible && appController.hudOpen
+        }
+        ProjectionPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "projection"
+            workspace: menu.shell.projectionWorkspace
+        }
+        MediaAssemblyPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "mediaAssembly"
+            presented: visible && appController.hudOpen
+        }
         CalendarPage {
             x: 630
             y: 238
@@ -354,6 +374,7 @@ Item {
             y: 850
             leanX: menu.leanX
             leanY: menu.leanY
+            onClicked: menu.shell.selectedModule = "profile"
         }
     }
     MenuPlane {

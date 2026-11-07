@@ -39,7 +39,15 @@ void ActivityController::accept(const Activity::Reading &reading) {
     if (reading.applications && m_active && m_applications) {
         m_apps = Activity::deriveApps(reading, m_previous ? &*m_previous : nullptr); m_appsReady = true;
     }
-    m_previous = reading; emit stateChanged();
+    auto next = reading;
+    // DRM counters may temporarily go backwards; retain their high-water mark.
+    if (m_previous) for (auto it = next.processes.begin(); it != next.processes.end(); ++it) {
+        const auto old = m_previous->processes.constFind(it.key());
+        if (old == m_previous->processes.cend() || old->start != it->start) continue;
+        for (auto engine = it->gpuEngines.begin(); engine != it->gpuEngines.end(); ++engine)
+            engine.value() = std::max(engine.value(), old->gpuEngines.value(engine.key()));
+    }
+    m_previous = std::move(next); emit stateChanged();
 }
 void ActivityController::setSort(const QString &key, bool descending) {
     if (!QStringList{"name", "gpu", "cpu", "memory", "threads"}.contains(key)) return;

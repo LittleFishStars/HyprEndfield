@@ -1,6 +1,12 @@
 #include "settingscontroller.hpp"
 #include "facilitycontroller.hpp"
 #include "centerlogo.hpp"
+#include "applicationcontroller.hpp"
+#include <LayerShellQt/Window>
+#include <QProcess>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QDir>
 #include <QFile>
 #include <QFontDatabase>
@@ -26,6 +32,40 @@ class SettingsTests final : public QObject {
         return nullptr;
     }
 private slots:
+    void waylandSurfaceModes() {
+        if (!qEnvironmentVariableIsSet("HYPR_TEST_WAYLAND_SURFACE")) QSKIP("Opt-in test on the real compositor");
+        QTemporaryDir dir; SettingsController settings(nullptr, dir.filePath("s.ini"), dir.filePath("startup"), dir.path());
+        QQuickWindow window; window.setColor(Qt::transparent); window.resize(96,96);
+        ApplicationController controller; controller.setSettings(&settings); controller.setWindow(&window);
+        auto *layer = LayerShellQt::Window::get(&window); layer->setLayer(LayerShellQt::Window::LayerOverlay);
+        layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone); layer->setExclusiveZone(-1); layer->setScope(controller.layerScope());
+        const auto compositorScope = [] {
+            QProcess process; process.start("hyprctl", {"-j", "layers"}); if (!process.waitForFinished(2000)) return QString();
+            const auto monitors = QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+            for (const auto &monitor : monitors) for (const auto &level : monitor.toObject().value("levels").toObject()) for (const auto &entry : level.toArray()) {
+                const auto object = entry.toObject(); if (object.value("pid").toInteger() == QCoreApplication::applicationPid()) return object.value("namespace").toString();
+            }
+            return QString();
+        };
+        window.show(); QTRY_COMPARE_WITH_TIMEOUT(compositorScope(), QString("hyprendfield"), 3000);
+        settings.set("lowPowerVisualMode", true); QTRY_COMPARE_WITH_TIMEOUT(compositorScope(), QString("hyprendfield-low-power"), 3000);
+        controller.setProjectionActive(true); QTRY_COMPARE_WITH_TIMEOUT(compositorScope(), QString("hyprendfield-projection"), 3000);
+        controller.setProjectionActive(false); QTRY_COMPARE_WITH_TIMEOUT(compositorScope(), QString("hyprendfield-low-power"), 3000);
+        settings.set("lowPowerVisualMode", false); QTRY_COMPARE_WITH_TIMEOUT(compositorScope(), QString("hyprendfield"), 3000);
+        QVERIFY(window.isVisible()); window.hide();
+    }
+    void hardwareTemperature() {
+        QTemporaryDir dir; const auto path = dir.filePath("class/hwmon/hwmon0/"); QVERIFY(QDir().mkpath(path));
+        for (const auto &[name, data] : QList<QPair<QString, QByteArray>>{{"name", "coretemp"}, {"temp1_input", "101000"}, {"temp1_max", "100000"}}) {
+            QFile file(path + name); QVERIFY(file.open(QIODevice::WriteOnly)); file.write(data);
+        }
+        const auto reading = FacilityController::readTemperature(dir.path()); QCOMPARE(reading.value("temperature").toDouble(), 101.);
+        FacilityController facility(nullptr, false); facility.setEnabled(true); facility.accept({{"heat", reading}}, 0);
+        QCOMPARE(facility.alerts().size(), 1); QCOMPARE(facility.alerts().first().toMap().value("kind").toString(), QString("heat"));
+        auto cool = reading; cool["temperature"] = 94.; facility.accept({{"heat", cool}}, 30); facility.accept({{"heat", cool}}, 150);
+        QVERIFY(facility.alerts().isEmpty());
+        QVERIFY(QFile::remove(path + "temp1_max")); QVERIFY(FacilityController::readTemperature(dir.path()).isEmpty());
+    }
     void initTestCase() {
         for (const auto &weight : {"Regular", "Medium", "Bold"})
             QVERIFY(QFontDatabase::addApplicationFont(QString(SETTINGS_QML_DIR) + "/../assets/fonts/HarmonyOS_Sans_" + weight + ".ttf") >= 0);
@@ -52,6 +92,11 @@ private slots:
         QCOMPARE(settings.value("hudOffsetX").toDouble(), 0.);
         QVERIFY(settings.beginBootLog()); QVERIFY(!settings.beginBootLog());
         settings.set("languageIndex", 1); QCOMPARE(QCoreApplication::translate("test", "语言"), QString("Language"));
+        QCOMPARE(QCoreApplication::translate("test", "已创建视频便笺"), QString("Video note created"));
+        QCOMPARE(QCoreApplication::translate("test", "%1 · 硬件温度上限 %2°C"), QString("%1 · Hardware temperature limit %2°C"));
+        for (const auto &[index, expected] : QList<QPair<int, QString>>{{3,"裝置溫度過高"}, {4,"デバイスの温度が高すぎます"}, {5,"장치 온도가 너무 높습니다"}}) {
+            settings.set("languageIndex", index); QCOMPARE(QCoreApplication::translate("test", "设备温度过高"), expected);
+        }
         settings.set("languageIndex", 2); QCOMPARE(QCoreApplication::translate("test", "语言"), QString("语言"));
         settings.set("themeIndex", 1); QVERIFY(settings.tone(QColor("#f4f4f4")).lightnessF() < .2);
         settings.set("accentIndex", 1); QCOMPARE(settings.color(QColor("#fffa00")).name(), QString("#6edfe8"));
@@ -153,11 +198,11 @@ private slots:
         const auto end = source.indexOf("\n    }", start); QVERIFY(end > start);
         // Exercise the actual Main.qml shell binding without loading unrelated modules.
         QString shell = source.mid(start, end - start + 6);
-        shell.replace("WatchShell {", "Item { property var displaySettings; objectName: 'shellBinding';");
+        shell.replace("WatchShell {", "Item { property var displaySettings; property var projectionWorkspace; objectName: 'shellBinding';");
         QQmlEngine engine; QSignalSpy warnings(&engine, &QQmlEngine::warnings);
         engine.rootContext()->setContextProperty("settingsController", &settings);
         QQmlComponent component(&engine);
-        component.setData(("import QtQuick\nItem { id: root; width: 1600; height: 900; readonly property var displaySettings: settingsController;\n" + shell + "\n}").toUtf8(), QUrl());
+        component.setData(("import QtQuick\nItem { id: root; width: 1600; height: 900; readonly property var displaySettings: settingsController; QtObject { id: fullProjection; property bool opened: false }\n" + shell + "\n}").toUtf8(), QUrl());
         QVERIFY2(component.isReady(), qPrintable(component.errorString()));
         std::unique_ptr<QObject> object(component.create()); QVERIFY2(object, qPrintable(component.errorString()));
         auto *item = object->findChild<QQuickItem *>("shellBinding"); QVERIFY(item);

@@ -6,6 +6,8 @@
 #include <QPointF>
 #include <QUrl>
 #include <QVariantMap>
+#include <QFutureWatcher>
+#include <atomic>
 
 class NotesController final : public QObject
 {
@@ -14,6 +16,7 @@ class NotesController final : public QObject
 
 public:
     explicit NotesController(QObject *parent = nullptr, QString directory = {});
+    ~NotesController() override;
 
     QVariantMap state() const;
 
@@ -30,6 +33,10 @@ public:
 
     Q_INVOKABLE QString createNote(const QString &kind, double x, double y);
     Q_INVOKABLE QString importImage(const QUrl &url, double x, double y);
+    Q_INVOKABLE void importMedia(const QUrl &url, double x, double y);
+    Q_INVOKABLE bool updateNoteRichText(const QString &id, const QString &html);
+    Q_INVOKABLE QVariantMap formatState(QObject *document, int position) const;
+    Q_INVOKABLE bool applyFormat(QObject *document, int start, int end, const QString &key, const QVariant &value);
     Q_INVOKABLE bool updateNoteGeometry(const QString &id, double x, double y,
                                         double width, double height);
     Q_INVOKABLE bool updateNoteText(const QString &id, const QString &text);
@@ -82,6 +89,8 @@ public:
         QString text;
         QList<Task> tasks;
         QString imageName;
+        QString mediaName;
+        QString richText;
         double x = 24;
         double y = 50;
         double width = 210;
@@ -108,6 +117,9 @@ private:
 
     QString m_directory;
     QString m_imagesDirectory;
+    QFutureWatcher<QString> m_mediaImport;
+    std::atomic_bool m_cancelImport{false};
+    QString m_pendingMediaPath;
     QString m_path;
     QByteArray m_persisted;
     Centre m_centre;

@@ -6,6 +6,24 @@
   "rights": "Game artwork remains third-party material owned by Hypergryph and the respective rights holders; excluded from the EndfieldHUD MIT grant.",
   "assets": [
     {
+      "file": "projection.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Projection_Icon.png",
+      "source_sha256": "d21e566f8b8b445f986081744c102428d3dc284f12ba1985cfdb91b6c50c3602",
+      "sha256": "ba633da30577fa23338c458ecd4ed0fec3ce0f8c6cbd6314d2c2c6fb08d31364"
+    },
+    {
+      "file": "media-assembly.png",
+      "source_project_file": "Resources/AppIconSources/EndfieldWiki/MediaAssembly_Icon.png",
+      "source_sha256": "1a7804039a4fb7a94bae9dc141ee82bf910b67b438e57d67f6f48e4d15f8e2d5",
+      "sha256": "2c28ff5ad08cf03a3826d126eab7b6e6cbd6787e945a1c740735b7d552d08aa5"
+    },
+    {
+      "file": "profile-frame.bgra",
+      "source_project_file": "Resources/WatchSource/Textures/icon_user_avatar_frame_endfield_1--63c7ff92--7647223879671712896.bgra-mips.bin",
+      "transformation": "Unmodified 256 x 256 BGRA mip chain; runtime uses the original 254 x 254 sprite crop and multiplicative accent tint.",
+      "sha256": "4af56ab7ed155e9475193ab04467c3f030cf6c573b117cb9f4ca03832a35e2c7"
+    },
+    {
       "file": "notes.png",
       "source_project_file": "Resources/AppIconSources/EndfieldWiki/Mission_Icon.png",
       "source_sha256": "2c011a796902d8fc0c53b0aad4dc87b75a078c2a2261c2f22a34aaf6259f8143",

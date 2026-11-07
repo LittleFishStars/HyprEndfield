@@ -14,6 +14,7 @@ class ApplicationController final : public QObject
     Q_PROPERTY(bool hudVisible READ hudVisible NOTIFY hudVisibleChanged)
     Q_PROPERTY(bool hudOpen READ hudOpen NOTIFY hudOpenChanged)
     Q_PROPERTY(QString localUserName READ localUserName CONSTANT)
+    Q_PROPERTY(QString layerScope READ layerScope NOTIFY layerScopeChanged)
 
 public:
     explicit ApplicationController(QObject *parent = nullptr);
@@ -26,6 +27,8 @@ public:
     void setSettings(SettingsController *settings);
     bool listen(const QString &serverName);
     void executeCommand(const QString &command);
+    QString layerScope() const;
+    Q_INVOKABLE void setProjectionActive(bool active);
 
 public slots:
     void showHud();
@@ -39,6 +42,7 @@ public slots:
 signals:
     void hudVisibleChanged();
     void hudOpenChanged();
+    void layerScopeChanged();
 
 private slots:
     void acceptConnection();
@@ -51,11 +55,13 @@ private:
     void finishFileDrag();
     void selectScreen();
     void checkFocus();
+    void recreateSurface();
 
     QPointer<QQuickWindow> m_window;
     QLocalServer *m_server = nullptr;
     SettingsController *m_settings = nullptr;
     bool m_receivedFocus = false;
+    bool m_projectionActive = false;
     bool m_hudVisible = false;
     bool m_hudOpen = false;
     bool m_hyprlandSubmapActive = false;

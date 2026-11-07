@@ -45,7 +45,7 @@ void BatteryController::setPresented(bool presented)
 void BatteryController::refresh()
 {
     QVariantMap next { { "available", false }, { "current", "—" }, { "full", "—" }, { "percentage", -1 },
-        { "progress", 0.0 }, { "estimated", false }, { "unit", "mAh" }, { "status", "未检测到电池" } };
+        { "progress", 0.0 }, { "estimated", false }, { "unit", "mAh" }, { "status", tr("未检测到电池") } };
     bool plugged = false;
     for (const auto &name : QDir(m_root).entryList(QDir::Dirs | QDir::NoDotAndDotDot))
         if (read(m_root + '/' + name + "/type") != "Battery" && read(m_root + '/' + name + "/online") == "1") plugged = true;
@@ -58,11 +58,11 @@ void BatteryController::refresh()
             continue;
         next["available"] = true;
         const auto status = read(path + "status");
-        next["status"] = status == "Charging" ? "正在充电"
-            : status == "Full"                ? "已充满"
-            : status == "Discharging"         ? "使用电池"
-            : status == "Not charging"        ? "未充电"
-                                              : "状态未知";
+        next["status"] = status == "Charging" ? tr("正在充电")
+            : status == "Full"                ? tr("已充满")
+            : status == "Discharging"         ? tr("使用电池")
+            : status == "Not charging"        ? tr("未充电")
+                                              : tr("状态未知");
         auto current = number(path + "charge_now"), full = number(path + "charge_full");
         double divisor = 1000;
         if (!current || !full || *full <= 0)

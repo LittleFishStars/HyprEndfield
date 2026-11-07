@@ -1,5 +1,8 @@
 #include <QCoreApplication>
 #include "notescontroller.hpp"
+#include "richtext.hpp"
+#include <QMimeDatabase>
+#include <QtConcurrentRun>
 
 #include <QDir>
 #include <QFile>
@@ -129,6 +132,12 @@ NotesController::NotesController(QObject *parent, QString directory)
     m_path = m_directory + QStringLiteral("/notes.json");
     load();
 }
+NotesController::~NotesController() {
+    m_cancelImport = true;
+    m_mediaImport.waitForFinished();
+    // An import whose completion callback never ran has no persisted note.
+    if (!m_pendingMediaPath.isEmpty()) QFile::remove(m_pendingMediaPath);
+}
 
 bool NotesController::validColor(const QString &color)
 {
@@ -198,6 +207,8 @@ void NotesController::load()
         note.kind = object.value(QStringLiteral("kind")).toString();
         note.text = object.value(QStringLiteral("text")).toString();
         note.imageName = object.value(QStringLiteral("imageName")).toString();
+        note.mediaName = object.value("mediaName").toString();
+        note.richText = object.value("richText").toString();
         note.x = object.value(QStringLiteral("x")).toDouble(std::numeric_limits<double>::quiet_NaN());
         note.y = object.value(QStringLiteral("y")).toDouble(std::numeric_limits<double>::quiet_NaN());
         note.width = object.value(QStringLiteral("width")).toDouble(std::numeric_limits<double>::quiet_NaN());
@@ -206,9 +217,12 @@ void NotesController::load()
         note.pinned = object.value(QStringLiteral("pinned")).toBool();
         note.created = QDateTime::fromString(object.value(QStringLiteral("created")).toString(), Qt::ISODateWithMs);
         const bool kindValid = note.kind == QStringLiteral("text") || note.kind == QStringLiteral("todo")
-            || note.kind == QStringLiteral("image") || note.kind == QStringLiteral("drawing");
+            || note.kind == QStringLiteral("image") || note.kind == QStringLiteral("drawing") || note.kind == "video" || note.kind == "gif";
         static const QRegularExpression imageName(QStringLiteral("^[0-9A-Fa-f-]{36}\\.png$"));
+        static const QRegularExpression mediaName(QStringLiteral("^[0-9A-Fa-f-]{36}\\.(mp4|mkv|webm|mov|avi|m4v|ogv|gif)$"));
         if (!validId(note.id) || ids.contains(note.id) || !kindValid || note.text.size() > maximumText
+            || note.richText.size() > 2'000'000
+            || (note.kind == "video" || note.kind == "gif" ? !mediaName.match(note.mediaName).hasMatch() : !note.mediaName.isEmpty())
             || !note.created.isValid() || !std::isfinite(note.x) || !std::isfinite(note.y)
             || !std::isfinite(note.width) || !std::isfinite(note.height)
             || (note.kind == QStringLiteral("image") && !imageName.match(note.imageName).hasMatch())
@@ -276,6 +290,7 @@ QJsonObject noteObject(const NotesController::Note &note)
                                    {QStringLiteral("points"), points}});
     }
     return {{QStringLiteral("id"), note.id}, {QStringLiteral("kind"), note.kind},
+            {QStringLiteral("mediaName"), note.mediaName}, {QStringLiteral("richText"), note.richText},
             {QStringLiteral("text"), note.text}, {QStringLiteral("tasks"), taskArray(note.tasks)},
             {QStringLiteral("imageName"), note.imageName}, {QStringLiteral("x"), note.x},
             {QStringLiteral("y"), note.y}, {QStringLiteral("width"), note.width},
@@ -386,6 +401,8 @@ QVariantMap NotesController::state() const
         }
         const QString imagePath = note.imageName.isEmpty() ? QString() : m_imagesDirectory + QLatin1Char('/') + note.imageName;
         notes.append(QVariantMap{{QStringLiteral("id"), note.id}, {QStringLiteral("kind"), note.kind},
+            {QStringLiteral("richText"), note.richText},
+            {QStringLiteral("mediaUrl"), note.mediaName.isEmpty() ? QString() : QUrl::fromLocalFile(m_directory + "/Media/" + note.mediaName).toString()},
             {QStringLiteral("text"), note.text}, {QStringLiteral("tasks"), tasks},
             {QStringLiteral("imageUrl"), imagePath.isEmpty() ? QString() : QUrl::fromLocalFile(imagePath).toString()},
             {QStringLiteral("imageAvailable"), imagePath.isEmpty() ? false : QFileInfo::exists(imagePath)},
@@ -395,7 +412,7 @@ QVariantMap NotesController::state() const
             {QStringLiteral("createdAt"), note.created.toMSecsSinceEpoch()},
             {QStringLiteral("strokes"), strokes}});
     }
-    return {{QStringLiteral("ready"), m_available}, {QStringLiteral("error"), m_error},
+    return {{QStringLiteral("ready"), m_available}, {QStringLiteral("error"), m_error}, {QStringLiteral("importing"), m_mediaImport.isRunning()},
             {QStringLiteral("centre"), centre}, {QStringLiteral("notes"), notes},
             {QStringLiteral("total"), notes.size()}};
 }
@@ -614,6 +631,67 @@ QString NotesController::importImage(const QUrl &url, double x, double y)
     return note.id;
 }
 
+void NotesController::importMedia(const QUrl &url, double x, double y) {
+    if (!m_pendingMediaPath.isEmpty()) { fail(tr("正在导入媒体，请稍候。")); return; }
+    if (!url.isLocalFile() || !QFileInfo(url.toLocalFile()).isFile()) { fail(tr("只支持本机图片和视频。")); return; }
+    const auto mime = QMimeDatabase().mimeTypeForFile(url.toLocalFile());
+    const bool gif = mime.name() == "image/gif";
+    if (mime.name().startsWith("image/") && !gif) { importImage(url, x, y); return; }
+    if (gif) {
+        QImageReader reader(url.toLocalFile());
+        const auto size = reader.size();
+        if (!reader.canRead() || !size.isValid() || qint64(size.width()) * size.height() > maximumPixels
+            || reader.imageCount() > 2000 || QFileInfo(url.toLocalFile()).size() > maximumImageBytes) {
+            fail(tr("无法将这个文件作为图片打开。")); return;
+        }
+    }
+    const QString extension = gif ? QString("gif") : QFileInfo(url.toLocalFile()).suffix().toLower();
+    if ((!gif && (!mime.name().startsWith("video/") || !QStringList{"mp4", "mkv", "webm", "mov", "avi", "m4v", "ogv"}.contains(extension)))
+        || m_notes.size() >= maximumNotes) { fail(tr("只支持图片、GIF 和视频。")); return; }
+    const QString name = newId().toLower() + '.' + extension, directory = m_directory + "/Media", destination = directory + '/' + name;
+    if (!QDir().mkpath(directory)) { fail(tr("无法保存媒体便笺。")); return; }
+    m_pendingMediaPath = destination;
+    m_mediaImport.disconnect(this);
+    connect(&m_mediaImport, &QFutureWatcherBase::finished, this, [this, name, destination, x, y, gif] {
+        const auto error = m_mediaImport.result();
+        m_pendingMediaPath.clear();
+        if (!error.isEmpty()) { fail(error); emit stateChanged(); return; }
+        if (m_notes.size() >= maximumNotes) { QFile::remove(destination); fail(tr("便笺最多可保存 256 张。")); return; }
+        auto next = m_notes; Note note; note.id = newId(); note.kind = gif ? "gif" : "video"; note.mediaName = name;
+        note.x = x; note.y = y; note.width = 320; note.height = 232; note.z = nextZ(next); note.created = QDateTime::currentDateTime(); constrain(note);
+        next.append(note);
+        if (!persist(m_centre, next)) QFile::remove(destination);
+        else emit actionFinished("import", true, gif ? tr("已创建图片便笺") : tr("已创建视频便笺"));
+        emit stateChanged();
+    });
+    m_cancelImport = false;
+    m_mediaImport.setFuture(QtConcurrent::run([this, source = url.toLocalFile(), destination] {
+        QFile input(source); QSaveFile output(destination);
+        if (!input.open(QIODevice::ReadOnly) || !output.open(QIODevice::WriteOnly)) return tr("无法保存媒体便笺。");
+        while (!input.atEnd()) {
+            if (m_cancelImport) return QString();
+            const auto bytes = input.read(1024 * 1024);
+            if (input.error() != QFile::NoError || output.write(bytes) != bytes.size()) return tr("无法保存媒体便笺。");
+        }
+        return m_cancelImport || output.commit() ? QString() : tr("无法保存媒体便笺。");
+    }));
+    emit stateChanged();
+}
+
+QVariantMap NotesController::formatState(QObject *document, int position) const { return richTextStyle(document, position); }
+bool NotesController::applyFormat(QObject *document, int start, int end, const QString &key, const QVariant &value) {
+    return formatRichText(document, start, end, key, value);
+}
+bool NotesController::updateNoteRichText(const QString &id, const QString &html) {
+    if (html.size() > 2'000'000) return false;
+    auto next = m_notes; const int index = noteIndex(next, id);
+    if (index < 0 || next[index].kind != "text") return false;
+    QTextDocument document; document.setHtml(html);
+    if (document.toPlainText().size() > maximumText) return false;
+    next[index].text = document.toPlainText(); next[index].richText = document.toHtml();
+    return persist(m_centre, next);
+}
+
 bool NotesController::updateNoteGeometry(const QString &id, double x, double y, double width, double height)
 {
     QList<Note> next = m_notes;
@@ -634,6 +712,7 @@ bool NotesController::updateNoteText(const QString &id, const QString &text)
     const int index = noteIndex(next, id);
     if (index < 0 || next[index].kind != QStringLiteral("text")) return false;
     next[index].text = text.left(maximumText);
+    next[index].richText.clear();
     return persist(m_centre, next);
 }
 
@@ -653,9 +732,11 @@ bool NotesController::removeNote(const QString &id)
     const int index = noteIndex(next, id);
     if (index < 0) return false;
     const QString imageName = next[index].imageName;
+    const QString mediaName = next[index].mediaName;
     next.removeAt(index);
     if (!persist(m_centre, next)) return false;
     if (!imageName.isEmpty()) QFile::remove(m_imagesDirectory + QLatin1Char('/') + imageName);
+    if (!mediaName.isEmpty()) QFile::remove(m_directory + "/Media/" + mediaName);
     emit actionFinished(QStringLiteral("delete"), true, QCoreApplication::translate("HyprEndfield", "便笺已删除"));
     return true;
 }

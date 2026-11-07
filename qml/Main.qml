@@ -22,7 +22,7 @@ Window {
     LayerShell.Window.layer: LayerShell.Window.LayerOverlay
     LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityOnDemand
     LayerShell.Window.exclusionZone: -1
-    LayerShell.Window.scope: "hyprendfield"
+    LayerShell.Window.scope: appController.layerScope
     LayerShell.Window.wantsToBeOnActiveScreen: true
 
     FontLoader {
@@ -50,6 +50,7 @@ Window {
 
     Rectangle {
         id: backdrop
+        visible: !fullProjection.opened
         anchors.fill: parent
         color: Qt.rgba(settingsController.light ? .90 : .106, settingsController.light ? .90 : .110, settingsController.light ? .90 : .118,
                        Math.max(0, Math.min(1, 1 - displaySettings.backgroundBrightness)))
@@ -63,6 +64,8 @@ Window {
 
     WatchShell {
         id: watchShell
+        projectionWorkspace: fullProjection
+        visible: !fullProjection.opened
         anchors.centerIn: parent
         anchors.horizontalCenterOffset: root.width * displaySettings.hudOffsetX
         anchors.verticalCenterOffset: -30 * scale + root.height * displaySettings.hudOffsetY
@@ -73,9 +76,10 @@ Window {
     FacilityBanner {
         x: (root.width - width * scale) / 2; y: 14; z: 1500
         scale: watchShell.scale * 1000 / 1920 * 1.12; transformOrigin: Item.TopLeft
-        presented: appController.hudOpen && !watchShell.transitioning && !watchShell.bootLogActive
+        presented: appController.hudOpen && !fullProjection.opened && !watchShell.transitioning && !watchShell.bootLogActive
         onOpenModule: module => watchShell.selectedModule = module
     }
+    ProjectionWorkspace { id: fullProjection; anchors.fill: parent; presented: appController.hudVisible; z: 2000 }
     Item {
         id: batteryPositionEditor; anchors.fill: parent; z: 1600; visible: settingsController.editingBatteryPosition
         onVisibleChanged: if (visible) { preview.x = width * settingsController.batteryX - preview.width / 2; preview.y = settingsController.batteryPlacement === 0 ? 12 : height * settingsController.batteryY - preview.height / 2; forceActiveFocus(); }
@@ -93,6 +97,7 @@ Window {
     }
 
     HoverHandler {
+        enabled: !fullProjection.opened
         onPointChanged: {
             const normalizedX = root.width > 0
                     ? 2 * point.position.x / root.width - 1 : 0

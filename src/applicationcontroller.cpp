@@ -74,12 +74,36 @@ void ApplicationController::setSettings(SettingsController *settings)
 {
     m_settings = settings;
     connect(settings, &SettingsController::preferenceChanged, this, [this](const QString &key, const QVariant &) {
+        if (key == "lowPowerVisualMode" && m_window) {
+            recreateSurface();
+            return;
+        }
         if (key != "displayChoice" || !m_window || !m_hudOpen) return;
         m_receivedFocus = false; m_window->hide(); selectScreen(); m_window->show(); m_window->requestActivate();
     });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] {
         QTimer::singleShot(0, this, [this] { if (m_hudOpen && m_window) { selectScreen(); m_window->show(); } });
     });
+}
+
+QString ApplicationController::layerScope() const {
+    if (m_projectionActive) return QStringLiteral("hyprendfield-projection");
+    return m_settings && m_settings->value("lowPowerVisualMode").toBool()
+        ? QStringLiteral("hyprendfield-low-power") : QStringLiteral("hyprendfield");
+}
+void ApplicationController::setProjectionActive(bool active) {
+    if (m_projectionActive == active) return;
+    m_projectionActive = active; recreateSurface();
+}
+void ApplicationController::recreateSurface() {
+    // Wayland fixes the layer namespace at surface creation. Only this surface
+    // is recreated; global compositor blur and all component state are retained.
+    if (!m_window) { emit layerScopeChanged(); return; }
+    const bool visible = m_window->isVisible();
+    m_receivedFocus = false; m_window->hide(); m_window->destroy();
+    emit layerScopeChanged();
+    LayerShellQt::Window::get(m_window)->setScope(layerScope());
+    if (visible) { m_window->show(); m_window->requestActivate(); }
 }
 
 void ApplicationController::selectScreen()

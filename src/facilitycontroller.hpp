@@ -21,6 +21,7 @@ public:
     Q_INVOKABLE void refresh();
     Q_INVOKABLE QVariantMap bootFacts() const;
     void accept(const QVariantMap &sample, double now);
+    static QVariantMap readTemperature(const QString &sys = QStringLiteral("/sys"));
 signals:
     void alertsChanged();
     void enabledChanged();

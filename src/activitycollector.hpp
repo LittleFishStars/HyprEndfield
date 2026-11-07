@@ -11,6 +11,10 @@ struct Process {
     int pid = 0, parent = 0, threads = 0;
     quint64 start = 0, ticks = 0, memory = 0;
     QString name, executable;
+    // Engine counters are shared by duplicated DRM client descriptors.
+    QMap<QString, quint64> gpuEngines;
+    QMap<QString, double> gpuCapacities;
+    std::optional<double> gpuPercent;
 };
 struct App { QString id, name, icon; QList<int> pids; };
 struct Reading {
@@ -32,6 +36,8 @@ struct Paths {
 
 std::optional<Counters> parseCpu(const QByteArray &text);
 std::optional<Process> parseProcess(const QByteArray &text, long pageSize);
+void parseDrm(const QByteArray &text, Process &process);
+QMap<int, double> parseNvidiaProcesses(const QByteArray &text);
 QVariantMap derive(const Reading &now, const Reading *previous);
 QVariantList deriveApps(const Reading &now, const Reading *previous);
 QVariantList sortedApps(QVariantList values, const QString &key, bool descending);

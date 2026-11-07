@@ -28,6 +28,7 @@ public:
     struct Entry { const char *english, *chinese, *traditional, *japanese, *korean; };
     static constexpr Entry entries[] = {
 #include "localization_catalog.inc"
+#include "localization_status.inc"
         {"Quick terminal", "快捷终端", "快捷終端", "クイックターミナル", "빠른 터미널"},
         {"Focus mode", "专注模式", "專注模式", "集中モード", "집중 모드"},
         {"01  Digital", "01  数字", "01  數字", "01  デジタル", "01  디지털"},
@@ -72,7 +73,7 @@ const QStringList accents{"#FAD41F", "#6EDFE8", "#A8E58B", "#C9A2FF", "#FF8F78"}
 }
 
 QStringList SettingsController::defaultModules() {
-    return {"notes", "fileShelf", "clipboard", "archive", "nowPlaying", "volume", "reader", "workMode", "calendar"};
+    return {"notes", "fileShelf", "clipboard", "archive", "nowPlaying", "volume", "reader", "workMode", "calendar", "projection", "mediaAssembly"};
 }
 
 SettingsController::SettingsController(QObject *parent, QString preferences, QString autostart, QString data)

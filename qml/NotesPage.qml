@@ -3,7 +3,7 @@ import "Appearance.js" as Appearance
 import QtQuick.Dialogs
 import QtQuick.Shapes
 
-// EndfieldHUD NotesCanvas, MOD-01. Video notes remain intentionally deferred.
+// EndfieldHUD NotesCanvas, MOD-01.
 Item {
     id: notesPage
     width: 590; height: 510; focus: presented
@@ -48,7 +48,7 @@ Item {
     function create(kind) {
         const point = creationPoint()
         if (kind === "image") {
-            importX = point.x; importY = point.y; imageDialog.open(); return
+            importX = point.x; importY = point.y; mediaSources.visible = !mediaSources.visible; return
         }
         notesController.createNote(kind, point.x, point.y)
     }
@@ -73,15 +73,16 @@ Item {
     Item { id: rootFocus; anchors.fill: parent; focus: true }
     Timer { id: textSave; interval: 450; onTriggered: notesPage.flushText() }
     Timer { id: toastTimer; interval: 1600; onTriggered: notesPage.toastOpen = false }
-    Shortcut { sequence: "Q"; enabled: notesPage.presented && !textEditor.activeFocus && !taskField.fieldFocused; onActivated: notesPage.selectTab("text") }
-    Shortcut { sequence: "E"; enabled: notesPage.presented && !textEditor.activeFocus && !taskField.fieldFocused; onActivated: notesPage.selectTab("todo") }
+    Shortcut { sequence: "Q"; enabled: notesPage.presented && rootFocus.activeFocus; onActivated: notesPage.selectTab("text") }
+    Shortcut { sequence: "E"; enabled: notesPage.presented && rootFocus.activeFocus; onActivated: notesPage.selectTab("todo") }
     FileDialog {
         id: imageDialog
-        title: qsTr("选择图片")
+        title: qsTr("图片/视频")
         fileMode: FileDialog.OpenFile
-        nameFilters: [qsTr("图片文件 (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"), qsTr("所有文件 (*)")]
-        onAccepted: notesController.importImage(selectedFile, notesPage.importX, notesPage.importY)
+        nameFilters: [qsTr("图片与视频 (*.png *.jpg *.jpeg *.webp *.gif *.bmp *.mp4 *.mkv *.webm *.mov *.avi *.m4v *.ogv)"), qsTr("所有文件 (*)")]
+        onAccepted: notesController.importMedia(selectedFile, notesPage.importX, notesPage.importY)
     }
+    MediaSourceMenu { id: mediaSources; x: 290; y: notesPage.addBarY - height - 6; visible: false; onChooseFile: imageDialog.open(); onChosen: source => notesController.importMedia(source, notesPage.importX, notesPage.importY) }
 
     Item {
         width: 590; height: 81

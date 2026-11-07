@@ -1,6 +1,10 @@
 #include "applicationcontroller.hpp"
 #include "settingscontroller.hpp"
 #include "facilitycontroller.hpp"
+#include "storagecontroller.hpp"
+#include "profilecontroller.hpp"
+#include "projectioncanvas.hpp"
+#include "mediaeditor.hpp"
 #include "centerlogo.hpp"
 #include <QApplication>
 #include <QMenu>
@@ -232,6 +236,7 @@ int main(int argc, char *argv[])
     });
     WatchAnimationController watchAnimation;
     BatteryController battery;
+    QObject::connect(&settings, &SettingsController::languageChanged, &battery, &BatteryController::refresh);
     QObject::connect(&battery, &BatteryController::stateChanged, &settings, [&] { settings.updateBattery(battery.state()); });
     QObject::connect(&settings, &SettingsController::preferenceChanged, &battery, [&](const QString &key, const QVariant &) {
         if (key == "batteryMethod") battery.setMonitoring(settings.value("batteryMethod").toInt() != 2);
@@ -253,12 +258,17 @@ int main(int argc, char *argv[])
     FocusModeController focusMode;
     ClipboardController clipboard;
     NotesController notes;
+    StorageController storage;
+    ProfileController profile;
     FileShelfController fileShelf;
     ArchiveController archive;
     auto *readerImages = new ReaderImageProvider;
     ReaderController reader(nullptr, readerImages);
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     qmlRegisterType<SourceDial>("HyprEndfield.Source", 1, 0, "SourceDial");
+    qmlRegisterType<ProjectionCanvas>("HyprEndfield.Projection", 1, 0, "ProjectionCanvas");
+    qmlRegisterType<MediaEditor>("HyprEndfield.Media", 1, 0, "MediaEditor");
+    qmlRegisterType<ProfileArtwork>("HyprEndfield.Profile", 1, 0, "ProfileArtwork");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
     });
@@ -286,6 +296,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("focusModeController"), &focusMode);
     engine.rootContext()->setContextProperty(QStringLiteral("clipboardController"), &clipboard);
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
+    engine.rootContext()->setContextProperty(QStringLiteral("storageController"), &storage);
+    engine.rootContext()->setContextProperty(QStringLiteral("profileController"), &profile);
     engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
     engine.rootContext()->setContextProperty(QStringLiteral("archiveController"), &archive);
     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &reader);

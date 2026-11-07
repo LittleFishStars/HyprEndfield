@@ -1,5 +1,6 @@
 #include "facilitycontroller.hpp"
 #include <QFile>
+#include <QDir>
 #include <QStorageInfo>
 #include <QtConcurrentRun>
 #include <algorithm>
@@ -7,6 +8,8 @@
 namespace {
 QVariantMap readSystem() {
     QVariantMap values;
+    const auto temperature = FacilityController::readTemperature();
+    if (!temperature.isEmpty()) values["heat"] = temperature;
     const auto disk = QStorageInfo::root();
     if (disk.isValid() && disk.isReady() && disk.bytesTotal() > 0 && disk.bytesAvailable() >= 0)
         values["disk"] = QVariantMap{{"total", disk.bytesTotal()}, {"available", disk.bytesAvailable()}, {"name", disk.rootPath()}};
@@ -23,8 +26,28 @@ QVariantMap readSystem() {
     return values;
 }
 }
+QVariantMap FacilityController::readTemperature(const QString &sys) {
+    const auto text = [](const QString &path) { QFile f(path); return f.open(QIODevice::ReadOnly) ? QString::fromUtf8(f.readAll()).trimmed() : QString(); };
+    const auto number = [&](const QString &path) { bool ok; double value = text(path).toDouble(&ok); return ok ? value / 1000. : -999.; };
+    QVariantMap result; double margin = -1000;
+    for (const auto &device : QDir(sys + "/class/hwmon").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const QString base = sys + "/class/hwmon/" + device + '/';
+        for (const auto &sensor : QDir(base).entryList({"temp*_input"}, QDir::Files)) {
+            const QString stem = sensor.left(sensor.size() - 6);
+            if (text(base + stem + "_fault") == "1" || text(base + stem + "_enable") == "0") continue;
+            const double current = number(base + sensor), maximum = number(base + stem + "_max"), critical = number(base + stem + "_crit");
+            const double limit = maximum > 0 && maximum < 200 ? maximum : critical;
+            if (current < -20 || current > 200 || limit <= 0 || limit > 200) continue;
+            // Hardware-defined limits only; do not invent one limit for CPU, SSD and battery.
+            if (current - limit <= margin) continue;
+            margin = current - limit;
+            result = {{"temperature", current}, {"limit", limit}, {"name", text(base + "name") + " " + text(base + stem + "_label")}};
+        }
+    }
+    return result;
+}
 FacilityController::FacilityController(QObject *parent, bool automatic) : QObject(parent), m_automatic(automatic) {
-    m_clock.start(); m_timer.setInterval(60000);
+    m_clock.start(); m_timer.setInterval(30000);
     connect(&m_timer, &QTimer::timeout, this, &FacilityController::refresh);
 }
 void FacilityController::setEnabled(bool on) {
@@ -46,16 +69,17 @@ void FacilityController::refresh() {
 }
 void FacilityController::accept(const QVariantMap &sample, double now) {
     if (!m_enabled) return;
-    for (const auto &kind : {QString("disk"), QString("mem")}) {
+    for (const auto &kind : {QString("disk"), QString("mem"), QString("heat")}) {
         if (!sample.contains(kind)) continue; // An unavailable source preserves its last reading.
         const auto reading = sample.value(kind).toMap();
-        const double total = reading.value("total").toDouble();
-        const double quantity = reading.value(kind == "disk" ? "available" : "used", -1).toDouble();
-        if (total <= 0 || quantity < 0 || quantity > total) continue;
+        const bool heat = kind == "heat";
+        const double total = reading.value(heat ? "limit" : "total").toDouble();
+        const double quantity = reading.value(heat ? "temperature" : kind == "disk" ? "available" : "used", -1).toDouble();
+        if (total <= 0 || quantity < 0 || (!heat && quantity > total)) continue;
         m_readings[kind] = reading;
         const double fraction = quantity / total;
-        const bool raise = kind == "disk" ? fraction < .10 : fraction >= .90;
-        const bool recover = kind == "disk" ? fraction >= .12 : fraction < .90;
+        const bool raise = heat ? quantity >= total : kind == "disk" ? fraction < .10 : fraction >= .90;
+        const bool recover = heat ? quantity <= total - 5 : kind == "disk" ? fraction >= .12 : fraction < .90;
         auto &condition = m_conditions[kind]; condition.reading = reading;
         if (raise) {
             condition.recovering.reset();
@@ -71,6 +95,14 @@ QVariantList FacilityController::alerts() const {
     QVariantList out;
     for (auto it = m_conditions.cbegin(); it != m_conditions.cend(); ++it) {
         const auto &condition = it.value(); if (!condition.active || condition.dismissed) continue;
+        if (it.key() == "heat") {
+            const auto &r = condition.reading;
+            out.append(QVariantMap{{"kind", "heat"}, {"module", "activity"}, {"isNew", condition.isNew},
+                {"title", tr("设备温度过高")}, {"english", "HIGH TEMPERATURE"}, {"tag", tr("温度")},
+                {"value", QString::number(qRound(r.value("temperature").toDouble())) + "°C"}, {"unit", tr("温度")},
+                {"detail", tr("%1 · 硬件温度上限 %2°C").arg(r.value("name").toString()).arg(r.value("limit").toDouble(), 0, 'f', 0)}});
+            continue;
+        }
         const bool disk = it.key() == "disk"; const auto &r = condition.reading;
         const double total = r.value("total").toDouble(), amount = r.value(disk ? "available" : "used").toDouble();
         out.append(QVariantMap{{"kind", it.key()}, {"module", disk ? "storage" : "activity"}, {"isNew", condition.isNew},

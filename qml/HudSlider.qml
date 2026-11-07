@@ -35,6 +35,8 @@ Item {
         if (valueFormat === "scale")
             return Number(candidate).toFixed(2) + "×";
         if (valueFormat === "seconds") return Math.round(candidate) + " s";
+        if (valueFormat === "pixels") return Math.round(candidate) + " PX";
+        if (valueFormat === "decimal") return Number(candidate).toFixed(stepSize < .1 ? 2 : stepSize < 1 ? 1 : 0);
         const rounded = Math.round(candidate);
         if (valueFormat === "signedPercent")
             return (rounded > 0 ? "+" : "") + rounded + "%";

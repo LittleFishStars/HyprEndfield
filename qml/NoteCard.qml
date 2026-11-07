@@ -1,6 +1,7 @@
 import QtQuick
 import "Appearance.js" as Appearance
 import QtQuick.Shapes
+import QtQuick.Controls as Controls
 
 Item {
     id: card
@@ -11,6 +12,13 @@ Item {
     property bool reduceMotion: false
     readonly property bool redacted: Appearance.recording()
     property bool deleteArmed: false
+    property var textStyle: ({})
+    property bool textDirty: false
+    function refreshStyle() { textStyle = notesController.formatState(noteText.textDocument, noteText.cursorPosition) }
+    function saveText() { textSave.stop(); if (entry.kind === "text" && textDirty) { const value = noteText.text; if (notesController.updateNoteRichText(entry.id, value)) textDirty = false; } }
+    Component.onDestruction: if (textDirty) saveText()
+    onVisibleChanged: if (!visible) { if (noteText.activeFocus) saveText(); noteText.focus = false; formatPopup.kind = "" }
+    Timer { id: textSave; interval: 450; onTriggered: card.saveText() }
     signal selectedRequested(string id)
     signal geometryCommitted(string id, real x, real y, real width, real height)
     signal deleteRequested(string id)
@@ -49,7 +57,7 @@ Item {
     }
     Text {
         x: 20; y: 6; width: Math.max(10, card.width - 76); height: 12
-        text: card.entry.kind === "text" ? qsTr("文字") : card.entry.kind === "todo" ? qsTr("待办") : card.entry.kind === "drawing" ? qsTr("画画") : qsTr("图片")
+        text: card.entry.kind === "text" ? qsTr("文字") : card.entry.kind === "todo" ? qsTr("待办") : card.entry.kind === "drawing" ? qsTr("画画") : card.entry.kind === "video" ? qsTr("视频") : qsTr("图片")
         color: Appearance.tone("#8A8A8A"); font.family: harmonyBold.name; font.pointSize: 9.5 * 0.75; font.weight: Font.Bold; font.letterSpacing: 1.14
         elide: Text.ElideRight; renderType: Text.CurveRendering
     }
@@ -82,19 +90,45 @@ Item {
     }
 
     Item {
-        id: textBody; x: 9; y: 29; width: card.width - 18; height: Math.max(1, card.height - 37)
+        id: textBody; x: 9; y: 29; width: card.width - 18; height: Math.max(1, card.height - (noteText.activeFocus ? 58 : 37))
         visible: card.entry.kind === "text" && !card.redacted
+        Flickable {
+        id: textScroll; anchors.fill: parent; clip: true; contentHeight: noteText.contentHeight; boundsBehavior: Flickable.StopAtBounds
+        Controls.ScrollBar.vertical: Controls.ScrollBar { width: 4; policy: Controls.ScrollBar.AsNeeded }
         TextEdit {
-            id: noteText; anchors.fill: parent; clip: true; wrapMode: TextEdit.Wrap; selectByMouse: true
-            text: card.entry.text; color: Appearance.tone("#EDEDED"); selectionColor: "#66FFFA00"; selectedTextColor: Appearance.tone("#FFFFFF")
+            id: noteText; objectName: "floatingNoteText"; width: textScroll.width; height: Math.max(textScroll.height, contentHeight); wrapMode: TextEdit.Wrap; selectByMouse: true
+            textFormat: TextEdit.RichText
+            Binding on text { when: !noteText.activeFocus && !card.textDirty; value: card.entry.richText || ("<p>" + card.entry.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>") + "</p>"); restoreMode: Binding.RestoreNone }
+            color: Appearance.tone("#EDEDED"); selectionColor: "#66FFFA00"; selectedTextColor: Appearance.tone("#FFFFFF")
             font.family: harmonyRegular.name; font.pixelSize: 12; renderType: Text.CurveRendering
+            onTextChanged: if (activeFocus) { card.textDirty = true; textSave.restart(); card.refreshStyle() }
+            onCursorPositionChanged: { card.refreshStyle(); if (cursorRectangle.y < textScroll.contentY) textScroll.contentY = cursorRectangle.y; else if (cursorRectangle.y + cursorRectangle.height > textScroll.contentY + textScroll.height) textScroll.contentY = cursorRectangle.y + cursorRectangle.height - textScroll.height; }
             onActiveFocusChanged: {
-                if (activeFocus) card.selectedRequested(card.entry.id)
-                else if (text !== card.entry.text) notesController.updateNoteText(card.entry.id, text)
+                if (activeFocus) { card.selectedRequested(card.entry.id); card.refreshStyle() }
+                else { card.saveText(); formatPopup.kind = "" }
             }
             Keys.onEscapePressed: event => { focus = false; event.accepted = true }
+            Keys.onReturnPressed: event => { if (event.modifiers & Qt.ControlModifier) { focus = false; event.accepted = true } else event.accepted = false }
+        }
         }
         Text { visible: noteText.text === "" && !noteText.activeFocus; text: qsTr("开始书写"); color: Appearance.tone("#777777"); font.family: harmonyRegular.name; font.pixelSize: 12; renderType: Text.CurveRendering }
+    }
+    Row {
+        x: 5; y: card.height - 25; spacing: 4; visible: card.entry.kind === "text" && noteText.activeFocus && !card.redacted; z: 101
+        Repeater {
+            model: ["size", "font", "color", "special"]
+            Rectangle {
+                required property string modelData; required property int index
+                width: 20; height: 20; color: Appearance.tone("#262626"); border.color: Appearance.tone("#3A3A3A")
+                Text { anchors.centerIn: parent; text: ["A", "F", "", "B"][index]; font.pixelSize: 10; color: Appearance.tone("#DDDDDD") }
+                Rectangle { anchors.centerIn: parent; width: 12; height: 12; visible: modelData === "color"; color: card.textStyle.color || "#EDEDED" }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { formatPopup.x = Math.min(index * 24 + 5, card.host.width - card.x - formatPopup.width); formatPopup.kind = formatPopup.kind === modelData ? "" : modelData; } }
+            }
+        }
+    }
+    NoteFormatMenu {
+        id: formatPopup; y: card.y + card.height + height + 3 > card.host.height ? -height - 3 : card.height + 3; style: card.textStyle
+        onChanged: (key, value) => { notesController.applyFormat(noteText.textDocument, noteText.selectionStart, noteText.selectionEnd, key, value); card.refreshStyle(); textSave.restart(); }
     }
 
     Item {
@@ -163,6 +197,7 @@ Item {
         Text { anchors.centerIn: parent; visible: !card.entry.imageAvailable; text: qsTr("图片不可用"); color: Appearance.tone("#8A8A8A"); font.family: harmonyRegular.name; font.pixelSize: 11; renderType: Text.CurveRendering }
         MouseArea { anchors.fill: parent; onPressed: card.selectedRequested(card.entry.id) }
     }
+    MediaPreview { x: 5; y: 29; width: card.width - 10; height: card.height - 29; visible: (card.entry.kind === "video" || card.entry.kind === "gif") && !card.redacted; kind: card.entry.kind; source: card.entry.mediaUrl || ""; presented: visible && card.visible }
 
     Item {
         id: drawingBody; x: 5; y: 29; width: card.width - 10; height: Math.max(1, card.height - 56)

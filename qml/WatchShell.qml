@@ -4,6 +4,7 @@ import QtQuick.Window
 
 Item {
     id: shell
+    property var projectionWorkspace
 
     required property var displaySettings
     width: 1000
@@ -19,7 +20,7 @@ Item {
     property quaternion sourceGyroStart: sourceWatchAnimation.neutralGyro
     property quaternion sourceGyroTarget: sourceWatchAnimation.neutralGyro
     property real sourceGyroProgress: 1
-    readonly property quaternion sourceGyro: sourceWatchAnimation.interpolateRotation(sourceGyroStart, sourceGyroTarget, sourceGyroProgress)
+    readonly property quaternion sourceGyro: sourceWatchAnimation.interpolateRotation(sourceGyroStart, sourceGyroTarget, displaySettings.lowPowerVisualMode ? sampledGyroProgress : sourceGyroProgress)
     readonly property real cameraPitch: 20 + Math.asin(Math.max(-1, Math.min(1, 2 * (sourceGyro.scalar * sourceGyro.x - sourceGyro.y * sourceGyro.z)))) * 180 / Math.PI
     readonly property real cameraYaw: -Math.atan2(2 * (sourceGyro.scalar * sourceGyro.y + sourceGyro.x * sourceGyro.z), 1 - 2 * (sourceGyro.x * sourceGyro.x + sourceGyro.y * sourceGyro.y)) * 180 / Math.PI
     readonly property real rasterScale: Math.max(1, scale * 1000 / 1920 * 1.10) * Screen.devicePixelRatio * 2
@@ -27,6 +28,17 @@ Item {
     property real animationTime: sourceWatchAnimation.openingDuration
     property real contentAnimationTime: sourceWatchAnimation.openingDuration
     property real sourceAmbientTime: 0
+    property real sampledTime: animationTime
+    property real sampledContentTime: contentAnimationTime
+    property real sampledGyroProgress: sourceGyroProgress
+    readonly property real renderTime: displaySettings.lowPowerVisualMode ? sampledTime : animationTime
+    readonly property real renderContentTime: displaySettings.lowPowerVisualMode ? sampledContentTime : contentAnimationTime
+    Timer {
+        interval: 33; repeat: true
+        running: appController.hudVisible && shell.displaySettings.lowPowerVisualMode
+        triggeredOnStart: true
+        onTriggered: { shell.sampledTime = shell.animationTime; shell.sampledContentTime = shell.contentAnimationTime; shell.sampledGyroProgress = shell.sourceGyroProgress; }
+    }
     readonly property bool sourceAmbientEnabled: displaySettings.ambientAnimation && !displaySettings.reduceMotion && !displaySettings.lowPowerVisualMode
     readonly property bool sourceEntranceFinished: animationPhase !== 1 || animationTime >= sourceWatchAnimation.openingDuration
     readonly property real sourceAmbientSampleTime: sourceAmbientEnabled && sourceEntranceFinished ? sourceAmbientTime : -1
@@ -34,15 +46,15 @@ Item {
     readonly property real closingLeadDuration: sourceWatchAnimation.contentTransitionDuration
     readonly property real closingDurationScale: 0.80
     readonly property real closingSequenceDuration: closingDurationScale * (closingLeadDuration + sourceWatchAnimation.closingDuration)
-    readonly property real sourceAnimationTime: sourceWatchAnimation.clipTime(animationPhase, animationTime)
-    readonly property real centralClosingTime: animationPhase === 2 ? Math.max(0, Math.min(closingLeadDuration, animationTime + closingLeadDuration)) : sourceAnimationTime
+    readonly property real sourceAnimationTime: sourceWatchAnimation.clipTime(animationPhase, renderTime)
+    readonly property real centralClosingTime: animationPhase === 2 ? Math.max(0, Math.min(closingLeadDuration, renderTime + closingLeadDuration)) : sourceAnimationTime
     readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, sourceAnimationTime)
     readonly property var settledFrame: sourceWatchAnimation.frame(0, sourceWatchAnimation.openingDuration)
-    readonly property var baseContentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, contentAnimationTime) : animationPhase === 2 ? sourceWatchAnimation.frame(animationPhase, centralClosingTime) : animationFrame
-    readonly property var contentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, contentAnimationTime + contentAdvanceDuration)) : animationFrame
-    readonly property var navigationAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, contentAnimationTime + contentAdvanceDuration)) : animationFrame
+    readonly property var baseContentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, renderContentTime) : animationPhase === 2 ? sourceWatchAnimation.frame(animationPhase, centralClosingTime) : animationFrame
+    readonly property var contentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, renderContentTime + contentAdvanceDuration)) : animationFrame
+    readonly property var navigationAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, renderContentTime + contentAdvanceDuration)) : animationFrame
     // WatchBlur has a separate linear wrapper in the source project.
-    readonly property real backdropOpacity: sourceWatchAnimation.frame(animationPhase, animationTime).backdropOpacity
+    readonly property real backdropOpacity: sourceWatchAnimation.frame(animationPhase, renderTime).backdropOpacity
     readonly property bool transitioning: sourceClip.running || contentClip.running
     readonly property real contentOverlapDuration: 0.40
 
@@ -110,6 +122,12 @@ Item {
             key: "calendar",
             label: qsTr("日历"),
             icon: "qrc:/assets/icons/calendar.png"
+        },
+        {
+            key: "projection", label: qsTr("投影"), icon: "qrc:/assets/icons/projection.png"
+        },
+        {
+            key: "mediaAssembly", label: qsTr("影像加工"), icon: "qrc:/assets/icons/media-assembly.png"
         }
     ]
 

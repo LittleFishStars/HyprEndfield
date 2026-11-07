@@ -80,6 +80,53 @@ std::optional<Process> parseProcess(const QByteArray &text, long pageSize) {
     return result;
 }
 
+void parseDrm(const QByteArray &text, Process &process) {
+    // https://docs.kernel.org/gpu/drm-usage-stats.html
+    QMap<QByteArray, QByteArray> fields;
+    for (const auto &line : text.split('\n')) {
+        const int split = line.indexOf(':');
+        if (split > 0) fields[line.left(split)] = line.mid(split + 1).trimmed();
+    }
+    if (!fields.contains("drm-driver") || !fields.contains("drm-client-id")) return;
+    const QString prefix = QString::fromLatin1(fields.value("drm-pdev", fields["drm-driver"]))
+        + '/' + QString::fromLatin1(fields["drm-client-id"]) + '/';
+    for (auto it = fields.cbegin(); it != fields.cend(); ++it) {
+        if (!it.key().startsWith("drm-engine-") || it.key().startsWith("drm-engine-capacity-")) continue;
+        const auto values = words(it.value());
+        bool valid = false; const auto counter = values.value(0).toULongLong(&valid);
+        if (!valid || values.value(1) != "ns") continue;
+        const auto engine = it.key().mid(11);
+        const QString key = prefix + QString::fromLatin1(engine);
+        process.gpuEngines[key] = std::max(process.gpuEngines.value(key), counter);
+        const double capacity = fields.value("drm-engine-capacity-" + engine, "1").toDouble(&valid);
+        process.gpuCapacities[key] = valid && capacity > 0 ? capacity : 1;
+    }
+}
+
+QMap<int, double> parseNvidiaProcesses(const QByteArray &text) {
+    // Read only named utilisation columns; unavailable driver readings remain absent.
+    QMap<int, double> result; QList<QByteArray> header;
+    for (auto line : text.split('\n')) {
+        line = line.trimmed();
+        if (line.startsWith('#')) {
+            auto fields = words(line.mid(1));
+            if (fields.contains("pid") && fields.contains("sm")) header = fields;
+            continue;
+        }
+        if (header.isEmpty() || line.isEmpty()) continue;
+        const auto fields = words(line); bool ok = false;
+        const int pid = fields.value(header.indexOf("pid")).toInt(&ok);
+        if (!ok || pid <= 0) continue;
+        for (const auto &engine : {"sm", "enc", "dec", "jpg", "ofa"}) {
+            const int index = header.indexOf(engine); if (index < 0) continue;
+            const double value = fields.value(index).toDouble(&ok);
+            if (ok && std::isfinite(value) && value >= 0 && value <= 100)
+                result[pid] = std::max(result.value(pid), value);
+        }
+    }
+    return result;
+}
+
 Collector::Collector(Paths paths) : m_paths(std::move(paths)) {
     if (m_paths.desktopDirs.isEmpty())
         for (const auto &path : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation))
@@ -128,7 +175,15 @@ Reading Collector::sample(bool applications) {
         }
     }
     result.applications = applications;
-    if (applications) collectApplications(result);
+    if (applications) {
+        collectApplications(result);
+        if (m_paths.helpers) {
+            const auto usage = parseNvidiaProcesses(query(QStandardPaths::findExecutable("nvidia-smi"),
+                {"pmon", "-c", "1", "-s", "u"}, 2200));
+            for (auto it = usage.cbegin(); it != usage.cend(); ++it)
+                if (result.processes.contains(it.key())) result.processes[it.key()].gpuPercent = it.value();
+        }
+    }
     return result;
 }
 
@@ -175,6 +230,8 @@ void Collector::collectApplications(Reading &reading) {
         if (QFileInfo(path).ownerId() != ::getuid()) continue;
         auto process = parseProcess(read(path + "/stat"), pageSize); if (!process) continue;
         process->executable = QFileInfo(path + "/exe").symLinkTarget();
+        for (const auto &descriptor : QDir(path + "/fdinfo").entryList(QDir::Files))
+            parseDrm(read(path + "/fdinfo/" + descriptor), *process);
         reading.processes[pid] = *process;
         const auto binary = QFileInfo(process->executable).fileName();
         for (const auto &desktop : m_desktops) {
@@ -249,9 +306,24 @@ QVariantList deriveApps(const Reading &now, const Reading *previous) {
                 else ticks += process.ticks - old->ticks;
             }
         }
-        // Per-process GPU utilisation is driver-dependent; no total-GPU value
-        // or memory-usage proxy is substituted for a missing app reading.
-        result.append(QVariantMap{{"id", app.id}, {"name", app.name}, {"icon", app.icon}, {"gpu", QVariant()},
+        QMap<QString, double> engines; QSet<QString> clients;
+        double nvidia = 0; bool gpuKnown = false;
+        for (int pid : app.pids) {
+            const auto process = now.processes.constFind(pid); if (process == now.processes.cend()) continue;
+            if (process->gpuPercent) { nvidia += *process->gpuPercent; gpuKnown = true; }
+            if (!previous || elapsed <= 0 || elapsed > 15) continue;
+            const auto old = previous->processes.constFind(pid);
+            if (old == previous->processes.cend() || old->start != process->start) continue;
+            for (auto it = process->gpuEngines.cbegin(); it != process->gpuEngines.cend(); ++it) {
+                if (clients.contains(it.key()) || !old->gpuEngines.contains(it.key()) || it.value() < old->gpuEngines[it.key()]) continue;
+                clients.insert(it.key()); gpuKnown = true;
+                const QString engine = it.key().section('/', 0, 0) + '/' + it.key().section('/', 2);
+                engines[engine] += double(it.value() - old->gpuEngines[it.key()]) / (elapsed * 1e9)
+                    * 100 / process->gpuCapacities.value(it.key(), 1);
+            }
+        }
+        double gpu = nvidia; for (double value : engines) gpu = std::max(gpu, value);
+        result.append(QVariantMap{{"id", app.id}, {"name", app.name}, {"icon", app.icon}, {"gpu", gpuKnown ? QVariant(std::clamp(gpu, 0., 100.)) : QVariant()},
             {"cpu", baseline && complete ? QVariant(double(ticks) / now.ticksPerSecond / elapsed * 100) : QVariant()},
             {"memory", complete ? QVariant::fromValue(memory) : QVariant()}, {"threads", complete ? QVariant(threads) : QVariant()}});
     }

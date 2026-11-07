@@ -50,6 +50,21 @@ class ActivityTests final : public QObject
         }
     }
 private slots:
+    void perApplicationGpu() {
+        auto before = reading(1), now = reading(2); apps(before, 1); apps(now, 1);
+        Activity::parseDrm("drm-driver: i915\ndrm-pdev: 0000:00:02.0\ndrm-client-id: 5\ndrm-engine-render: 100000000 ns\n", before.processes[100]);
+        const QByteArray descriptor = "drm-driver: i915\ndrm-pdev: 0000:00:02.0\ndrm-client-id: 5\ndrm-engine-render: 600000000 ns\n";
+        Activity::parseDrm(descriptor, now.processes[100]); Activity::parseDrm(descriptor, now.processes[100]);
+        QCOMPARE(Activity::deriveApps(now, &before)[0].toMap()["gpu"].toDouble(), 50.);
+        now.processes[100].gpuCapacities.begin().value() = 2;
+        QCOMPARE(Activity::deriveApps(now, &before)[0].toMap()["gpu"].toDouble(), 25.);
+        now.processes[100].start++;
+        QVERIFY(!Activity::deriveApps(now, &before)[0].toMap()["gpu"].isValid());
+        const auto usage = Activity::parseNvidiaProcesses("# gpu pid type sm mem enc dec command\n# Idx # C/G % % % % name\n0 100 G 24 0 0 0 app\n0 101 G - - - - app\n");
+        QCOMPARE(usage.value(100), 24.); QVERIFY(!usage.contains(101));
+        now.processes[100].gpuPercent = 24.;
+        QCOMPARE(Activity::deriveApps(now, nullptr)[0].toMap()["gpu"].toDouble(), 24.);
+    }
     void countersAndMissing() {
         const auto cpu = Activity::parseCpu("cpu 100 10 20 50 5 6 7 2 200 10\ncpu0 1 2 3");
         QVERIFY(cpu); QCOMPARE(cpu->first, quint64(200)); QCOMPARE(cpu->second, quint64(55));
