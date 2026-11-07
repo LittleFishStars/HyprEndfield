@@ -384,3 +384,29 @@ void FileShelfController::beginDrag(const QStringList &ids)
     m_dragging = false;
     if (started) emit dragFinished(result == Qt::CopyAction);
 }
+
+QVariantList FileShelfController::mediaChoices() const
+{
+    QVariantList result;
+    const QMimeDatabase database;
+    for (const auto &entry : m_entries) {
+        const Entry current = inspect(entry.path, &entry);
+        if (!current.error.isEmpty() || current.directory) continue;
+        const QString mime = database.mimeTypeForFile(current.path, QMimeDatabase::MatchContent).name();
+        if (!mime.startsWith(QStringLiteral("image/")) && !mime.startsWith(QStringLiteral("video/"))) continue;
+        result.append(QVariantMap{{QStringLiteral("id"), current.id}, {QStringLiteral("name"), current.name},
+            {QStringLiteral("kind"), mime.startsWith(QStringLiteral("video/")) ? QStringLiteral("video") : QStringLiteral("image")}});
+    }
+    return result;
+}
+
+QUrl FileShelfController::mediaUrl(const QString &id) const
+{
+    const Entry *entry = find(id);
+    if (!entry) return {};
+    const Entry current = inspect(entry->path, entry);
+    if (!current.error.isEmpty() || current.directory) return {};
+    const QString mime = QMimeDatabase().mimeTypeForFile(current.path, QMimeDatabase::MatchContent).name();
+    return mime.startsWith(QStringLiteral("image/")) || mime.startsWith(QStringLiteral("video/"))
+        ? QUrl::fromLocalFile(current.path) : QUrl();
+}

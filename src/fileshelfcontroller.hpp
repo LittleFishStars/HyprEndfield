@@ -32,6 +32,8 @@ public:
     Q_INVOKABLE bool openItem(const QString &id);
     Q_INVOKABLE void revealItem(const QString &id);
     Q_INVOKABLE void beginDrag(const QStringList &ids);
+    Q_INVOKABLE QVariantList mediaChoices() const;
+    Q_INVOKABLE QUrl mediaUrl(const QString &id) const;
 
     struct Entry {
         QString id, path, name, kind, extension, error;

@@ -10,19 +10,28 @@
 #include "clipboardcontroller.hpp"
 #include "notescontroller.hpp"
 #include "fileshelfcontroller.hpp"
+#include "archivecontroller.hpp"
 
 #include <QGuiApplication>
 #include <QIcon>
 #include <QFileInfo>
+#include <QFutureWatcher>
+#include <QImageReader>
+#include <QProcess>
+#include <QQuickAsyncImageProvider>
 #include <QQuickImageProvider>
+#include <QQuickTextureFactory>
 #include <QLocalSocket>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
 #include <QSurfaceFormat>
 #include <QTimer>
+#include <QtConcurrentRun>
 
 #include <unistd.h>
+
+#include <algorithm>
 
 namespace
 {
@@ -49,6 +58,43 @@ public:
         const auto image = icon.pixmap(target).toImage();
         if (size) *size = image.size();
         return image;
+    }
+};
+class ArchiveThumbnailResponse final : public QQuickImageResponse
+{
+public:
+    ArchiveThumbnailResponse(QString id, QSize requested)
+    {
+        connect(&m_watcher, &QFutureWatcherBase::finished, this, &QQuickImageResponse::finished);
+        m_watcher.setFuture(QtConcurrent::run([id = std::move(id), requested] {
+            const QByteArray encoded = id.toLatin1();
+            const QString path = QString::fromUtf8(QByteArray::fromBase64(encoded, QByteArray::Base64UrlEncoding));
+            if (path.isEmpty()) return QImage();
+            QImageReader reader(path);
+            reader.setAutoTransform(true);
+            if (reader.canRead()) {
+                QSize size = reader.size();
+                const QSize wanted = requested.isValid() ? requested : QSize(256, 256);
+                if (size.isValid()) { size.scale(wanted, Qt::KeepAspectRatio); reader.setScaledSize(size); }
+                return reader.read();
+            }
+            QProcess process;
+            process.start(QStringLiteral("ffmpegthumbnailer"), {QStringLiteral("-i"), path, QStringLiteral("-o"), QStringLiteral("/dev/stdout"),
+                QStringLiteral("-s"), QString::number(std::max(64, requested.isValid() ? std::max(requested.width(), requested.height()) : 256)), QStringLiteral("-q"), QStringLiteral("8")});
+            if (!process.waitForStarted(2000) || !process.waitForFinished(8000)) { process.kill(); process.waitForFinished(); return QImage(); }
+            return QImage::fromData(process.readAllStandardOutput());
+        }));
+    }
+    QQuickTextureFactory *textureFactory() const override { return QQuickTextureFactory::textureFactoryForImage(m_watcher.result()); }
+private:
+    QFutureWatcher<QImage> m_watcher;
+};
+class ArchiveThumbnailProvider final : public QQuickAsyncImageProvider
+{
+public:
+    QQuickImageResponse *requestImageResponse(const QString &id, const QSize &requestedSize) override
+    {
+        return new ArchiveThumbnailResponse(id, requestedSize);
     }
 };
 QString requestedCommand(const QStringList &arguments, bool &valid)
@@ -137,6 +183,7 @@ int main(int argc, char *argv[])
     ClipboardController clipboard;
     NotesController notes;
     FileShelfController fileShelf;
+    ArchiveController archive;
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
@@ -161,8 +208,10 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("clipboardController"), &clipboard);
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
     engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
+    engine.rootContext()->setContextProperty(QStringLiteral("archiveController"), &archive);
     engine.addImageProvider(QStringLiteral("activity-icons"), new ActivityIconProvider);
     engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
+    engine.addImageProvider(QStringLiteral("archive-thumbnails"), new ArchiveThumbnailProvider);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 
     if (engine.rootObjects().isEmpty()) {
