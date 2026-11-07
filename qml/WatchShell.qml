@@ -14,12 +14,17 @@ Item {
     property string dateText: ""
     property int animationPhase: 0
     property real animationTime: sourceWatchAnimation.openingDuration
+    property real contentAnimationTime: sourceWatchAnimation.openingDuration
     property quaternion gyroStart: sourceWatchAnimation.neutralGyro
     property quaternion gyroEnd: sourceWatchAnimation.neutralGyro
     property real gyroProgress: 1
     readonly property quaternion gyroRotation: sourceWatchAnimation.interpolateRotation(
                                                    gyroStart, gyroEnd, gyroProgress)
     readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, animationTime)
+    readonly property var contentAnimationFrame: animationPhase === 1
+                                                   ? sourceWatchAnimation.frame(animationPhase,
+                                                                                contentAnimationTime)
+                                                   : animationFrame
     readonly property quaternion sceneRotation: sourceWatchAnimation.combinedRotation(
                                                     animationPhase, animationTime,
                                                     gyroRotation)
@@ -35,7 +40,7 @@ Item {
     readonly property real sceneAngle: 2 * Math.atan2(sceneVectorLength,
                                                       sceneRotation.scalar) * 180 / Math.PI
     readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
-    readonly property bool transitioning: sourceClip.running
+    readonly property bool transitioning: sourceClip.running || contentClip.running
     readonly property real motionIntensity: 1.25
                                                 * Math.max(0, Math.min(2, displaySettings.parallaxIntensity))
                                                 * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity))
@@ -91,15 +96,28 @@ Item {
         return values === undefined || index >= values.length ? fallbackValue : values[index]
     }
 
+    function contentFrameValue(name, fallbackValue) {
+        const value = contentAnimationFrame[name]
+        return value === undefined ? fallbackValue : value
+    }
+
+    function contentListValue(name, index, fallbackValue) {
+        const values = contentAnimationFrame[name]
+        return values === undefined || index >= values.length ? fallbackValue : values[index]
+    }
+
     function animateEntrance() {
         sourceClip.stop()
+        contentClip.stop()
         animationPhase = 1
         if (displaySettings.reduceMotion) {
             animationTime = sourceWatchAnimation.openingDuration
+            contentAnimationTime = sourceWatchAnimation.openingDuration
             animationPhase = 0
             return
         }
         animationTime = 0
+        contentAnimationTime = 0
         sourceClip.from = 0
         sourceClip.to = sourceWatchAnimation.openingDuration
         sourceClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000)
@@ -108,6 +126,7 @@ Item {
 
     function animateExit() {
         sourceClip.stop()
+        contentClip.stop()
         animationPhase = 2
         if (displaySettings.reduceMotion) {
             animationTime = sourceWatchAnimation.closingDuration
@@ -143,6 +162,22 @@ Item {
         id: sourceClip
         target: shell
         property: "animationTime"
+        easing.type: Easing.Linear
+
+        onFinished: {
+            if (shell.animationPhase !== 1 || shell.displaySettings.reduceMotion)
+                return
+            contentClip.from = 0
+            contentClip.to = sourceWatchAnimation.openingDuration
+            contentClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000)
+            contentClip.restart()
+        }
+    }
+
+    NumberAnimation {
+        id: contentClip
+        target: shell
+        property: "contentAnimationTime"
         easing.type: Easing.Linear
     }
 
@@ -333,7 +368,7 @@ Item {
             y: 2
             width: 600
             height: 74
-            opacity: shell.frameValue("nativeOpacity", 1)
+            opacity: shell.contentFrameValue("nativeOpacity", 1)
 
             Text {
                 x: 0
@@ -368,7 +403,7 @@ Item {
             width: 205
             height: 78
             rotation: -1.4
-            opacity: shell.frameValue("nativeOpacity", 1)
+            opacity: shell.contentFrameValue("nativeOpacity", 1)
 
             Rectangle {
                 anchors.fill: parent
@@ -428,7 +463,7 @@ Item {
             scale: 0.66576
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "system"
-            opacity: shell.frameValue("nativeOpacity", 1)
+            opacity: shell.contentFrameValue("nativeOpacity", 1)
         }
 
         DisplayPage {
@@ -437,7 +472,7 @@ Item {
             scale: 0.66576
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "display"
-            opacity: shell.frameValue("nativeOpacity", 1)
+            opacity: shell.contentFrameValue("nativeOpacity", 1)
             settings: shell.displaySettings
         }
 
@@ -457,8 +492,8 @@ Item {
                 designX: modelData.x
                 restRotation: modelData.rotation
                 leftSide: true
-                opacity: shell.listValue("leftAlpha", index,
-                                         shell.frameValue("nativeOpacity", 1))
+                opacity: shell.contentListValue("leftAlpha", index,
+                                                shell.contentFrameValue("nativeOpacity", 1))
                 selected: shell.selectedModule === modelData.key
                 onTriggered: shell.selectedModule = modelData.key
             }
@@ -487,8 +522,8 @@ Item {
                     iconSource: modelData.icon || ""
                     slant: -2
                     designX: shell.rightButtonX(index)
-                    opacity: shell.listValue("rightAlpha", index,
-                                             shell.frameValue("nativeOpacity", 1))
+                    opacity: shell.contentListValue("rightAlpha", index,
+                                                    shell.contentFrameValue("nativeOpacity", 1))
                     selected: shell.selectedModule === modelData.key
                     onTriggered: shell.selectedModule = modelData.key
                 }
@@ -510,7 +545,7 @@ Item {
             width: 36
             height: 20
             opacity: (shell.rightScrollOffset > 0 ? 0.82 : 0.18)
-                     * shell.frameValue("nativeOpacity", 1)
+                     * shell.contentFrameValue("nativeOpacity", 1)
 
             Text {
                 anchors.centerIn: parent
@@ -533,7 +568,7 @@ Item {
             width: 36
             height: 20
             opacity: (shell.rightScrollOffset < shell.maximumRightScrollOffset ? 0.82 : 0.18)
-                     * shell.frameValue("nativeOpacity", 1)
+                     * shell.contentFrameValue("nativeOpacity", 1)
 
             Text {
                 anchors.centerIn: parent
@@ -557,7 +592,7 @@ Item {
             height: 65
             label: "存储"
             glyph: "storage"
-            opacity: shell.frameValue("storageOpacity", 1)
+            opacity: shell.contentFrameValue("storageOpacity", 1)
             selected: shell.selectedModule === "storage"
             onTriggered: shell.selectedModule = "storage"
         }
@@ -570,7 +605,7 @@ Item {
             label: "活动监视器"
             glyph: "activity"
             mirrored: true
-            opacity: shell.frameValue("activityOpacity", 1)
+            opacity: shell.contentFrameValue("activityOpacity", 1)
             selected: shell.selectedModule === "activity"
             onTriggered: shell.selectedModule = "activity"
         }
@@ -585,7 +620,7 @@ Item {
             border.width: 1
             border.color: "#7d8f9292"
             visible: shell.selectedModule === ""
-            opacity: shell.frameValue("nativeOpacity", 1)
+            opacity: shell.contentFrameValue("nativeOpacity", 1)
 
             Row {
                 anchors.centerIn: parent
@@ -618,7 +653,7 @@ Item {
             radius: 7
             color: "#EFEFEF"
             visible: shell.selectedModule !== ""
-            opacity: shell.frameValue("nativeOpacity", 1)
+            opacity: shell.contentFrameValue("nativeOpacity", 1)
 
             Text {
                 anchors.centerIn: parent
@@ -643,7 +678,7 @@ Item {
             }
             border.width: 0.8
             border.color: "#61f5f5f5"
-            opacity: shell.frameValue("identityOpacity", 1)
+            opacity: shell.contentFrameValue("identityOpacity", 1)
 
             Rectangle {
                 x: 13
@@ -732,7 +767,7 @@ Item {
             color: closePointer.containsMouse ? "#4de83333" : "#24e83333"
             border.width: 1
             border.color: "#b8e83333"
-            opacity: shell.frameValue("closeOpacity", 1)
+            opacity: shell.contentFrameValue("closeOpacity", 1)
 
             HudGlyph {
                 anchors.centerIn: parent
@@ -759,7 +794,7 @@ Item {
             source: "qrc:/assets/watch/endfield_industries.png"
             sourceClipRect: Qt.rect(0, 142, 430, 83)
             fillMode: Image.Stretch
-            opacity: shell.frameValue("wordmarkOpacity", 1)
+            opacity: shell.contentFrameValue("wordmarkOpacity", 1)
             smooth: true
             mipmap: true
         }
@@ -775,7 +810,7 @@ Item {
         font.family: harmonyRegular.name
         font.pixelSize: 8
         font.letterSpacing: 0.5
-        opacity: shell.frameValue("nativeOpacity", 1)
+        opacity: shell.contentFrameValue("nativeOpacity", 1)
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
