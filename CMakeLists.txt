@@ -51,6 +51,8 @@ qt_add_executable(hyprendfield
     src/storagecontroller.hpp
     src/profilecontroller.cpp
     src/profilecontroller.hpp
+    src/orbipomcontroller.cpp
+    src/orbipomcontroller.hpp
     src/mediainfo.cpp
     src/mediainfo.hpp
     src/projectioncanvas.cpp
@@ -110,6 +112,7 @@ qt_add_qml_module(hyprendfield
         qml/Main.qml
         qml/ProfilePage.qml
         qml/ProfileField.qml
+        qml/OrbiPomPage.qml
         qml/WatchShell.qml
         qml/SystemPage.qml
         qml/DisplayPage.qml
@@ -207,6 +210,8 @@ endif()
 target_compile_definitions(hyprendfield PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="${HYPR_BUILD_ID}")
 file(GLOB_RECURSE SETTINGS_ASSETS CONFIGURE_DEPENDS "assets/settings/*")
 file(GLOB_RECURSE MEDIA_ASSETS CONFIGURE_DEPENDS "assets/media-assembly/*")
+file(GLOB_RECURSE ORBIPOM_ASSETS CONFIGURE_DEPENDS "assets/orbipom/*")
+qt_add_resources(hyprendfield "orbipom_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ORBIPOM_ASSETS})
 qt_add_resources(hyprendfield "media_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${MEDIA_ASSETS})
 qt_add_resources(hyprendfield "settings_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS})
 file(GLOB MENU_VECTOR_ASSETS CONFIGURE_DEPENDS "assets/menu/*.svg" "assets/menu/*.png")
@@ -240,6 +245,7 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/icons/notes.png
         assets/icons/profile-frame.bgra
         assets/icons/projection.png
+        assets/icons/minigame.png
         assets/icons/media-assembly.png
         assets/icons/file-shelf.png
         assets/icons/clipboard.png
@@ -301,7 +307,7 @@ if(BUILD_TESTING)
         SETTINGS_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" SETTINGS_PREVIEW_DIR="${CMAKE_CURRENT_BINARY_DIR}/settings-preview")
     qt_add_resources(hyprendfield_settings_tests "settings_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS}
         assets/icons/notes.png assets/icons/file-shelf.png assets/icons/clipboard.png assets/icons/archive.png
-        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png assets/icons/projection.png assets/icons/media-assembly.png)
+        assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png assets/icons/projection.png assets/icons/media-assembly.png assets/icons/minigame.png)
     add_test(NAME settings COMMAND hyprendfield_settings_tests)
     set_tests_properties(settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 45)
 endif()
@@ -429,6 +435,13 @@ if(BUILD_TESTING)
         READER_ZOOM_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-zoom-preview.png")
     add_test(NAME reader COMMAND hyprendfield_reader_tests)
     set_tests_properties(reader PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
+    qt_add_executable(hyprendfield_orbipom_tests tests/orbipom.cpp src/orbipomcontroller.cpp)
+    target_include_directories(hyprendfield_orbipom_tests PRIVATE src)
+    target_link_libraries(hyprendfield_orbipom_tests PRIVATE Qt6::Quick Qt6::Test)
+    target_compile_definitions(hyprendfield_orbipom_tests PRIVATE ORBIPOM_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}" ORBIPOM_PREVIEW_DIR="${CMAKE_BINARY_DIR}")
+    qt_add_resources(hyprendfield_orbipom_tests "orbipom_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${ORBIPOM_ASSETS})
+    add_test(NAME orbipom COMMAND hyprendfield_orbipom_tests)
+    set_tests_properties(orbipom PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 60)
     qt_add_executable(hyprendfield_media_tests tests/media_components.cpp
         src/projectioncanvas.cpp src/mediainfo.cpp src/storagecontroller.cpp src/notescontroller.cpp src/profilecontroller.cpp
         src/mediaeditor.cpp src/mediaengine.cpp

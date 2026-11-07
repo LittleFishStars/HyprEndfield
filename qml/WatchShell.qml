@@ -128,6 +128,9 @@ Item {
         },
         {
             key: "mediaAssembly", label: qsTr("影像加工"), icon: "qrc:/assets/icons/media-assembly.png"
+        },
+        {
+            key: "minigame", label: qsTr("可露希尔的小游戏"), icon: "qrc:/assets/icons/minigame.png"
         }
     ]
 

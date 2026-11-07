@@ -3,6 +3,7 @@
 #include "facilitycontroller.hpp"
 #include "storagecontroller.hpp"
 #include "profilecontroller.hpp"
+#include "orbipomcontroller.hpp"
 #include "projectioncanvas.hpp"
 #include "mediaeditor.hpp"
 #include "centerlogo.hpp"
@@ -260,6 +261,7 @@ int main(int argc, char *argv[])
     NotesController notes;
     StorageController storage;
     ProfileController profile;
+    OrbiPomController orbipom;
     FileShelfController fileShelf;
     ArchiveController archive;
     auto *readerImages = new ReaderImageProvider;
@@ -269,6 +271,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<ProjectionCanvas>("HyprEndfield.Projection", 1, 0, "ProjectionCanvas");
     qmlRegisterType<MediaEditor>("HyprEndfield.Media", 1, 0, "MediaEditor");
     qmlRegisterType<ProfileArtwork>("HyprEndfield.Profile", 1, 0, "ProfileArtwork");
+    qmlRegisterType<OrbiPomBoard>("HyprEndfield.OrbiPom", 1, 0, "OrbiPomBoard");
     QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "Audio:" << error;
     });
@@ -298,6 +301,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("notesController"), &notes);
     engine.rootContext()->setContextProperty(QStringLiteral("storageController"), &storage);
     engine.rootContext()->setContextProperty(QStringLiteral("profileController"), &profile);
+    engine.rootContext()->setContextProperty(QStringLiteral("orbipomController"), &orbipom);
     engine.rootContext()->setContextProperty(QStringLiteral("fileShelfController"), &fileShelf);
     engine.rootContext()->setContextProperty(QStringLiteral("archiveController"), &archive);
     engine.rootContext()->setContextProperty(QStringLiteral("readerController"), &reader);

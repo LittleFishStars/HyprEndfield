@@ -1,4 +1,6 @@
 // Linux-specific states and component messages; order: EN, ZH, ZH-TW, JA, KO.
+        {"Cannot load the minigame.", "小游戏无法载入。", "小遊戲無法載入。", "ミニゲームを読み込めません。", "미니게임을 불러올 수 없습니다."},
+        {"The minigame encountered an error.", "小游戏运行出错。", "小遊戲執行出錯。", "ミニゲームでエラーが発生しました。", "미니게임에서 오류가 발생했습니다."},
         {"The system key service returned no reason.", "系统密钥服务没有返回原因。", "系統金鑰服務沒有傳回原因。", "システムの鍵サービスから理由が返されませんでした。", "시스템 키 서비스가 원인을 반환하지 않았습니다."},
         {"Cannot identify the current Linux user.", "无法确定当前 Linux 用户。", "無法確定目前的 Linux 使用者。", "現在の Linux ユーザーを特定できません。", "현재 Linux 사용자를 확인할 수 없습니다."},
         {"Cannot create the archive directory.", "无法创建档案库目录。", "無法建立檔案庫目錄。", "アーカイブのフォルダーを作成できません。", "보관함 폴더를 만들 수 없습니다."},

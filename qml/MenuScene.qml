@@ -125,6 +125,11 @@ Item {
             visible: menu.shell.selectedModule === "storage"
             presented: visible && appController.hudOpen
         }
+        OrbiPomPage {
+            x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "minigame"
+            presented: visible && appController.hudOpen
+        }
         ProfilePage {
             x: 630; y: 238; scale: 1.12; transformOrigin: Item.TopLeft
             visible: menu.shell.selectedModule === "profile"
