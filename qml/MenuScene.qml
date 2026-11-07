@@ -201,6 +201,15 @@ Item {
             presented: visible && appController.hudVisible
             reduceMotion: menu.shell.displaySettings.reduceMotion
         }
+        VolumePage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "volume"
+            presented: visible && appController.hudVisible
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
     }
     MenuPlane {
         scene: menu.shell

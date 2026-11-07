@@ -66,18 +66,19 @@ Item {
                         : button.kind === "pause" ? "M6 4h4v16H6zM14 4h4v16h-4z"
                         : button.kind === "previous" ? "M6 4h3v16H6zM20 4L10 12l10 8z"
                         : button.kind === "next" ? "M15 4h3v16h-3zM4 4l10 8-10 8z"
-                        : button.kind === "volume" ? "M3 9h4l6-5v16l-6-5H3z"
+                        : button.kind === "volume" || button.kind === "mute" ? "M3 9h4l6-5v16l-6-5H3z"
                         : "M14.4 18a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0 -5.2 0"
                 }
             }
             ShapePath {
                 fillColor: "transparent"
                 strokeColor: button.ink
-                strokeWidth: button.kind === "volume" ? 2.4 : 2.6
+                strokeWidth: button.kind === "volume" || button.kind === "mute" ? 2.4 : 2.6
                 capStyle: ShapePath.FlatCap
                 joinStyle: ShapePath.MiterJoin
                 PathSvg {
                     path: button.kind === "volume" ? "M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"
+                        : button.kind === "mute" ? "M16 9l5 6M21 9l-5 6"
                         : button.kind === "lyrics" ? "M4 6h12M4 11h12M4 16h7M19 9v9" : ""
                 }
             }

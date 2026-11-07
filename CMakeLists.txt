@@ -9,6 +9,8 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools)
 find_package(LayerShellQt REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -22,6 +24,8 @@ qt_add_executable(hyprendfield
     src/nowplayingcontroller.hpp
     src/splayerlyrics.cpp
     src/splayerlyrics.hpp
+    src/audiocontroller.cpp
+    src/audiocontroller.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -35,6 +39,10 @@ qt_add_qml_module(hyprendfield
         qml/NowPlayingPage.qml
         qml/NowPlayingButton.qml
         qml/NowPlayingSection.qml
+        qml/VolumePage.qml
+        qml/VolumeRow.qml
+        qml/VolumeSlider.qml
+        qml/VolumeDropdown.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -100,6 +108,7 @@ target_link_libraries(hyprendfield PRIVATE
     Qt6::Qml
     Qt6::Quick
     LayerShellQt::Interface
+    PkgConfig::PULSE
 )
 
 target_compile_options(hyprendfield PRIVATE
@@ -141,6 +150,17 @@ if(BUILD_TESTING)
         assets/watch/clips.json assets/watch/watch-blur.json
         assets/watch/runtime-root-camera.json assets/watch/scene.json)
     add_test(NAME scene_projection COMMAND hyprendfield_visual_tests)
+    qt_add_executable(hyprendfield_audio_tests tests/audio.cpp src/audiocontroller.cpp src/audiocontroller.hpp)
+    target_include_directories(hyprendfield_audio_tests PRIVATE src)
+    target_link_libraries(hyprendfield_audio_tests PRIVATE Qt6::Core Qt6::Test PkgConfig::PULSE)
+    add_test(NAME audio COMMAND ${DBUS_RUN_SESSION_EXECUTABLE} -- $<TARGET_FILE:hyprendfield_audio_tests>)
+    set_tests_properties(audio PROPERTIES TIMEOUT 60)
+    qt_add_executable(hyprendfield_volume_page_tests tests/volume_page.cpp src/audiocontroller.cpp src/audiocontroller.hpp)
+    target_include_directories(hyprendfield_volume_page_tests PRIVATE src)
+    target_compile_definitions(hyprendfield_volume_page_tests PRIVATE VOLUME_PAGE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/qml/VolumePage.qml")
+    target_link_libraries(hyprendfield_volume_page_tests PRIVATE Qt6::Quick Qt6::Test PkgConfig::PULSE)
+    add_test(NAME volume_page COMMAND hyprendfield_volume_page_tests)
+    set_tests_properties(volume_page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 
 install(TARGETS hyprendfield

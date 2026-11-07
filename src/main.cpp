@@ -2,8 +2,11 @@
 #include "watchanimationcontroller.hpp"
 #include "nowplayingcontroller.hpp"
 #include "splayerlyrics.hpp"
+#include "audiocontroller.hpp"
 
 #include <QGuiApplication>
+#include <QIcon>
+#include <QQuickImageProvider>
 #include <QLocalSocket>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -15,6 +18,18 @@
 
 namespace
 {
+class AudioIconProvider final : public QQuickImageProvider
+{
+public:
+    AudioIconProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}
+    QImage requestImage(const QString &id, QSize *size, const QSize &requested) override {
+        const QSize target = requested.isValid() ? requested : QSize(64, 64);
+        QImage image = QIcon::fromTheme(QUrl::fromPercentEncoding(id.toUtf8())).pixmap(target).toImage();
+        if (image.isNull()) { image = QImage(target, QImage::Format_ARGB32_Premultiplied); image.fill(Qt::transparent); }
+        if (size) *size = image.size();
+        return image;
+    }
+};
 QString requestedCommand(const QStringList &arguments, bool &valid)
 {
     valid = true;
@@ -94,6 +109,10 @@ int main(int argc, char *argv[])
     WatchAnimationController watchAnimation;
     NowPlayingController nowPlaying;
     SPlayerLyrics lyrics(&nowPlaying);
+    AudioController audio;
+    QObject::connect(&audio, &AudioController::commandFailed, [](const QString &error) {
+        qWarning().noquote() << "Audio:" << error;
+    });
     QObject::connect(&nowPlaying, &NowPlayingController::commandFailed, [](const QString &error) {
         qWarning().noquote() << "SPlayer:" << error;
     });
@@ -107,6 +126,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("sourceWatchAnimation"), &watchAnimation);
     engine.rootContext()->setContextProperty(QStringLiteral("nowPlayingController"), &nowPlaying);
     engine.rootContext()->setContextProperty(QStringLiteral("splayerLyrics"), &lyrics);
+    engine.rootContext()->setContextProperty(QStringLiteral("audioController"), &audio);
+    engine.addImageProvider(QStringLiteral("audio-icons"), new AudioIconProvider);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 
     if (engine.rootObjects().isEmpty()) {
