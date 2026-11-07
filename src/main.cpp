@@ -1,5 +1,7 @@
 #include "applicationcontroller.hpp"
 #include "watchanimationcontroller.hpp"
+#include "nowplayingcontroller.hpp"
+#include "splayerlyrics.hpp"
 
 #include <QGuiApplication>
 #include <QLocalSocket>
@@ -90,6 +92,11 @@ int main(int argc, char *argv[])
 
     ApplicationController controller;
     WatchAnimationController watchAnimation;
+    NowPlayingController nowPlaying;
+    SPlayerLyrics lyrics(&nowPlaying);
+    QObject::connect(&nowPlaying, &NowPlayingController::commandFailed, [](const QString &error) {
+        qWarning().noquote() << "SPlayer:" << error;
+    });
     if (!controller.listen(serverName)) {
         qCritical("Unable to create the HyprEndfield control socket");
         return 1;
@@ -98,6 +105,8 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("appController"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("sourceWatchAnimation"), &watchAnimation);
+    engine.rootContext()->setContextProperty(QStringLiteral("nowPlayingController"), &nowPlaying);
+    engine.rootContext()->setContextProperty(QStringLiteral("splayerLyrics"), &lyrics);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 
     if (engine.rootObjects().isEmpty()) {

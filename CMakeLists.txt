@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network Qml Quick ShaderTools)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network DBus WebSockets Qml Quick ShaderTools)
 find_package(LayerShellQt REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -18,6 +18,10 @@ qt_add_executable(hyprendfield
     src/applicationcontroller.hpp
     src/watchanimationcontroller.cpp
     src/watchanimationcontroller.hpp
+    src/nowplayingcontroller.cpp
+    src/nowplayingcontroller.hpp
+    src/splayerlyrics.cpp
+    src/splayerlyrics.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -28,6 +32,9 @@ qt_add_qml_module(hyprendfield
         qml/WatchShell.qml
         qml/SystemPage.qml
         qml/DisplayPage.qml
+        qml/NowPlayingPage.qml
+        qml/NowPlayingButton.qml
+        qml/NowPlayingSection.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
         qml/HudGlyph.qml
@@ -88,6 +95,8 @@ target_link_libraries(hyprendfield PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Network
+    Qt6::DBus
+    Qt6::WebSockets
     Qt6::Qml
     Qt6::Quick
     LayerShellQt::Interface
@@ -107,6 +116,23 @@ set_target_properties(hyprendfield PROPERTIES
 include(GNUInstallDirs)
 include(CTest)
 if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    find_program(DBUS_RUN_SESSION_EXECUTABLE dbus-run-session REQUIRED)
+    qt_add_executable(hyprendfield_player_tests tests/now_playing.cpp
+        src/nowplayingcontroller.cpp src/nowplayingcontroller.hpp
+        src/splayerlyrics.cpp src/splayerlyrics.hpp)
+    target_include_directories(hyprendfield_player_tests PRIVATE src)
+    target_link_libraries(hyprendfield_player_tests PRIVATE Qt6::Core Qt6::DBus Qt6::WebSockets Qt6::Test)
+    add_test(NAME now_playing COMMAND ${DBUS_RUN_SESSION_EXECUTABLE} -- $<TARGET_FILE:hyprendfield_player_tests>)
+    qt_add_executable(hyprendfield_player_page_tests tests/player_page.cpp
+        src/nowplayingcontroller.cpp src/nowplayingcontroller.hpp
+        src/splayerlyrics.cpp src/splayerlyrics.hpp)
+    target_include_directories(hyprendfield_player_page_tests PRIVATE src)
+    target_compile_definitions(hyprendfield_player_page_tests PRIVATE
+        PLAYER_PAGE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/qml/NowPlayingPage.qml")
+    target_link_libraries(hyprendfield_player_page_tests PRIVATE Qt6::Quick Qt6::DBus Qt6::WebSockets)
+    add_test(NAME player_page COMMAND hyprendfield_player_page_tests)
+    set_tests_properties(player_page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(hyprendfield_visual_tests
         tests/scene_projection.cpp src/watchanimationcontroller.cpp src/watchanimationcontroller.hpp)
     target_include_directories(hyprendfield_visual_tests PRIVATE src)

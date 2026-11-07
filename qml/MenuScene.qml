@@ -190,6 +190,20 @@ Item {
     }
     MenuPlane {
         scene: menu.shell
+        elevation: 0
+        opacity: menu.shell.baseContentFrameValue("nativeOpacity", 1)
+        NowPlayingPage {
+            x: 630
+            y: 238
+            scale: 1.12
+            transformOrigin: Item.TopLeft
+            visible: menu.shell.selectedModule === "nowPlaying"
+            presented: visible && appController.hudVisible
+            reduceMotion: menu.shell.displaySettings.reduceMotion
+        }
+    }
+    MenuPlane {
+        scene: menu.shell
         elevation: 34
         Repeater {
             model: menu.shell.leftButtons
