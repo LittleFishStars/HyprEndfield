@@ -6,7 +6,7 @@ Item {
     width: 1000
     height: 640
 
-    property string selectedModule: ""
+    property string selectedModule: "system"
     property real rightScrollOffset: 0
     readonly property real maximumRightScrollOffset: 196
     property string clockText: "00:00:00"
@@ -276,6 +276,14 @@ Item {
             }
         }
 
+        SystemPage {
+            x: 303.6
+            y: 116.9
+            scale: 0.66576
+            transformOrigin: Item.TopLeft
+            visible: shell.selectedModule === "system"
+        }
+
         Repeater {
             model: shell.leftButtons
 
@@ -410,6 +418,7 @@ Item {
             color: "#d91b1c1d"
             border.width: 1
             border.color: "#7d8f9292"
+            visible: shell.selectedModule === ""
 
             Row {
                 anchors.centerIn: parent
@@ -431,6 +440,25 @@ Item {
                     font.pixelSize: 8
                     font.letterSpacing: 0.7
                 }
+            }
+        }
+
+        Rectangle {
+            x: 493
+            y: 426
+            width: 14
+            height: 14
+            radius: 7
+            color: "#EFEFEF"
+            visible: shell.selectedModule !== ""
+
+            Text {
+                anchors.centerIn: parent
+                text: "ϟ"
+                color: "#202020"
+                font.family: harmonyBold.name
+                font.pixelSize: 10
+                font.weight: Font.Bold
             }
         }
 
