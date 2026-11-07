@@ -3,6 +3,15 @@
 #include <QFutureWatcher>
 #include <QVariantList>
 
+// EndfieldHUD ProjectionWorkspaceView.refreshBackground: a separate retained
+// dot layer below media and ink, rebuilt by Qt when the Wayland surface changes.
+class ProjectionDots : public QQuickPaintedItem {
+    Q_OBJECT
+public:
+    explicit ProjectionDots(QQuickItem *parent = nullptr) : QQuickPaintedItem(parent) {}
+    void paint(QPainter *painter) override;
+};
+
 // EndfieldHUD ProjectionModel + NotesDrawing; session content, no note files.
 class ProjectionCanvas : public QQuickPaintedItem {
     Q_OBJECT

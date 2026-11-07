@@ -315,6 +315,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<TerminalView>("HyprEndfield.Terminal", 1, 0, "TerminalView");
     qmlRegisterType<SourceDial>("HyprEndfield.Source", 1, 0, "SourceDial");
     qmlRegisterType<ProjectionCanvas>("HyprEndfield.Projection", 1, 0, "ProjectionCanvas");
+    qmlRegisterType<ProjectionDots>("HyprEndfield.Projection", 1, 0, "ProjectionDots");
     qmlRegisterType<MediaEditor>("HyprEndfield.Media", 1, 0, "MediaEditor");
     qmlRegisterType<ProfileArtwork>("HyprEndfield.Profile", 1, 0, "ProfileArtwork");
     qmlRegisterType<OrbiPomBoard>("HyprEndfield.OrbiPom", 1, 0, "OrbiPomBoard");

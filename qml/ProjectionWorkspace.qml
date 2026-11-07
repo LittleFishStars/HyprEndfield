@@ -20,9 +20,7 @@ Item {
     function chooseMedia() { opened = true; toolbar.chooseMedia() }
     Settings { category: "projection"; property alias penColor: ink.penColor; property alias penWidth: ink.penWidth; property alias erasing: ink.erasing; property alias dotted: workspace.dotted; property alias darkness: workspace.darkness }
     Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, workspace.darkness); visible: workspace.dotted }
-    Canvas { anchors.fill: parent; visible: workspace.dotted; onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
-        onPaint: { const ctx = getContext("2d"); ctx.clearRect(0, 0, width, height); ctx.fillStyle = "#24ffffff"; for (let y = 12; y < height; y += 36) for (let x = 12; x < width; x += 36) ctx.fillRect(x, y, 2, 2); }
-    }
+    ProjectionDots { objectName: "projectionDots"; anchors.fill: parent; visible: workspace.dotted }
     MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton; cursorShape: Qt.CrossCursor
         onPressed: mouse => { toolbar.popup = ""; if (mouse.button === Qt.RightButton) ink.erasing = !ink.erasing; else ink.beginStroke(Qt.point(mouse.x, mouse.y)); }
         onPositionChanged: mouse => { if (pressedButtons & Qt.LeftButton) ink.moveStroke(Qt.point(mouse.x, mouse.y)); }

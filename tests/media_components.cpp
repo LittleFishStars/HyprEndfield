@@ -25,7 +25,14 @@
 class AppStub : public QObject {
     Q_OBJECT
 public:
-    Q_INVOKABLE void setProjectionActive(bool) {}
+    QQuickWindow *projectionWindow = nullptr;
+    Q_INVOKABLE void setProjectionActive(bool) {
+        if (projectionWindow) {
+            const bool visible = projectionWindow->isVisible();
+            projectionWindow->hide(); projectionWindow->destroy();
+            if (visible) projectionWindow->show();
+        }
+    }
 };
 class MediaTests : public QObject {
     Q_OBJECT
@@ -110,6 +117,38 @@ private slots:
         const auto id = canvas.media().first().toMap().value("id").toString(); canvas.placeMedia(id, -30, -80, 2000, 2000);
         const auto entry = canvas.media().first().toMap(); QCOMPARE(entry.value("x").toDouble(), 0.); QCOMPARE(entry.value("width").toDouble(), 800.);
         canvas.clearContent(); QVERIFY(canvas.media().isEmpty()); QVERIFY(QFileInfo::exists(m_video));
+    }
+    void projectionBackground() {
+        QQmlEngine engine; AppStub app;
+        engine.rootContext()->setContextProperty("appController", &app);
+        for (const auto *font : {"harmonyRegular", "harmonyMedium", "harmonyBold"}) engine.rootContext()->setContextProperty(font, QVariantMap{{"name", "sans-serif"}});
+        QQmlComponent component(&engine, QUrl::fromLocalFile(QString(MEDIA_QML_DIR) + "/ProjectionWorkspace.qml"));
+        std::unique_ptr<QObject> workspace(component.create()); QVERIFY2(workspace, qPrintable(component.errorString()));
+        QQuickWindow window; window.setColor(QColor("#808080")); window.resize(1000, 700);
+        auto *item = qobject_cast<QQuickItem *>(workspace.get()); QVERIFY(item); item->setParentItem(window.contentItem()); item->setSize({1000, 700});
+        workspace->setProperty("presented", true);
+        window.show(); QTest::qWait(100); app.projectionWindow = &window;
+        workspace->setProperty("dotted", true); workspace->setProperty("darkness", .63);
+        workspace->setProperty("opened", true); QTest::qWait(100);
+        const auto on = window.grabWindow(); QVERIFY(!on.isNull());
+        const auto pixel = [&](const QImage &image, int x, int y) { return image.pixelColor(qRound(x * image.devicePixelRatio()), qRound(y * image.devicePixelRatio())).red(); };
+        QVERIFY2(pixel(on, 120, 192) > pixel(on, 125, 192) + 15, "The source's 2px dot must be visibly brighter than the dark background");
+        workspace->setProperty("dotted", false); QTest::qWait(60); const auto off = window.grabWindow();
+        QCOMPARE(pixel(off, 120, 192), 128); QCOMPARE(pixel(off, 125, 192), 128);
+        workspace->setProperty("dotted", true); workspace->setProperty("presented", false); workspace->setProperty("presented", true); QTest::qWait(60);
+        const auto reopened = window.grabWindow(); QVERIFY(pixel(reopened, 120, 192) > pixel(reopened, 125, 192) + 15);
+        workspace->setProperty("opened", false); QTest::qWait(60);
+        workspace->setProperty("opened", true); QTest::qWait(100);
+        const auto recreated = window.grabWindow(); QVERIFY2(pixel(recreated, 120, 192) > pixel(recreated, 125, 192) + 15, "The dot texture must survive recreation of the HUD's Wayland surface");
+        workspace->setProperty("darkness", 0); QTest::qWait(60);
+        const auto transparent = window.grabWindow();
+        QVERIFY(pixel(transparent, 120, 192) > pixel(transparent, 125, 192) + 15);
+        QCOMPARE(pixel(transparent, 125, 192), 128);
+        window.resize(1200, 800); item->setSize({1200, 800}); QTest::qWait(60);
+        const auto resized = window.grabWindow();
+        QVERIFY(pixel(resized, 1164, 768) > pixel(resized, 1169, 768) + 15);
+        app.projectionWindow = nullptr;
+        item->setParentItem(nullptr);
     }
     void profilePersistenceAndImages() {
         QTemporaryDir directory; ProfileController profile(nullptr, directory.path());
@@ -202,6 +241,7 @@ private slots:
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv); QCoreApplication::setOrganizationName("HyprEndfieldTest"); QCoreApplication::setApplicationName("MediaTest");
     qmlRegisterType<ProjectionCanvas>("HyprEndfield.Projection", 1, 0, "ProjectionCanvas");
+    qmlRegisterType<ProjectionDots>("HyprEndfield.Projection", 1, 0, "ProjectionDots");
     qmlRegisterType<MediaEditor>("HyprEndfield.Media", 1, 0, "MediaEditor");
     qmlRegisterType<ProfileArtwork>("HyprEndfield.Profile", 1, 0, "ProfileArtwork");
     MediaTests tests; return QTest::qExec(&tests, argc, argv);

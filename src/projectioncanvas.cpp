@@ -8,6 +8,14 @@
 #include <algorithm>
 #include <cmath>
 
+void ProjectionDots::paint(QPainter *p) {
+    // Preserve the source's 2 × 2 squares, 12px origin, 36px spacing and 0.14 alpha.
+    QPainterPath dots;
+    for (qreal y = 12; y <= height(); y += 36)
+        for (qreal x = 12; x <= width(); x += 36) dots.addRect(x, y, 2, 2);
+    p->fillPath(dots, QColor::fromRgbF(1, 1, 1, .14));
+}
+
 ProjectionCanvas::ProjectionCanvas(QQuickItem *parent) : QQuickPaintedItem(parent) {
     setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton); setAntialiasing(true);
     connect(this, &QQuickItem::widthChanged, this, [this] { update(); });
