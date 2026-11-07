@@ -82,7 +82,8 @@ void GameProfileArtwork::paint(QPainter *painter) {
             const auto &photo=m_controller->image("background");
             if(kind=="card" && !m_recording && !photo.isNull()) {
                 const auto crop=p::profileRenderedImage(p::profileWorkingCopy(profileImage(photo)),1,{412,158},state.value("thumbnailZoom").toDouble(),{state.value("thumbnailOffsetX").toDouble(),state.value("thumbnailOffsetY").toDouble()},2);
-                artwork=p::idCardCompositedBackground(crop,artwork);
+                // Match upstream: draw the artwork into the photo crop's bounds before compositing.
+                artwork=p::idCardCompositedBackground(crop,p::profileResampled(artwork,crop.width,crop.height));
             }
             m_image=image(artwork);
         } else if (kind=="avatar") {
