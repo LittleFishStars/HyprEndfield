@@ -226,7 +226,7 @@ FocusScope {
             Rectangle {
                 id: paper; objectName: "readerPaper"; x: 0; y: 121; width: 590; height: 351
                 visible: !!readerPage.currentPage.key; color: "#EFEDE6"; border.color: "#C9C7BF"; clip: true
-                readonly property bool verticalMode: readerPage.preferences.vertical && !(readerPage.currentPage.illustration && readerPage.readerState.zoom > 1)
+                readonly property bool verticalMode: readerPage.preferences.vertical && readerPage.readerState.zoom <= 1.0001
                 property string shownKey: ""
                 property string shownSource: ""
                 property string shownBaseSource: ""
@@ -360,21 +360,35 @@ FocusScope {
                     Shape { anchors.fill: parent; preferredRendererType: Shape.CurveRenderer; ShapePath { strokeWidth: -1; fillColor: "#FFFA00"; PathSvg { path: "M0 0h16v26l-8-6.5L0 26z" } } }
                 }
                 MouseArea {
-                    id: pagePointer; x: 1; y: 1; width: 588; height: 349; enabled: !paper.verticalMode || readerPage.readerState.zoom > 1
+                    id: pagePointer; x: 1; y: 1; width: 588; height: 349; enabled: !paper.verticalMode
                     acceptedButtons: Qt.LeftButton; hoverEnabled: true
                     property real lastX: 0; property real lastY: 0
                     onPressed: mouse => { lastX = mouse.x; lastY = mouse.y }
                     onPositionChanged: mouse => { if (pressed && readerPage.readerState.zoom > 1) { readerController.panBy(mouse.x - lastX, mouse.y - lastY); lastX = mouse.x; lastY = mouse.y } }
                     onWheel: wheel => {
-                        const modifier = wheel.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)
-                        if (readerPage.currentPage.illustration && modifier) readerController.zoomAt(wheel.angleDelta.y > 0 ? 1.12 : 1 / 1.12, wheel.x, wheel.y)
+                        const modifier = wheel.modifiers & Qt.ControlModifier
+                        const delta = wheel.angleDelta.y || wheel.pixelDelta.y
+                        if (modifier && delta) readerController.zoomAt(delta > 0 ? 1.12 : 1 / 1.12, wheel.x, wheel.y)
                         else if (readerPage.readerState.zoom > 1) readerController.panBy(wheel.pixelDelta.x || wheel.angleDelta.x / 8, wheel.pixelDelta.y || wheel.angleDelta.y / 8)
                         else if (!paper.verticalMode && Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y) * 1.1) readerPage.turn(wheel.angleDelta.x > 0 ? 1 : -1)
                         wheel.accepted = true
                     }
                 }
+                WheelHandler {
+                    target: null
+                    enabled: paper.verticalMode && !!readerPage.currentPage.key
+                    acceptedModifiers: Qt.ControlModifier
+                    orientation: Qt.Vertical
+                    blocking: true
+                    onWheel: event => {
+                        const delta = event.angleDelta.y || event.pixelDelta.y
+                        if (!delta) return
+                        readerController.zoomAt(delta > 0 ? 1.12 : 1 / 1.12, event.x - 1, event.y - 1)
+                        event.accepted = true
+                    }
+                }
                 PinchHandler {
-                    id: pagePinch; target: null; enabled: !!readerPage.currentPage.illustration && !paper.verticalMode
+                    id: pagePinch; target: null; enabled: !!readerPage.currentPage.key
                     minimumScale: 0.05; maximumScale: 12
                     property real lastScale: 1
                     onActiveChanged: if (active) lastScale = 1
@@ -389,10 +403,11 @@ FocusScope {
             Item {
                 x: 0; y: 478; width: 590; height: 30; visible: !!readerPage.currentPage.key
                 IconButton { x: 0; icon: "left"; enabled: !!readerPage.currentPage.canPrevious; reduceMotion: readerPage.reduceMotion; onClicked: readerPage.turn(-1) }
-                ReaderPageSlider { id: pageSlider; x: 38; width: 366; value: Number(readerPage.currentPage.number || 1); maximum: Math.max(2, Number(readerPage.currentPage.total || 100)); enabled: !!readerPage.currentPage.key; reduceMotion: readerPage.reduceMotion; onChanged: (value, final) => { if (final) readerController.jump(Math.round(value)) } }
-                IconButton { x: 412; icon: "right"; enabled: !!readerPage.currentPage.canNext; reduceMotion: readerPage.reduceMotion; onClicked: readerPage.turn(1) }
-                Text { x: 450; y: 10; width: 64; text: readerPage.currentPage.number ? readerPage.currentPage.number + " / " + readerPage.currentPage.total : ""; color: "#9A9A9A"; horizontalAlignment: Text.AlignRight; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Bold; font.preferShaping: false; renderType: Text.CurveRendering }
-                IconButton { x: 522; icon: "bookmark"; checked: !!readerPage.currentPage.bookmarked; reduceMotion: readerPage.reduceMotion; onClicked: readerController.toggleBookmark() }
+                ReaderPageSlider { id: pageSlider; x: 38; width: 328; value: Number(readerPage.currentPage.number || 1); maximum: Math.max(2, Number(readerPage.currentPage.total || 100)); enabled: !!readerPage.currentPage.key; reduceMotion: readerPage.reduceMotion; onChanged: (value, final) => { if (final) readerController.jump(Math.round(value)) } }
+                IconButton { x: 374; icon: "right"; enabled: !!readerPage.currentPage.canNext; reduceMotion: readerPage.reduceMotion; onClicked: readerPage.turn(1) }
+                Text { x: 412; y: 10; width: 64; text: readerPage.currentPage.number ? readerPage.currentPage.number + " / " + readerPage.currentPage.total : ""; color: "#9A9A9A"; horizontalAlignment: Text.AlignRight; font.family: harmonyBold.name; font.pixelSize: 10; font.weight: Font.Bold; font.preferShaping: false; renderType: Text.CurveRendering }
+                IconButton { x: 484; icon: "bookmark"; checked: !!readerPage.currentPage.bookmarked; reduceMotion: readerPage.reduceMotion; onClicked: readerController.toggleBookmark() }
+                IconButton { objectName: "readerResetZoom"; x: 522; icon: "reset"; checked: readerPage.readerState.zoom > 1; enabled: readerPage.readerState.zoom > 1; reduceMotion: readerPage.reduceMotion; onClicked: readerController.resetZoom() }
                 IconButton { x: 560; icon: "gear"; reduceMotion: readerPage.reduceMotion; onClicked: { readerPage.settingsOpen = !readerPage.settingsOpen; readerPage.fontMenuOpen = false } }
             }
         }

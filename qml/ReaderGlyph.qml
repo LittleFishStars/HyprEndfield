@@ -16,6 +16,7 @@ Item {
         case "right": return "M9 4l8 8-8 8"
         case "bookmark": return "M6 3h12v18l-6-5-6 5z"
         case "gear": return "M8.6 12a3.4 3.4 0 1 0 6.8 0a3.4 3.4 0 1 0-6.8 0zM12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"
+        case "reset": return "M20 12a8 8 0 1 1-2.34-5.66M20 4v8h-8"
         case "x": return "M5.5 5.5l13 13M18.5 5.5l-13 13"
         case "minus": return "M4 12h16"
         case "plus": return "M12 4v16M4 12h16"
@@ -35,7 +36,7 @@ Item {
         ShapePath {
             strokeColor: glyph.firstFilled ? "transparent" : glyph.color
             strokeWidth: glyph.name === "x" || glyph.name === "text" || glyph.name === "left" || glyph.name === "right"
-                || glyph.name === "minus" || glyph.name === "plus" ? 3 : 2.6
+                || glyph.name === "minus" || glyph.name === "plus" || glyph.name === "reset" ? 3 : 2.6
             capStyle: glyph.name === "x" || glyph.name === "left" || glyph.name === "right" ? ShapePath.SquareCap : ShapePath.FlatCap
             joinStyle: ShapePath.MiterJoin
             fillColor: glyph.firstFilled ? glyph.color : "transparent"

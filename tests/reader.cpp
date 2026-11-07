@@ -131,6 +131,20 @@ private slots:
         QCOMPARE(second.state().value(QStringLiteral("preferences")).toMap().value(QStringLiteral("fontSize")).toDouble(), 12.0);
         m_controller->setActive(true);
         QTRY_VERIFY_WITH_TIMEOUT(!m_controller->state().value(QStringLiteral("current")).toMap().value(QStringLiteral("key")).toString().isEmpty(), 15000);
+        QCOMPARE(m_controller->state().value(QStringLiteral("current")).toMap().value(QStringLiteral("illustration")).toBool(), false);
+        m_controller->zoomAt(2, 294, 174.5);
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->state().value(QStringLiteral("zoom")).toDouble(), 2.0, 5000);
+        QTRY_COMPARE_WITH_TIMEOUT(m_controller->state().value(QStringLiteral("current")).toMap().value(QStringLiteral("detailReady")).toBool(), true, 15000);
+        const QString source = m_controller->state().value(QStringLiteral("current")).toMap().value(QStringLiteral("source")).toString();
+        const QString key = source.mid(QStringLiteral("image://reader-pages/").size());
+        const QImage zoomPreview = m_provider->requestImage(key, nullptr, {});
+        QVERIFY(!zoomPreview.isNull());
+        QVERIFY(zoomPreview.save(QStringLiteral(READER_ZOOM_PREVIEW_PATH)));
+        m_controller->panBy(20, -10);
+        QTRY_VERIFY_WITH_TIMEOUT(m_controller->state().value(QStringLiteral("panX")).toDouble() > 0, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(m_controller->state().value(QStringLiteral("panY")).toDouble() < 0, 5000);
+        m_controller->resetZoom();
+        QCOMPARE(m_controller->state().value(QStringLiteral("zoom")).toDouble(), 1.0);
     }
 
     void pdfAndEpubImport()
@@ -205,6 +219,7 @@ private slots:
         QVERIFY(view.rootObject()->findChild<QObject *>(QStringLiteral("readerTabs")));
         QVERIFY(view.rootObject()->findChild<QObject *>(QStringLiteral("readerLibrary")));
         QVERIFY(view.rootObject()->findChild<QObject *>(QStringLiteral("readerPaper")));
+        QVERIFY(view.rootObject()->findChild<QObject *>(QStringLiteral("readerResetZoom")));
         QVERIFY(view.rootObject()->findChild<QObject *>(QStringLiteral("readerSettings")));
         QVERIFY(view.rootObject()->findChild<QObject *>(QStringLiteral("readerMarks")));
         view.rootObject()->setProperty("presented", true);
@@ -218,6 +233,9 @@ private slots:
         visualController.setTab(QStringLiteral("reading"));
         QTRY_VERIFY_WITH_TIMEOUT(!visualController.state().value(QStringLiteral("current")).toMap().value(QStringLiteral("key")).toString().isEmpty(), 15000);
         QTest::qWait(500);
+        QTest::wheelEvent(&view, QPointF(294, 295), QPoint(0, 120), QPoint(), Qt::ControlModifier);
+        QTRY_VERIFY_WITH_TIMEOUT(visualController.state().value(QStringLiteral("zoom")).toDouble() > 1, 5000);
+        visualController.resetZoom();
         const QImage readingPreview = view.grabWindow();
         QVERIFY(!readingPreview.isNull());
         QVERIFY(readingPreview.save(QStringLiteral(READER_READING_PREVIEW_PATH)));

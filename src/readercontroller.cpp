@@ -21,6 +21,7 @@
 #include <QStringDecoder>
 #include <QTextLayout>
 #include <QTextOption>
+#include <QTransform>
 #include <QUuid>
 #include <QXmlStreamReader>
 #include <QtConcurrentRun>
@@ -130,7 +131,7 @@ ReaderController::ReaderController(QObject *parent, ReaderImageProvider *provide
     m_detailTimer.setSingleShot(true);
     m_detailTimer.setInterval(120);
     connect(&m_detailTimer, &QTimer::timeout, this, [this] {
-        if (!m_active || m_zoom <= 1 || m_pages.isEmpty() || !m_pages.constFirst().illustration) return;
+        if (!m_active || m_zoom <= 1 || m_pages.isEmpty()) return;
         requestRender(m_pages.constFirst().location, {}, true);
     });
     loadLibrary();
@@ -615,7 +616,7 @@ void ReaderController::applyRender(RenderResult result, quint64 token)
     m_pageBook = m_selected;
     m_detail.reset();
     if (!m_pages.isEmpty()) persistProgress(m_pages.constFirst());
-    if (m_zoom > 1 && m_pages.constFirst().illustration) m_detailTimer.start();
+    if (m_zoom > 1) m_detailTimer.start();
 }
 
 void ReaderController::persistProgress(const Page &page)
@@ -729,7 +730,7 @@ void ReaderController::setPreference(const QString &name, const QVariant &value)
 
 void ReaderController::setImageView(double zoom, double panX, double panY)
 {
-    if (m_pages.isEmpty() || !m_pages.constFirst().illustration) return;
+    if (m_pages.isEmpty()) return;
     if (!std::isfinite(zoom) || !std::isfinite(panX) || !std::isfinite(panY)) return;
     zoom = std::clamp(zoom, 1.0, 12.0);
     const double limitX = logicalWidth * (zoom - 1) / 2;
@@ -1487,6 +1488,12 @@ public:
                 painter.drawImage(destination, image);
             } else {
                 painter.setPen(QColor(QStringLiteral("#222222")));
+                if (view.zoom > 1.0001) {
+                    const double offsetX = scaleX * ((1 - view.zoom) * logicalWidth / 2 + view.pan.x());
+                    const double offsetY = scaleY * ((1 - view.zoom) * logicalHeight / 2 + view.pan.y());
+                    painter.setTransform(QTransform(scaleX * view.zoom, 0, 0, scaleY * view.zoom,
+                                                    offsetX, offsetY));
+                }
                 const auto layout = layoutTextPage(block.value, page.location.character, m_preferences, &painter, inner);
                 if (layout.consumed <= 0) { m_error = invalidBookMessage(); return page; }
                 page.textHeight = std::min(inner.height(), std::max(1.0, layout.height));

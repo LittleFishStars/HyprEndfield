@@ -318,7 +318,8 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_reader_tests PRIVATE
         READER_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
         READER_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-preview.png"
-        READER_READING_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-reading-preview.png")
+        READER_READING_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-reading-preview.png"
+        READER_ZOOM_PREVIEW_PATH="${CMAKE_BINARY_DIR}/reader-zoom-preview.png")
     add_test(NAME reader COMMAND hyprendfield_reader_tests)
     set_tests_properties(reader PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
 endif()
