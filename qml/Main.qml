@@ -5,8 +5,8 @@ import org.kde.layershell 1.0 as LayerShell
 Window {
     id: root
 
-    width: 1180
-    height: 760
+    width: 0
+    height: 0
     visible: false
     color: "transparent"
     title: "HyprEndfield"
