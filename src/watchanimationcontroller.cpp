@@ -489,14 +489,9 @@ QVariantMap WatchAnimationController::frame(int phase, double time) const
         return std::clamp(m_data->scalar(phase, time, path, attribute, 0, fallback),
                           0.0, 1.0);
     };
-    const auto active = [this, phase, time](const QString &path) {
-        return m_data->scalar(phase, time, path, QStringLiteral("m_IsActive"), 0, 1.0) >= 0.5
-            ? 1.0 : 0.0;
-    };
-
     const QString middle = QStringLiteral("Content/WatchNode/canvas_watch/MiddleDecoNode/");
     const QString right = QStringLiteral("Content/WatchNode/canvas_watch/RightBottomNode/ScrollView/Viewport/ScrollViewContent/RightBotton/");
-    const QString left = QStringLiteral("Content/WatchNode/canvas_watch/TopLeftBtnNode/");
+    const QString left = QStringLiteral("Content/WatchNode/canvas_watch/LeftBottomNode/LeftBottomNode01/");
 
     frame.insert(QStringLiteral("rootZ"), m_data->scalar(phase, time,
         QStringLiteral("Content/WatchNode"), QStringLiteral("m_PositionCurves"), 2, 0.0));
@@ -520,21 +515,18 @@ QVariantMap WatchAnimationController::frame(int phase, double time) const
     frame.insert(QStringLiteral("triangleRotation"), m_data->zRotation(phase, time, middle + QStringLiteral("TriagleNode")));
     frame.insert(QStringLiteral("meshScale"), scale(middle + QStringLiteral("MeshNode")));
     frame.insert(QStringLiteral("meshRotation"), m_data->zRotation(phase, time, middle + QStringLiteral("MeshNode")));
-    frame.insert(QStringLiteral("logoScale"), scale(QStringLiteral("Content/WatchNode/EndfieldLogo")));
     frame.insert(QStringLiteral("wordmarkOpacity"), alpha(middle + QStringLiteral("MainRingNode/MainRing/EndfieldText")));
-    frame.insert(QStringLiteral("centerOpacity"), active(QStringLiteral("Content/WatchNode/Map")));
-    frame.insert(QStringLiteral("clockOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/Top_RightNode/Top_RightMask")));
     frame.insert(QStringLiteral("identityOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/LeftBottomNode/PlayInfoPosNode")));
     frame.insert(QStringLiteral("closeOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/LeftBottomNode/QuitBtnNode")));
-    frame.insert(QStringLiteral("storageOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/LeftBottomNode/LeftBottomNode01/CharfomationBtnNode")));
-    frame.insert(QStringLiteral("activityOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/LeftBottomNode/LeftBottomNode01/ActivityBtnNode")));
+    frame.insert(QStringLiteral("storageOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/HudBgShdow/TechtreeNode")));
+    frame.insert(QStringLiteral("activityOpacity"), alpha(QStringLiteral("Content/WatchNode/canvas_watch/HudBgShdow/ReportNode")));
     frame.insert(QStringLiteral("nativeOpacity"), m_data->nativeOpacity(phase, time));
 
     QVariantList leftAlpha;
-    leftAlpha.append(alpha(left + QStringLiteral("TopLeftBtn1")));
-    leftAlpha.append(m_data->nativeOpacity(phase, time));
-    leftAlpha.append(alpha(left + QStringLiteral("TopLeftBtn3")));
-    leftAlpha.append(alpha(left + QStringLiteral("TopLeftBtn4")));
+    leftAlpha.append(alpha(left + QStringLiteral("CharInfoBtnNode")));
+    leftAlpha.append(alpha(left + QStringLiteral("ActivityBtnNode")));
+    leftAlpha.append(alpha(left + QStringLiteral("GachaBtnNode")));
+    leftAlpha.append(alpha(left + QStringLiteral("PurchaseNode")));
     frame.insert(QStringLiteral("leftAlpha"), leftAlpha);
 
     QVariantList rightAlpha;

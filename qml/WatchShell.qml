@@ -319,8 +319,6 @@ Item {
             width: 600
             height: 74
             opacity: shell.frameValue("nativeOpacity", 1)
-            scale: shell.frameValue("logoScale", 1)
-            transformOrigin: Item.Center
 
             Text {
                 x: 0
@@ -355,7 +353,7 @@ Item {
             width: 205
             height: 78
             rotation: -1.4
-            opacity: shell.frameValue("clockOpacity", 1)
+            opacity: shell.frameValue("nativeOpacity", 1)
 
             Rectangle {
                 anchors.fill: parent
@@ -415,8 +413,7 @@ Item {
             scale: 0.66576
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "system"
-            opacity: shell.frameValue("centerOpacity", 1)
-                     * shell.frameValue("nativeOpacity", 1)
+            opacity: shell.frameValue("nativeOpacity", 1)
         }
 
         Repeater {
