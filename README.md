@@ -1,5 +1,7 @@
 # HyprEndfield
 
+# 欢迎Linux用户提交Issue/Pr
+
 HyprEndfield 把 [EndfieldHUD](https://github.com/DDDuoDuo/EndfieldHUD) 的 HUD 界面移植到了 Linux。项目使用 C++20、Qt 6 / QML 和 LayerShellQt，开发与日常使用环境是 Arch Linux + Hyprland。
 
 表盘、卡片、动画和素材尽量沿用原项目，主表盘使用 EndfieldHUD 的分层三维资源。这个仓库目前只提供源码，没有安装包。
