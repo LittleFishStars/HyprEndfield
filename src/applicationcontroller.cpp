@@ -21,9 +21,11 @@ bool dispatchHyprlandSubmap(const QString &name)
         return false;
     }
 
+    const QString expression = QStringLiteral(
+        "hl.dispatch(hl.dsp.submap(\"%1\"))").arg(name);
     return QProcess::startDetached(
         hyprctl,
-        {QStringLiteral("dispatch"), QStringLiteral("submap"), name});
+        {QStringLiteral("eval"), expression});
 }
 }
 

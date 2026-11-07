@@ -12,6 +12,10 @@ Window {
     title: "HyprEndfield"
     flags: Qt.FramelessWindowHint
 
+    LayerShell.Window.anchors: LayerShell.Window.AnchorTop
+                               | LayerShell.Window.AnchorBottom
+                               | LayerShell.Window.AnchorLeft
+                               | LayerShell.Window.AnchorRight
     LayerShell.Window.layer: LayerShell.Window.LayerOverlay
     LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityOnDemand
     LayerShell.Window.exclusionZone: -1
