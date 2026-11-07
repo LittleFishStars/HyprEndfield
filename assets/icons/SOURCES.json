@@ -46,12 +46,6 @@
       "source_project_file": "Resources/AppIconSources/EndfieldWiki/Calendar_Icon.png",
       "source_sha256": "f51584c31ae684bf6b79ab811ce678b6c15927ccda85ab9c2af6c4ef76f70efb",
       "sha256": "1e2051b240bbbf8999cbe3f653ac9b7a205eb456d749099126b01b80efbd918f"
-    },
-    {
-      "file": "event-log.png",
-      "source_project_file": "Resources/AppIconSources/EndfieldWiki/Questionnaire_Icon.png",
-      "source_sha256": "262f16f035f7a03f00f79668b9c09175e65112f9c8763167c09ef29024ecb2c4",
-      "sha256": "599b176bcd82e48b46c2abe313f73eb5946551869974111c71bde40eb1d51d78"
     }
   ]
 }

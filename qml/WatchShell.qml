@@ -11,7 +11,7 @@ Item {
 
     property string selectedModule: "system"
     property real rightScrollOffset: 0
-    readonly property real maximumRightScrollOffset: 15.5
+    readonly property real maximumRightScrollOffset: Math.max(0, (Math.ceil(rightButtons.length / 2) - 5) * 15.5)
     property string clockText: "00:00:00"
     property string dateText: ""
     property int clockSeconds: 0
@@ -109,11 +109,6 @@ Item {
             key: "calendar",
             label: "日历",
             icon: "qrc:/assets/icons/calendar.png"
-        },
-        {
-            key: "eventLog",
-            label: "事件日志",
-            icon: "qrc:/assets/icons/event-log.png"
         },
         {
             key: "addApp",

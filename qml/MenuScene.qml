@@ -384,7 +384,7 @@ Item {
                 y: index === 0 ? 220 : 980
                 width: 70
                 height: 30
-                opacity: menu.shell.contentFrameValue("nativeOpacity", 1) * ((index === 0 ? menu.shell.rightScrollOffset > 0 : menu.shell.rightScrollOffset < 15.5) ? 0.82 : 0.18)
+                opacity: menu.shell.contentFrameValue("nativeOpacity", 1) * ((index === 0 ? menu.shell.rightScrollOffset > 0 : menu.shell.rightScrollOffset < menu.shell.maximumRightScrollOffset) ? 0.82 : 0.18)
                 rotation: -3
                 Shape {
                     preferredRendererType: Shape.CurveRenderer
