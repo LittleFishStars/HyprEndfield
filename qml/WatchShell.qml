@@ -11,6 +11,21 @@ Item {
     readonly property real maximumRightScrollOffset: 196
     property string clockText: "00:00:00"
     property string dateText: ""
+    property real deploymentScale: 0.46
+    property real deploymentPitch: 35
+    property real deploymentOpacity: 0
+    property real contentOpacity: 0
+    property real outerRingScale: 0
+    property real secondaryRingScale: 0.5
+    property real interfaceScale: 0
+    property real outerRingRotation: -8
+    property real secondaryRingRotation: -10
+    property real mainRingRotation: -35
+    property real middleRingRotation: 80
+    property real triangleRotation: -8
+    property real pointerHorizontal: 0
+    property real pointerVertical: 0
+    readonly property bool transitioning: entranceAnimation.running || exitAnimation.running
 
     readonly property var leftButtons: [
         { key: "system", label: "系统", x: 54, y: 147, slant: 9, rotation: -0.859 },
@@ -53,6 +68,267 @@ Item {
                                                   rightScrollOffset + direction * 90))
     }
 
+    function animateEntrance() {
+        exitAnimation.stop()
+        deploymentScale = 0.46
+        deploymentPitch = 35
+        deploymentOpacity = 0
+        contentOpacity = 0
+        outerRingScale = 0
+        secondaryRingScale = 0.5
+        interfaceScale = 0
+        outerRingRotation = -8
+        secondaryRingRotation = -10
+        mainRingRotation = -35
+        middleRingRotation = 80
+        triangleRotation = -8
+        entranceAnimation.restart()
+    }
+
+    function animateExit() {
+        entranceAnimation.stop()
+        exitAnimation.restart()
+    }
+
+    Behavior on pointerHorizontal {
+        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+    }
+
+    Behavior on pointerVertical {
+        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+    }
+
+    HoverHandler {
+        id: parallaxPointer
+
+        onPointChanged: {
+            shell.pointerHorizontal = Math.max(-1, Math.min(1, (point.position.x - 500) / 320))
+            shell.pointerVertical = Math.max(-1, Math.min(1, (point.position.y - 320) / 240))
+        }
+
+        onHoveredChanged: {
+            if (!hovered) {
+                shell.pointerHorizontal = 0
+                shell.pointerVertical = 0
+            }
+        }
+    }
+
+    ParallelAnimation {
+        id: entranceAnimation
+
+        NumberAnimation {
+            target: shell
+            property: "deploymentOpacity"
+            to: 1
+            duration: 30
+            easing.type: Easing.Linear
+        }
+
+        NumberAnimation {
+            target: shell
+            property: "deploymentScale"
+            to: 1
+            duration: 750
+            easing.type: Easing.OutCubic
+        }
+
+        SequentialAnimation {
+            PauseAnimation { duration: 250 }
+            NumberAnimation {
+                target: shell
+                property: "deploymentPitch"
+                to: 34.9
+                duration: 50
+                easing.type: Easing.Linear
+            }
+            NumberAnimation {
+                target: shell
+                property: "deploymentPitch"
+                to: 31.5
+                duration: 100
+                easing.type: Easing.InCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "deploymentPitch"
+                to: 17.1
+                duration: 67
+                easing.type: Easing.InOutCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "deploymentPitch"
+                to: 4.7
+                duration: 33
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "deploymentPitch"
+                to: -0.94
+                duration: 150
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "deploymentPitch"
+                to: 0
+                duration: 100
+                easing.type: Easing.InOutCubic
+            }
+        }
+
+        SequentialAnimation {
+            PauseAnimation { duration: 283 }
+            NumberAnimation {
+                target: shell
+                property: "outerRingScale"
+                to: 1
+                duration: 417
+                easing.type: Easing.OutCubic
+            }
+            PauseAnimation { duration: 50 }
+        }
+
+        SequentialAnimation {
+            PauseAnimation { duration: 200 }
+            NumberAnimation {
+                target: shell
+                property: "secondaryRingScale"
+                to: 1
+                duration: 550
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        NumberAnimation {
+            target: shell
+            property: "interfaceScale"
+            to: 1
+            duration: 667
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation { target: shell; property: "outerRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
+        NumberAnimation { target: shell; property: "secondaryRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
+        NumberAnimation { target: shell; property: "mainRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
+        NumberAnimation { target: shell; property: "middleRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
+        NumberAnimation { target: shell; property: "triangleRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
+
+        SequentialAnimation {
+            PauseAnimation { duration: 416 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 17 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
+            PauseAnimation { duration: 83 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 17 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 17 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
+            PauseAnimation { duration: 132 }
+        }
+    }
+
+    ParallelAnimation {
+        id: exitAnimation
+
+        NumberAnimation {
+            target: shell
+            property: "deploymentScale"
+            to: 0.62
+            duration: 333
+            easing.type: Easing.InCubic
+        }
+
+        SequentialAnimation {
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: -0.8; duration: 67 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 0.3; duration: 66 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 3.4; duration: 34 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 7.3; duration: 33 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 13.5; duration: 33 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 23.9; duration: 34 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 42.8; duration: 33 }
+            NumberAnimation { target: shell; property: "deploymentPitch"; to: 50; duration: 33 }
+        }
+
+        SequentialAnimation {
+            NumberAnimation {
+                target: shell
+                property: "outerRingScale"
+                to: 1.1
+                duration: 167
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "outerRingScale"
+                to: 0
+                duration: 166
+                easing.type: Easing.InCubic
+            }
+        }
+
+        NumberAnimation { target: shell; property: "mainRingRotation"; to: -140; duration: 333; easing.type: Easing.InCubic }
+        NumberAnimation { target: shell; property: "middleRingRotation"; to: 45; duration: 333; easing.type: Easing.InCubic }
+        NumberAnimation { target: shell; property: "triangleRotation"; to: -15; duration: 333; easing.type: Easing.InCubic }
+
+        SequentialAnimation {
+            NumberAnimation {
+                target: shell
+                property: "secondaryRingScale"
+                to: 1.1
+                duration: 167
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "secondaryRingScale"
+                to: 0
+                duration: 166
+                easing.type: Easing.InCubic
+            }
+        }
+
+        SequentialAnimation {
+            NumberAnimation {
+                target: shell
+                property: "interfaceScale"
+                to: 1.1
+                duration: 167
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: shell
+                property: "interfaceScale"
+                to: 0
+                duration: 166
+                easing.type: Easing.InCubic
+            }
+        }
+
+        SequentialAnimation {
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 33 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 33 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 34 }
+            PauseAnimation { duration: 33 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 33 }
+            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 34 }
+            PauseAnimation { duration: 133 }
+        }
+
+        SequentialAnimation {
+            PauseAnimation { duration: 320 }
+            NumberAnimation {
+                target: shell
+                property: "deploymentOpacity"
+                to: 0
+                duration: 13
+                easing.type: Easing.Linear
+            }
+        }
+    }
+
     Timer {
         interval: 1000
         running: shell.visible
@@ -61,26 +337,70 @@ Item {
         onTriggered: shell.updateClock()
     }
 
+    MouseArea {
+        anchors.fill: parent
+    }
+
+    Item {
+        id: scene
+        anchors.fill: parent
+        transformOrigin: Item.Center
+        scale: shell.deploymentScale
+        rotation: -1
+        opacity: shell.deploymentOpacity
+        enabled: !shell.transitioning
+
+        transform: [
+            Rotation {
+                origin.x: 500
+                origin.y: 320
+                axis.x: 1
+                axis.y: 0
+                axis.z: 0
+                angle: 5 + shell.deploymentPitch + shell.pointerVertical * 6
+            },
+            Rotation {
+                origin.x: 500
+                origin.y: 320
+                axis.x: 0
+                axis.y: 1
+                axis.z: 0
+                angle: -4 - shell.pointerHorizontal * 7
+            },
+            Translate {
+                x: shell.pointerHorizontal * 4
+                y: shell.pointerVertical * 3
+            }
+        ]
+
     Image {
-        x: 150
-        y: -30
+        id: outerRing
+        x: 150 - shell.pointerHorizontal * 10
+        y: -30 - shell.pointerVertical * 7
         width: 700
         height: 700
         source: "qrc:/assets/watch/ui_out_ring.png"
         fillMode: Image.PreserveAspectFit
         opacity: 0.52
+        scale: shell.outerRingScale
+        rotation: shell.outerRingRotation
+        transformOrigin: Item.Center
         smooth: true
         mipmap: true
     }
 
     Image {
-        x: 200
-        y: 20
+        id: secondaryRing
+        x: 200 - shell.pointerHorizontal * 6
+        y: 20 - shell.pointerVertical * 4
         width: 600
         height: 600
         source: "qrc:/assets/watch/ui_out1_ring.png"
         fillMode: Image.PreserveAspectFit
         opacity: 0.20
+        scale: shell.secondaryRingScale
+        rotation: shell.secondaryRingRotation
+        transformOrigin: Item.Center
         smooth: true
         mipmap: true
     }
@@ -88,6 +408,8 @@ Item {
     Canvas {
         anchors.fill: parent
         antialiasing: true
+        scale: shell.outerRingScale
+        transformOrigin: Item.Center
 
         onPaint: {
             const context = getContext("2d")
@@ -118,12 +440,19 @@ Item {
     Item {
         id: panelPlane
         anchors.fill: parent
-        transform: Scale {
-            origin.x: 500
-            origin.y: 320
-            xScale: 0.82
-            yScale: 0.82
-        }
+        opacity: shell.contentOpacity
+        transform: [
+            Scale {
+                origin.x: 500
+                origin.y: 320
+                xScale: 0.82 * shell.interfaceScale
+                yScale: 0.82 * shell.interfaceScale
+            },
+            Translate {
+                x: shell.pointerHorizontal * 12
+                y: shell.pointerVertical * 9
+            }
+        ]
 
         Rectangle {
             x: 250
@@ -137,6 +466,7 @@ Item {
         }
 
         Image {
+            id: mainRingImage
             x: 235
             y: 55
             width: 530
@@ -144,11 +474,13 @@ Item {
             source: "qrc:/assets/watch/ui_main_loop_bg.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.92
+            rotation: shell.mainRingRotation
             smooth: true
             mipmap: true
         }
 
         Image {
+            id: middleDecoration
             x: 251
             y: 71
             width: 498
@@ -156,11 +488,13 @@ Item {
             source: "qrc:/assets/watch/deco_04.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.20
+            rotation: shell.middleRingRotation
             smooth: true
             mipmap: true
         }
 
         Image {
+            id: middleRingImage
             x: 247
             y: 67
             width: 506
@@ -168,11 +502,13 @@ Item {
             source: "qrc:/assets/watch/ui_mid_ring.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.22
+            rotation: shell.middleRingRotation
             smooth: true
             mipmap: true
         }
 
         Image {
+            id: triangleDecoration
             x: 428
             y: 55
             width: 143
@@ -180,6 +516,7 @@ Item {
             source: "qrc:/assets/watch/ui_triangle_fx.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.38
+            rotation: shell.triangleRotation
             smooth: true
             mipmap: true
         }
@@ -606,6 +943,8 @@ Item {
         font.letterSpacing: 0.5
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+    }
+
     }
 
     Component.onCompleted: updateClock()

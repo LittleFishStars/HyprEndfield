@@ -5,6 +5,8 @@ import org.kde.layershell 1.0 as LayerShell
 Window {
     id: root
 
+    property real backdropOpacity: 0
+
     width: 0
     height: 0
     visible: false
@@ -43,8 +45,10 @@ Window {
     }
 
     Rectangle {
+        id: backdrop
         anchors.fill: parent
         color: "#d91b1c1e"
+        opacity: root.backdropOpacity
 
         MouseArea {
             anchors.fill: parent
@@ -55,18 +59,57 @@ Window {
     WatchShell {
         id: watchShell
         anchors.centerIn: parent
-        scale: Math.min(root.width / width, root.height / height)
-        opacity: root.visible ? 1 : 0
+        anchors.verticalCenterOffset: -30 * scale
+        scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.5))
+    }
 
-        Behavior on opacity {
-            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-        }
+    NumberAnimation {
+        id: backdropEntrance
+        target: root
+        property: "backdropOpacity"
+        to: 1
+        duration: 133
+        easing.type: Easing.InOutQuad
+    }
 
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.AllButtons
-            propagateComposedEvents: true
-            onPressed: mouse => mouse.accepted = false
+    SequentialAnimation {
+        id: backdropExit
+
+        NumberAnimation {
+            target: root
+            property: "backdropOpacity"
+            to: 0
+            duration: 133
+            easing.type: Easing.Linear
         }
     }
+
+    Timer {
+        id: concealTimer
+        interval: 350
+        repeat: false
+        onTriggered: appController.completeHide()
+    }
+
+    Connections {
+        target: appController
+
+        function onHudOpenChanged() {
+            if (appController.hudOpen) {
+                concealTimer.stop()
+                backdropExit.stop()
+                backdropEntrance.restart()
+                watchShell.animateEntrance()
+                return
+            }
+
+            if (appController.hudVisible) {
+                backdropEntrance.stop()
+                backdropExit.restart()
+                watchShell.animateExit()
+                concealTimer.restart()
+            }
+        }
+    }
+
 }

@@ -47,6 +47,11 @@ bool ApplicationController::hudVisible() const
     return m_hudVisible;
 }
 
+bool ApplicationController::hudOpen() const
+{
+    return m_hudOpen;
+}
+
 void ApplicationController::setWindow(QQuickWindow *window)
 {
     m_window = window;
@@ -84,30 +89,41 @@ void ApplicationController::showHud()
         m_window->raise();
         m_window->requestActivate();
     }
+    setHudOpen(true);
     activateHyprlandSubmap();
 }
 
 void ApplicationController::hideHud()
 {
     resetHyprlandSubmap();
-    setHudVisible(false);
-    if (m_window) {
-        m_window->hide();
-    }
+    setHudOpen(false);
 }
 
 void ApplicationController::toggleHud()
 {
-    if (m_hudVisible) {
+    if (m_hudOpen) {
         hideHud();
     } else {
         showHud();
     }
 }
 
+void ApplicationController::completeHide()
+{
+    if (m_hudOpen) {
+        return;
+    }
+
+    setHudVisible(false);
+    if (m_window) {
+        m_window->hide();
+    }
+}
+
 void ApplicationController::quitApplication()
 {
     resetHyprlandSubmap();
+    setHudOpen(false);
     QCoreApplication::quit();
 }
 
@@ -140,6 +156,16 @@ void ApplicationController::setHudVisible(bool visible)
 
     m_hudVisible = visible;
     emit hudVisibleChanged();
+}
+
+void ApplicationController::setHudOpen(bool open)
+{
+    if (m_hudOpen == open) {
+        return;
+    }
+
+    m_hudOpen = open;
+    emit hudOpenChanged();
 }
 
 void ApplicationController::activateHyprlandSubmap()
