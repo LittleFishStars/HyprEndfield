@@ -16,6 +16,8 @@ qt_add_executable(hyprendfield
     src/main.cpp
     src/applicationcontroller.cpp
     src/applicationcontroller.hpp
+    src/watchanimationcontroller.cpp
+    src/watchanimationcontroller.hpp
 )
 
 qt_add_qml_module(hyprendfield
@@ -41,6 +43,10 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/watch/ui_triangle_fx.png
         assets/watch/deco_04.png
         assets/watch/endfield_industries.png
+        assets/watch/clips.json
+        assets/watch/watch-blur.json
+        assets/watch/runtime-root-camera.json
+        assets/watch/scene.json
         assets/watch/SOURCES.json
         assets/icons/notes.png
         assets/icons/file-shelf.png

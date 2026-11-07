@@ -1,4 +1,5 @@
 #include "applicationcontroller.hpp"
+#include "watchanimationcontroller.hpp"
 
 #include <QGuiApplication>
 #include <QLocalSocket>
@@ -84,6 +85,7 @@ int main(int argc, char *argv[])
     }
 
     ApplicationController controller;
+    WatchAnimationController watchAnimation;
     if (!controller.listen(serverName)) {
         qCritical("Unable to create the HyprEndfield control socket");
         return 1;
@@ -91,6 +93,7 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("appController"), &controller);
+    engine.rootContext()->setContextProperty(QStringLiteral("sourceWatchAnimation"), &watchAnimation);
     engine.loadFromModule(QStringLiteral("HyprEndfield"), QStringLiteral("Main"));
 
     if (engine.rootObjects().isEmpty()) {

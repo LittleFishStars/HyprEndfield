@@ -11,21 +11,30 @@ Item {
     readonly property real maximumRightScrollOffset: 196
     property string clockText: "00:00:00"
     property string dateText: ""
-    property real deploymentScale: 0.46
-    property real deploymentPitch: 35
-    property real deploymentOpacity: 0
-    property real contentOpacity: 0
-    property real outerRingScale: 0
-    property real secondaryRingScale: 0.5
-    property real interfaceScale: 0
-    property real outerRingRotation: -8
-    property real secondaryRingRotation: -10
-    property real mainRingRotation: -35
-    property real middleRingRotation: 80
-    property real triangleRotation: -8
-    property real pointerHorizontal: 0
-    property real pointerVertical: 0
-    readonly property bool transitioning: entranceAnimation.running || exitAnimation.running
+    property int animationPhase: 0
+    property real animationTime: sourceWatchAnimation.openingDuration
+    property quaternion gyroStart: sourceWatchAnimation.neutralGyro
+    property quaternion gyroEnd: sourceWatchAnimation.neutralGyro
+    property real gyroProgress: 1
+    readonly property quaternion gyroRotation: sourceWatchAnimation.interpolateRotation(
+                                                   gyroStart, gyroEnd, gyroProgress)
+    readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, animationTime)
+    readonly property quaternion sceneRotation: sourceWatchAnimation.combinedRotation(
+                                                    animationPhase, animationTime,
+                                                    gyroRotation)
+    readonly property real sceneVectorLength: Math.sqrt(sceneRotation.x * sceneRotation.x
+                                                        + sceneRotation.y * sceneRotation.y
+                                                        + sceneRotation.z * sceneRotation.z)
+    readonly property real sceneAxisX: sceneVectorLength > 0.000001
+                                       ? sceneRotation.x / sceneVectorLength : 0
+    readonly property real sceneAxisY: sceneVectorLength > 0.000001
+                                       ? sceneRotation.y / sceneVectorLength : 0
+    readonly property real sceneAxisZ: sceneVectorLength > 0.000001
+                                       ? sceneRotation.z / sceneVectorLength : 1
+    readonly property real sceneAngle: 2 * Math.atan2(sceneVectorLength,
+                                                      sceneRotation.scalar) * 180 / Math.PI
+    readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
+    readonly property bool transitioning: sourceClip.running
 
     readonly property var leftButtons: [
         { key: "system", label: "系统", x: 54, y: 147, slant: 9, rotation: -0.859 },
@@ -68,265 +77,58 @@ Item {
                                                   rightScrollOffset + direction * 90))
     }
 
+    function frameValue(name, fallbackValue) {
+        const value = animationFrame[name]
+        return value === undefined ? fallbackValue : value
+    }
+
+    function listValue(name, index, fallbackValue) {
+        const values = animationFrame[name]
+        return values === undefined || index >= values.length ? fallbackValue : values[index]
+    }
+
     function animateEntrance() {
-        exitAnimation.stop()
-        deploymentScale = 0.46
-        deploymentPitch = 35
-        deploymentOpacity = 0
-        contentOpacity = 0
-        outerRingScale = 0
-        secondaryRingScale = 0.5
-        interfaceScale = 0
-        outerRingRotation = -8
-        secondaryRingRotation = -10
-        mainRingRotation = -35
-        middleRingRotation = 80
-        triangleRotation = -8
-        entranceAnimation.restart()
+        sourceClip.stop()
+        animationPhase = 1
+        animationTime = 0
+        sourceClip.from = 0
+        sourceClip.to = sourceWatchAnimation.openingDuration
+        sourceClip.duration = Math.round(sourceWatchAnimation.openingDuration * 1000)
+        sourceClip.restart()
     }
 
     function animateExit() {
-        entranceAnimation.stop()
-        exitAnimation.restart()
+        sourceClip.stop()
+        animationPhase = 2
+        animationTime = 0
+        sourceClip.from = 0
+        sourceClip.to = sourceWatchAnimation.closingDuration
+        sourceClip.duration = Math.round(sourceWatchAnimation.closingDuration * 1000)
+        sourceClip.restart()
     }
 
-    Behavior on pointerHorizontal {
-        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+    function retargetPointer(normalizedX, normalizedY) {
+        gyroStart = gyroRotation
+        gyroEnd = sourceWatchAnimation.gyroTarget(normalizedX, normalizedY)
+        gyroProgress = 0
+        gyroMotion.restart()
     }
 
-    Behavior on pointerVertical {
-        NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+    NumberAnimation {
+        id: gyroMotion
+        target: shell
+        property: "gyroProgress"
+        from: 0
+        to: 1
+        duration: 500
+        easing.type: Easing.OutQuad
     }
 
-    HoverHandler {
-        id: parallaxPointer
-
-        onPointChanged: {
-            shell.pointerHorizontal = Math.max(-1, Math.min(1, (point.position.x - 500) / 320))
-            shell.pointerVertical = Math.max(-1, Math.min(1, (point.position.y - 320) / 240))
-        }
-
-        onHoveredChanged: {
-            if (!hovered) {
-                shell.pointerHorizontal = 0
-                shell.pointerVertical = 0
-            }
-        }
-    }
-
-    ParallelAnimation {
-        id: entranceAnimation
-
-        NumberAnimation {
-            target: shell
-            property: "deploymentOpacity"
-            to: 1
-            duration: 30
-            easing.type: Easing.Linear
-        }
-
-        NumberAnimation {
-            target: shell
-            property: "deploymentScale"
-            to: 1
-            duration: 750
-            easing.type: Easing.OutCubic
-        }
-
-        SequentialAnimation {
-            PauseAnimation { duration: 250 }
-            NumberAnimation {
-                target: shell
-                property: "deploymentPitch"
-                to: 34.9
-                duration: 50
-                easing.type: Easing.Linear
-            }
-            NumberAnimation {
-                target: shell
-                property: "deploymentPitch"
-                to: 31.5
-                duration: 100
-                easing.type: Easing.InCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "deploymentPitch"
-                to: 17.1
-                duration: 67
-                easing.type: Easing.InOutCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "deploymentPitch"
-                to: 4.7
-                duration: 33
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "deploymentPitch"
-                to: -0.94
-                duration: 150
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "deploymentPitch"
-                to: 0
-                duration: 100
-                easing.type: Easing.InOutCubic
-            }
-        }
-
-        SequentialAnimation {
-            PauseAnimation { duration: 283 }
-            NumberAnimation {
-                target: shell
-                property: "outerRingScale"
-                to: 1
-                duration: 417
-                easing.type: Easing.OutCubic
-            }
-            PauseAnimation { duration: 50 }
-        }
-
-        SequentialAnimation {
-            PauseAnimation { duration: 200 }
-            NumberAnimation {
-                target: shell
-                property: "secondaryRingScale"
-                to: 1
-                duration: 550
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        NumberAnimation {
-            target: shell
-            property: "interfaceScale"
-            to: 1
-            duration: 667
-            easing.type: Easing.OutCubic
-        }
-
-        NumberAnimation { target: shell; property: "outerRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
-        NumberAnimation { target: shell; property: "secondaryRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
-        NumberAnimation { target: shell; property: "mainRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
-        NumberAnimation { target: shell; property: "middleRingRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
-        NumberAnimation { target: shell; property: "triangleRotation"; to: 0; duration: 750; easing.type: Easing.OutCubic }
-
-        SequentialAnimation {
-            PauseAnimation { duration: 416 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 17 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
-            PauseAnimation { duration: 83 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 17 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 17 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 17 }
-            PauseAnimation { duration: 132 }
-        }
-    }
-
-    ParallelAnimation {
-        id: exitAnimation
-
-        NumberAnimation {
-            target: shell
-            property: "deploymentScale"
-            to: 0.62
-            duration: 333
-            easing.type: Easing.InCubic
-        }
-
-        SequentialAnimation {
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: -0.8; duration: 67 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 0.3; duration: 66 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 3.4; duration: 34 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 7.3; duration: 33 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 13.5; duration: 33 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 23.9; duration: 34 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 42.8; duration: 33 }
-            NumberAnimation { target: shell; property: "deploymentPitch"; to: 50; duration: 33 }
-        }
-
-        SequentialAnimation {
-            NumberAnimation {
-                target: shell
-                property: "outerRingScale"
-                to: 1.1
-                duration: 167
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "outerRingScale"
-                to: 0
-                duration: 166
-                easing.type: Easing.InCubic
-            }
-        }
-
-        NumberAnimation { target: shell; property: "mainRingRotation"; to: -140; duration: 333; easing.type: Easing.InCubic }
-        NumberAnimation { target: shell; property: "middleRingRotation"; to: 45; duration: 333; easing.type: Easing.InCubic }
-        NumberAnimation { target: shell; property: "triangleRotation"; to: -15; duration: 333; easing.type: Easing.InCubic }
-
-        SequentialAnimation {
-            NumberAnimation {
-                target: shell
-                property: "secondaryRingScale"
-                to: 1.1
-                duration: 167
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "secondaryRingScale"
-                to: 0
-                duration: 166
-                easing.type: Easing.InCubic
-            }
-        }
-
-        SequentialAnimation {
-            NumberAnimation {
-                target: shell
-                property: "interfaceScale"
-                to: 1.1
-                duration: 167
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                target: shell
-                property: "interfaceScale"
-                to: 0
-                duration: 166
-                easing.type: Easing.InCubic
-            }
-        }
-
-        SequentialAnimation {
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 33 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 33 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 34 }
-            PauseAnimation { duration: 33 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 1; duration: 33 }
-            NumberAnimation { target: shell; property: "contentOpacity"; to: 0; duration: 34 }
-            PauseAnimation { duration: 133 }
-        }
-
-        SequentialAnimation {
-            PauseAnimation { duration: 320 }
-            NumberAnimation {
-                target: shell
-                property: "deploymentOpacity"
-                to: 0
-                duration: 13
-                easing.type: Easing.Linear
-            }
-        }
+    NumberAnimation {
+        id: sourceClip
+        target: shell
+        property: "animationTime"
+        easing.type: Easing.Linear
     }
 
     Timer {
@@ -345,45 +147,30 @@ Item {
         id: scene
         anchors.fill: parent
         transformOrigin: Item.Center
-        scale: shell.deploymentScale
-        rotation: -1
-        opacity: shell.deploymentOpacity
         enabled: !shell.transitioning
 
         transform: [
             Rotation {
                 origin.x: 500
                 origin.y: 320
-                axis.x: 1
-                axis.y: 0
-                axis.z: 0
-                angle: 5 + shell.deploymentPitch + shell.pointerVertical * 6
-            },
-            Rotation {
-                origin.x: 500
-                origin.y: 320
-                axis.x: 0
-                axis.y: 1
-                axis.z: 0
-                angle: -4 - shell.pointerHorizontal * 7
-            },
-            Translate {
-                x: shell.pointerHorizontal * 4
-                y: shell.pointerVertical * 3
+                axis.x: shell.sceneAxisX
+                axis.y: shell.sceneAxisY
+                axis.z: shell.sceneAxisZ
+                angle: shell.sceneAngle
             }
         ]
 
     Image {
         id: outerRing
-        x: 150 - shell.pointerHorizontal * 10
-        y: -30 - shell.pointerVertical * 7
+        x: 150
+        y: -30
         width: 700
         height: 700
         source: "qrc:/assets/watch/ui_out_ring.png"
         fillMode: Image.PreserveAspectFit
-        opacity: 0.52
-        scale: shell.outerRingScale
-        rotation: shell.outerRingRotation
+        opacity: shell.frameValue("outerOpacity", 1)
+        scale: shell.frameValue("outerScale", 1)
+        rotation: shell.frameValue("outerRotation", 0)
         transformOrigin: Item.Center
         smooth: true
         mipmap: true
@@ -391,15 +178,15 @@ Item {
 
     Image {
         id: secondaryRing
-        x: 200 - shell.pointerHorizontal * 6
-        y: 20 - shell.pointerVertical * 4
+        x: 200
+        y: 20
         width: 600
         height: 600
         source: "qrc:/assets/watch/ui_out1_ring.png"
         fillMode: Image.PreserveAspectFit
-        opacity: 0.20
-        scale: shell.secondaryRingScale
-        rotation: shell.secondaryRingRotation
+        opacity: shell.frameValue("secondaryOpacity", 1)
+        scale: shell.frameValue("secondaryScale", 1)
+        rotation: shell.frameValue("secondaryRotation", 0)
         transformOrigin: Item.Center
         smooth: true
         mipmap: true
@@ -408,7 +195,8 @@ Item {
     Canvas {
         anchors.fill: parent
         antialiasing: true
-        scale: shell.outerRingScale
+        scale: shell.frameValue("meshScale", 1)
+        rotation: shell.frameValue("meshRotation", 0)
         transformOrigin: Item.Center
 
         onPaint: {
@@ -440,17 +228,12 @@ Item {
     Item {
         id: panelPlane
         anchors.fill: parent
-        opacity: shell.contentOpacity
         transform: [
             Scale {
                 origin.x: 500
                 origin.y: 320
-                xScale: 0.82 * shell.interfaceScale
-                yScale: 0.82 * shell.interfaceScale
-            },
-            Translate {
-                x: shell.pointerHorizontal * 12
-                y: shell.pointerVertical * 9
+                xScale: 0.82
+                yScale: 0.82
             }
         ]
 
@@ -463,6 +246,8 @@ Item {
             color: "#151617"
             border.width: 1
             border.color: "#6bfad41f"
+            scale: shell.frameValue("mainScale", 1)
+            transformOrigin: Item.Center
         }
 
         Image {
@@ -473,8 +258,10 @@ Item {
             height: 530
             source: "qrc:/assets/watch/ui_main_loop_bg.png"
             fillMode: Image.PreserveAspectFit
-            opacity: 0.92
-            rotation: shell.mainRingRotation
+            opacity: shell.frameValue("mainOpacity", 1)
+            scale: shell.frameValue("mainScale", 1)
+            rotation: shell.frameValue("mainRotation", 0)
+            transformOrigin: Item.Center
             smooth: true
             mipmap: true
         }
@@ -488,7 +275,8 @@ Item {
             source: "qrc:/assets/watch/deco_04.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.20
-            rotation: shell.middleRingRotation
+            scale: shell.frameValue("yellowScale", 1)
+            transformOrigin: Item.Center
             smooth: true
             mipmap: true
         }
@@ -501,8 +289,10 @@ Item {
             height: 506
             source: "qrc:/assets/watch/ui_mid_ring.png"
             fillMode: Image.PreserveAspectFit
-            opacity: 0.22
-            rotation: shell.middleRingRotation
+            opacity: shell.frameValue("blueOpacity", 1)
+            scale: shell.frameValue("blueScale", 1)
+            rotation: shell.frameValue("blueRotation", 0)
+            transformOrigin: Item.Center
             smooth: true
             mipmap: true
         }
@@ -516,7 +306,9 @@ Item {
             source: "qrc:/assets/watch/ui_triangle_fx.png"
             fillMode: Image.PreserveAspectFit
             opacity: 0.38
-            rotation: shell.triangleRotation
+            scale: shell.frameValue("triangleScale", 1)
+            rotation: shell.frameValue("triangleRotation", 0)
+            transformOrigin: Item.Center
             smooth: true
             mipmap: true
         }
@@ -526,6 +318,9 @@ Item {
             y: 2
             width: 600
             height: 74
+            opacity: shell.frameValue("nativeOpacity", 1)
+            scale: shell.frameValue("logoScale", 1)
+            transformOrigin: Item.Center
 
             Text {
                 x: 0
@@ -560,6 +355,7 @@ Item {
             width: 205
             height: 78
             rotation: -1.4
+            opacity: shell.frameValue("clockOpacity", 1)
 
             Rectangle {
                 anchors.fill: parent
@@ -619,12 +415,15 @@ Item {
             scale: 0.66576
             transformOrigin: Item.TopLeft
             visible: shell.selectedModule === "system"
+            opacity: shell.frameValue("centerOpacity", 1)
+                     * shell.frameValue("nativeOpacity", 1)
         }
 
         Repeater {
             model: shell.leftButtons
 
             delegate: HudNavButton {
+                required property int index
                 required property var modelData
                 x: modelData.x
                 y: modelData.y
@@ -636,6 +435,8 @@ Item {
                 designX: modelData.x
                 restRotation: modelData.rotation
                 leftSide: true
+                opacity: shell.listValue("leftAlpha", index,
+                                         shell.frameValue("nativeOpacity", 1))
                 selected: shell.selectedModule === modelData.key
                 onTriggered: shell.selectedModule = modelData.key
             }
@@ -664,6 +465,8 @@ Item {
                     iconSource: modelData.icon || ""
                     slant: -2
                     designX: shell.rightButtonX(index)
+                    opacity: shell.listValue("rightAlpha", index,
+                                             shell.frameValue("nativeOpacity", 1))
                     selected: shell.selectedModule === modelData.key
                     onTriggered: shell.selectedModule = modelData.key
                 }
@@ -684,7 +487,8 @@ Item {
             y: 124
             width: 36
             height: 20
-            opacity: shell.rightScrollOffset > 0 ? 0.82 : 0.18
+            opacity: (shell.rightScrollOffset > 0 ? 0.82 : 0.18)
+                     * shell.frameValue("nativeOpacity", 1)
 
             Text {
                 anchors.centerIn: parent
@@ -706,7 +510,8 @@ Item {
             y: 530
             width: 36
             height: 20
-            opacity: shell.rightScrollOffset < shell.maximumRightScrollOffset ? 0.82 : 0.18
+            opacity: (shell.rightScrollOffset < shell.maximumRightScrollOffset ? 0.82 : 0.18)
+                     * shell.frameValue("nativeOpacity", 1)
 
             Text {
                 anchors.centerIn: parent
@@ -730,6 +535,7 @@ Item {
             height: 65
             label: "存储"
             glyph: "storage"
+            opacity: shell.frameValue("storageOpacity", 1)
             selected: shell.selectedModule === "storage"
             onTriggered: shell.selectedModule = "storage"
         }
@@ -742,6 +548,7 @@ Item {
             label: "活动监视器"
             glyph: "activity"
             mirrored: true
+            opacity: shell.frameValue("activityOpacity", 1)
             selected: shell.selectedModule === "activity"
             onTriggered: shell.selectedModule = "activity"
         }
@@ -756,6 +563,7 @@ Item {
             border.width: 1
             border.color: "#7d8f9292"
             visible: shell.selectedModule === ""
+            opacity: shell.frameValue("nativeOpacity", 1)
 
             Row {
                 anchors.centerIn: parent
@@ -788,6 +596,7 @@ Item {
             radius: 7
             color: "#EFEFEF"
             visible: shell.selectedModule !== ""
+            opacity: shell.frameValue("nativeOpacity", 1)
 
             Text {
                 anchors.centerIn: parent
@@ -812,6 +621,7 @@ Item {
             }
             border.width: 0.8
             border.color: "#61f5f5f5"
+            opacity: shell.frameValue("identityOpacity", 1)
 
             Rectangle {
                 x: 13
@@ -900,6 +710,7 @@ Item {
             color: closePointer.containsMouse ? "#4de83333" : "#24e83333"
             border.width: 1
             border.color: "#b8e83333"
+            opacity: shell.frameValue("closeOpacity", 1)
 
             HudGlyph {
                 anchors.centerIn: parent
@@ -926,6 +737,7 @@ Item {
             source: "qrc:/assets/watch/endfield_industries.png"
             sourceClipRect: Qt.rect(0, 142, 430, 83)
             fillMode: Image.Stretch
+            opacity: shell.frameValue("wordmarkOpacity", 1)
             smooth: true
             mipmap: true
         }
@@ -941,6 +753,7 @@ Item {
         font.family: harmonyRegular.name
         font.pixelSize: 8
         font.letterSpacing: 0.5
+        opacity: shell.frameValue("nativeOpacity", 1)
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }

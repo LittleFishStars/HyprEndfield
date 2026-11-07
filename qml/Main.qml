@@ -5,7 +5,7 @@ import org.kde.layershell 1.0 as LayerShell
 Window {
     id: root
 
-    property real backdropOpacity: 0
+    readonly property real backdropOpacity: watchShell.backdropOpacity
 
     width: 0
     height: 0
@@ -60,33 +60,28 @@ Window {
         id: watchShell
         anchors.centerIn: parent
         anchors.verticalCenterOffset: -30 * scale
-        scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.5))
+        scale: Math.max(0.1, Math.min(root.width / 1100, root.height / 740, 1.75))
     }
 
-    NumberAnimation {
-        id: backdropEntrance
-        target: root
-        property: "backdropOpacity"
-        to: 1
-        duration: 133
-        easing.type: Easing.InOutQuad
-    }
+    HoverHandler {
+        onPointChanged: {
+            const normalizedX = root.width > 0
+                    ? 2 * point.position.x / root.width - 1 : 0
+            const normalizedY = root.height > 0
+                    ? 1 - 2 * point.position.y / root.height : 0
+            watchShell.retargetPointer(normalizedX, normalizedY)
+        }
 
-    SequentialAnimation {
-        id: backdropExit
-
-        NumberAnimation {
-            target: root
-            property: "backdropOpacity"
-            to: 0
-            duration: 133
-            easing.type: Easing.Linear
+        onHoveredChanged: {
+            if (!hovered) {
+                watchShell.retargetPointer(0, 0)
+            }
         }
     }
 
     Timer {
         id: concealTimer
-        interval: 350
+        interval: Math.ceil(sourceWatchAnimation.closingDuration * 1000) + 20
         repeat: false
         onTriggered: appController.completeHide()
     }
@@ -97,15 +92,11 @@ Window {
         function onHudOpenChanged() {
             if (appController.hudOpen) {
                 concealTimer.stop()
-                backdropExit.stop()
-                backdropEntrance.restart()
                 watchShell.animateEntrance()
                 return
             }
 
             if (appController.hudVisible) {
-                backdropEntrance.stop()
-                backdropExit.restart()
                 watchShell.animateExit()
                 concealTimer.restart()
             }
