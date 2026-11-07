@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 
 Item {
     id: shell
@@ -9,7 +10,7 @@ Item {
 
     property string selectedModule: "system"
     property real rightScrollOffset: 0
-    readonly property real maximumRightScrollOffset: 196
+    readonly property real maximumRightScrollOffset: 15.5
     property string clockText: "00:00:00"
     property string dateText: ""
     property int animationPhase: 0
@@ -82,10 +83,10 @@ Item {
                                                 * Math.max(0, Math.min(2, displaySettings.perspectiveIntensity))
 
     readonly property var leftButtons: [
-        { key: "system", label: "系统", x: 54, y: 147, slant: 9, rotation: -0.859 },
-        { key: "display", label: "显示", x: 16, y: 242, slant: 5, rotation: -0.458 },
-        { key: "hotkeys", label: "快捷键", x: 22, y: 337, slant: 1, rotation: 0.229 },
-        { key: "about", label: "关于", x: 60, y: 432, slant: -8, rotation: 0.917 }
+        { key: "system", label: "系统", x: 42.61, y: 128.81 },
+        { key: "display", label: "显示", x: 11.32, y: 218.31 },
+        { key: "hotkeys", label: "快捷键", x: 7.92, y: 308.97 },
+        { key: "about", label: "关于", x: 27.89, y: 389.72 }
     ]
 
     readonly property var rightButtons: [
@@ -104,11 +105,17 @@ Item {
     ]
 
     function rightButtonX(index) {
-        const y = 174 + Math.floor(index / 2) * 90
-        const centerY = y + 37
-        const radius = 306
-        const deltaY = centerY - 320
-        return 508 + Math.sqrt(Math.max(0, radius * radius - deltaY * deltaY)) + (index % 2) * 84
+        const row = Math.floor(index / 2)
+        const angle = (22.52 - row * 15.5 + rightScrollOffset) * Math.PI / 180
+        return (960 + (492 * 0.96 + 110) * Math.cos(angle)) * (1000 / 1920)
+                + (index % 2) * 128 * (1000 / 1920)
+    }
+
+    function rightButtonY(index) {
+        const row = Math.floor(index / 2)
+        const angle = (22.52 - row * 15.5 + rightScrollOffset) * Math.PI / 180
+        return (540 - 50 - 490 * angle - 22) * (1000 / 1920)
+                + (640 - 1080 * (1000 / 1920)) / 2
     }
 
     function updateClock() {
@@ -119,7 +126,7 @@ Item {
 
     function scrollRightList(direction) {
         rightScrollOffset = Math.max(0, Math.min(maximumRightScrollOffset,
-                                                  rightScrollOffset + direction * 90))
+                                                  rightScrollOffset + direction * 15.5))
     }
 
     function frameValue(name, fallbackValue) {
@@ -303,36 +310,56 @@ Item {
         mipmap: true
     }
 
-    Canvas {
+    Item {
         anchors.fill: parent
-        antialiasing: true
         scale: shell.frameValue("meshScale", 1)
         rotation: shell.frameValue("meshRotation", 0)
         transformOrigin: Item.Center
 
-        onPaint: {
-            const context = getContext("2d")
-            context.reset()
-            context.strokeStyle = "#78c9c9c9"
-            context.lineWidth = 1
-            context.beginPath()
-            context.moveTo(44, 176)
-            context.lineTo(92, 205)
-            context.arc(500, 320, 416, Math.PI * 0.91, Math.PI * 1.10, false)
-            context.lineTo(44, 464)
-            context.lineTo(7, 419)
-            context.lineTo(7, 225)
-            context.closePath()
-            context.stroke()
-            context.beginPath()
-            context.moveTo(956, 176)
-            context.lineTo(908, 205)
-            context.arc(500, 320, 416, Math.PI * 1.90, Math.PI * 2.09, false)
-            context.lineTo(956, 464)
-            context.lineTo(993, 419)
-            context.lineTo(993, 225)
-            context.closePath()
-            context.stroke()
+        Item {
+            x: 0
+            y: (640 - 1080 * (1000 / 1920)) / 2
+            width: 1920
+            height: 1080
+            scale: 1000 / 1920
+            transformOrigin: Item.TopLeft
+
+            Shape {
+                width: 1920
+                height: 1080
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    strokeColor: "#22ffffff"
+                    strokeWidth: 2.5
+                    fillColor: "transparent"
+                    PathSvg { path: "M1711.9 184.1A811.8 811.8 0 0 1 1561.1 1109.2" }
+                }
+                ShapePath {
+                    strokeColor: "#26ffffff"
+                    strokeWidth: 3.9
+                    fillColor: "transparent"
+                    PathSvg { path: "M1470.9 -101.6A1323.8 1323.8 0 0 1 1889.6 517.4" }
+                }
+                ShapePath {
+                    strokeColor: "#20ffffff"
+                    strokeWidth: 2
+                    fillColor: "transparent"
+                    PathSvg { path: "M226.2 175.6A798.5 798.5 0 0 0 490.9 -120.7" }
+                }
+                ShapePath {
+                    strokeColor: "#1fffffff"
+                    strokeWidth: 2
+                    fillColor: "transparent"
+                    PathSvg { path: "M50 813.9A753.3 753.3 0 0 0 190.8 229" }
+                }
+                ShapePath {
+                    strokeColor: "#28ffffff"
+                    strokeWidth: 3.6
+                    fillColor: "transparent"
+                    PathSvg { path: "M1607.8 909.4L1755.7 1011.5" }
+                }
+            }
         }
     }
 
@@ -545,14 +572,13 @@ Item {
                 required property var modelData
                 x: modelData.x
                 y: modelData.y
-                width: 180
-                height: 84
+                width: 229.17
+                height: 89.58
                 label: modelData.label
                 glyph: modelData.key
-                slant: modelData.slant
                 designX: modelData.x
-                restRotation: modelData.rotation
                 leftSide: true
+                shapeIndex: index
                 opacity: shell.navigationListValue("leftAlpha", index,
                                                    shell.navigationFrameValue("nativeOpacity", 1))
                 selected: shell.selectedModule === modelData.key
@@ -562,10 +588,10 @@ Item {
 
         Item {
             id: rightViewport
-            x: 754
-            y: 150
-            width: 244
-            height: 370
+            x: 1290 * (1000 / 1920)
+            y: 200 * (1000 / 1920) + (640 - 1080 * (1000 / 1920)) / 2
+            width: 512 * (1000 / 1920)
+            height: 805 * (1000 / 1920)
             clip: true
 
             Repeater {
@@ -575,14 +601,14 @@ Item {
                     required property int index
                     required property var modelData
                     x: shell.rightButtonX(index) - rightViewport.x
-                    y: 174 + Math.floor(index / 2) * 90 - shell.rightScrollOffset - rightViewport.y
-                    width: 78
-                    height: 74
+                    y: shell.rightButtonY(index) - rightViewport.y
+                    width: 107 * (1000 / 1920)
+                    height: 104 * (1000 / 1920)
                     label: modelData.label
                     glyph: modelData.glyph || ""
                     iconSource: modelData.icon || ""
-                    slant: -2
                     designX: shell.rightButtonX(index)
+                    restRotation: -3
                     opacity: shell.navigationListValue("rightAlpha", index,
                                                        shell.navigationFrameValue("nativeOpacity", 1))
                     selected: shell.selectedModule === modelData.key

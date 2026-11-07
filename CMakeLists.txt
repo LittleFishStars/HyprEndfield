@@ -60,6 +60,7 @@ qt_add_resources(hyprendfield "hyprendfield_assets"
         assets/icons/map.png
         assets/icons/event-log.png
         assets/icons/SOURCES.json
+        assets/menu/card-contours.json
         assets/fonts/HarmonyOS_Sans_Regular.ttf
         assets/fonts/HarmonyOS_Sans_Medium.ttf
         assets/fonts/HarmonyOS_Sans_Bold.ttf

@@ -61,6 +61,7 @@ bool sendToExistingInstance(const QString &serverName, const QString &command)
 int main(int argc, char *argv[])
 {
     qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("wayland"));
+    qputenv("QML_XHR_ALLOW_FILE_READ", QByteArrayLiteral("1"));
 
     QGuiApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("HyprEndfield"));
