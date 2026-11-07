@@ -338,10 +338,24 @@ FocusScope {
                 }
 
                 Flickable {
-                    id: column; x: 1; y: 1 + paper.columnInset; width: 588; height: 349 - 2 * paper.columnInset
+                    id: column; objectName: "readerVerticalColumn"; x: 1; y: 1 + paper.columnInset; width: 588; height: 349 - 2 * paper.columnInset
                     visible: paper.verticalMode; clip: true; contentWidth: width
                     contentHeight: columnContent.height; boundsBehavior: Flickable.StopAtBounds; flickDeceleration: 2600
                     onContentYChanged: paper.inspectColumn()
+                    WheelHandler {
+                        target: null
+                        enabled: paper.verticalMode && !!readerPage.currentPage.key
+                        acceptedModifiers: Qt.ControlModifier
+                        orientation: Qt.Vertical
+                        blocking: true
+                        onWheel: event => {
+                            const delta = event.angleDelta.y || event.pixelDelta.y
+                            if (!delta) return
+                            const point = column.mapToItem(paper, event.x, event.y)
+                            readerController.zoomAt(delta > 0 ? 1.12 : 1 / 1.12, point.x - 1, point.y - 1)
+                            event.accepted = true
+                        }
+                    }
                     Column {
                         id: columnContent; width: 588
                         Repeater {
@@ -372,19 +386,6 @@ FocusScope {
                         else if (readerPage.readerState.zoom > 1) readerController.panBy(wheel.pixelDelta.x || wheel.angleDelta.x / 8, wheel.pixelDelta.y || wheel.angleDelta.y / 8)
                         else if (!paper.verticalMode && Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y) * 1.1) readerPage.turn(wheel.angleDelta.x > 0 ? 1 : -1)
                         wheel.accepted = true
-                    }
-                }
-                WheelHandler {
-                    target: null
-                    enabled: paper.verticalMode && !!readerPage.currentPage.key
-                    acceptedModifiers: Qt.ControlModifier
-                    orientation: Qt.Vertical
-                    blocking: true
-                    onWheel: event => {
-                        const delta = event.angleDelta.y || event.pixelDelta.y
-                        if (!delta) return
-                        readerController.zoomAt(delta > 0 ? 1.12 : 1 / 1.12, event.x - 1, event.y - 1)
-                        event.accepted = true
                     }
                 }
                 PinchHandler {

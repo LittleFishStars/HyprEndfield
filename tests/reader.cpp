@@ -233,7 +233,15 @@ private slots:
         visualController.setTab(QStringLiteral("reading"));
         QTRY_VERIFY_WITH_TIMEOUT(!visualController.state().value(QStringLiteral("current")).toMap().value(QStringLiteral("key")).toString().isEmpty(), 15000);
         QTest::qWait(500);
+        auto *verticalColumn = view.rootObject()->findChild<QQuickItem *>(QStringLiteral("readerVerticalColumn"));
+        QVERIFY(verticalColumn);
+        QVERIFY(verticalColumn->isVisible());
         QTest::wheelEvent(&view, QPointF(294, 295), QPoint(0, 120), QPoint(), Qt::ControlModifier);
+        QTRY_VERIFY_WITH_TIMEOUT(visualController.state().value(QStringLiteral("zoom")).toDouble() > 1, 5000);
+        visualController.resetZoom();
+        QTRY_VERIFY_WITH_TIMEOUT(verticalColumn->isVisible(), 5000);
+        QTest::wheelEvent(&view, QPointF(294, 295), QPoint(), QPoint(0, 8), Qt::ControlModifier, Qt::ScrollBegin);
+        QTest::wheelEvent(&view, QPointF(294, 295), QPoint(), QPoint(0, 48), Qt::ControlModifier, Qt::ScrollUpdate);
         QTRY_VERIFY_WITH_TIMEOUT(visualController.state().value(QStringLiteral("zoom")).toDouble() > 1, 5000);
         visualController.resetZoom();
         const QImage readingPreview = view.grabWindow();

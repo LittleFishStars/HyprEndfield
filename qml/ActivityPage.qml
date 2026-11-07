@@ -171,9 +171,6 @@ Item {
     }
     Item {
         id: table; objectName: "activityTable"; y: 155; width: 590; height: 330; visible: activityPage.tab === 1; clip: true
-        WheelHandler {
-            onWheel: event => { activityPage.scroll(-(event.pixelDelta.y || event.angleDelta.y / 3), event.pixelDelta.y === 0); event.accepted = true; }
-        }
         Repeater {
             model: 9 // Source poolSize: ceil(330 / 46) + 1.
             NowPlayingSection {
@@ -248,16 +245,55 @@ Item {
             Text { y: 134.25; width: 590; height: 11.5; horizontalAlignment: Text.AlignHCenter; text: "暂无应用读数"; color: "#8A8A8A"; font.family: harmonyRegular.name; font.pointSize: 11.5 * 0.75; font.letterSpacing: 1.38; renderType: Text.CurveRendering }
         }
         Item {
-            x: 578; width: 12; height: 330; visible: activityPage.maxAppOffset > 0
-            HoverHandler { id: strip; onHoveredChanged: if (!hovered) { activityPage.scrollActive = true; linger.restart(); } }
+            z: 1; anchors.fill: parent
+            MouseArea {
+                anchors.fill: parent
+                property real pressedY: 0
+                property real pressedOffset: 0
+                onPressed: mouse => { glide.stop(); pressedY = mouse.y; pressedOffset = activityPage.appOffset }
+                onPositionChanged: mouse => {
+                    if (pressed) activityPage.scroll(pressedOffset - (mouse.y - pressedY) - activityPage.appOffset, false)
+                }
+                onWheel: wheel => {
+                    activityPage.scroll(-(wheel.pixelDelta.y || wheel.angleDelta.y / 3), wheel.pixelDelta.y === 0)
+                    wheel.accepted = true
+                }
+            }
+        }
+        Item {
+            id: scrollStrip; objectName: "activityScrollStrip"; z: 2; x: 578; width: 12; height: 330; visible: activityPage.maxAppOffset > 0
+            readonly property real thumbHeight: Math.max(18, height * height / Math.max(1, activityPage.apps.length * 46 - 6))
+            readonly property real thumbTravel: height - thumbHeight
+            function moveThumb(y) {
+                glide.stop()
+                activityPage.appOffset = thumbTravel > 0 ? Math.max(0, Math.min(thumbTravel, y)) / thumbTravel * activityPage.maxAppOffset : 0
+                activityPage.scrollActive = true
+                linger.restart()
+            }
             Rectangle {
                 x: 8; width: 4; height: 330; color: "#222222"
-                opacity: activityPage.scrollActive || strip.hovered ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: activityPage.reduceMotion ? 0 : (activityPage.scrollActive || strip.hovered ? 150 : 300); easing.type: Easing.BezierSpline; easing.bezierCurve: activityPage.scrollActive || strip.hovered ? [0, 0, 0.58, 1, 1, 1] : [0.42, 0, 1, 1, 1, 1] } }
+                opacity: activityPage.scrollActive || scrollPointer.containsMouse || scrollPointer.pressed ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: activityPage.reduceMotion ? 0 : (activityPage.scrollActive || scrollPointer.containsMouse || scrollPointer.pressed ? 150 : 300); easing.type: Easing.BezierSpline; easing.bezierCurve: activityPage.scrollActive || scrollPointer.containsMouse || scrollPointer.pressed ? [0, 0, 0.58, 1, 1, 1] : [0.42, 0, 1, 1, 1, 1] } }
                 Rectangle {
-                    width: 4; height: Math.max(18, 330 * 330 / Math.max(1, activityPage.apps.length * 46 - 6)); color: "#FFFA00"
-                    y: activityPage.maxAppOffset > 0 ? activityPage.appOffset / activityPage.maxAppOffset * (330 - height) : 0
+                    objectName: "activityScrollThumb"; width: 4; height: scrollStrip.thumbHeight; color: "#FFFA00"
+                    y: activityPage.maxAppOffset > 0 ? activityPage.appOffset / activityPage.maxAppOffset * scrollStrip.thumbTravel : 0
                 }
+            }
+            MouseArea {
+                id: scrollPointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeVerCursor
+                property real grabY: 0
+                onContainsMouseChanged: {
+                    activityPage.scrollActive = true
+                    if (containsMouse) linger.stop(); else linger.restart()
+                }
+                onPressed: mouse => {
+                    const thumbY = activityPage.maxAppOffset > 0 ? activityPage.appOffset / activityPage.maxAppOffset * scrollStrip.thumbTravel : 0
+                    grabY = mouse.y >= thumbY && mouse.y <= thumbY + scrollStrip.thumbHeight ? mouse.y - thumbY : scrollStrip.thumbHeight / 2
+                    scrollStrip.moveThumb(mouse.y - grabY)
+                }
+                onPositionChanged: mouse => { if (pressed) scrollStrip.moveThumb(mouse.y - grabY) }
+                onReleased: linger.restart()
+                onCanceled: linger.restart()
             }
         }
     }
