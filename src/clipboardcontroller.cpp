@@ -20,6 +20,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <memory>
+#include <poll.h>
 #include <thread>
 #include <unordered_map>
 #include <unistd.h>
@@ -122,7 +123,7 @@ struct ClipboardController::Entry
     bool pinned = false;
 };
 
-struct ClipboardController::Backend
+struct ClipboardController::Backend : QObject
 {
     struct Offer {
         zwlr_data_control_offer_v1 *object = nullptr;
@@ -149,8 +150,8 @@ struct ClipboardController::Backend
         baselinePending = true;
         if (wl_display_roundtrip(display) < 0) return false;
         baselinePending = false;
-        displayNotifier = std::make_unique<QSocketNotifier>(wl_display_get_fd(display), QSocketNotifier::Read, owner);
-        QObject::connect(displayNotifier.get(), &QSocketNotifier::activated, owner, [this] { dispatch(); });
+        displayNotifier = std::make_unique<QSocketNotifier>(wl_display_get_fd(display), QSocketNotifier::Read, this);
+        QObject::connect(displayNotifier.get(), &QSocketNotifier::activated, this, [this] { dispatch(); });
         connected = true;
         return true;
     }
@@ -206,10 +207,27 @@ struct ClipboardController::Backend
 
     void dispatch()
     {
-        if (!display || wl_display_dispatch(display) < 0) {
+        // A socket notification can be stale after pending events are handled.
+        // Never enter wl_display_dispatch()'s blocking read in Qt's event loop.
+        bool failed = !display;
+        if (!failed) {
+            while (wl_display_prepare_read(display) != 0) {
+                if (wl_display_dispatch_pending(display) < 0) { failed = true; break; }
+            }
+            if (!failed) {
+                pollfd descriptor{wl_display_get_fd(display), POLLIN, 0};
+                const int result = ::poll(&descriptor, 1, 0);
+                if (result > 0 && (descriptor.revents & (POLLIN | POLLHUP | POLLERR)))
+                    failed = wl_display_read_events(display) < 0;
+                else
+                    wl_display_cancel_read(display);
+                if (!failed) failed = wl_display_dispatch_pending(display) < 0;
+            }
+        }
+        if (failed) {
             connected = false;
             displayNotifier.reset();
-            owner->setBackendReady(false, QStringLiteral("无法连接系统剪贴板"));
+            reportReady(false, QStringLiteral("无法连接系统剪贴板"));
             return;
         }
         wl_display_flush(display);
@@ -249,8 +267,8 @@ struct ClipboardController::Backend
         zwlr_data_control_offer_v1_receive(offer->object, mime.toUtf8().constData(), descriptors[1]);
         ::close(descriptors[1]);
         wl_display_flush(display);
-        readNotifier = std::make_unique<QSocketNotifier>(readDescriptor, QSocketNotifier::Read, owner);
-        QObject::connect(readNotifier.get(), &QSocketNotifier::activated, owner, [this] { drainRead(); });
+        readNotifier = std::make_unique<QSocketNotifier>(readDescriptor, QSocketNotifier::Read, this);
+        QObject::connect(readNotifier.get(), &QSocketNotifier::activated, this, [this] { drainRead(); });
         drainRead();
     }
 
@@ -269,7 +287,9 @@ struct ClipboardController::Backend
                 const QString mime = readMime;
                 const QByteArray data = readData;
                 cancelRead();
-                owner->capture(mime, data, false);
+                QMetaObject::invokeMethod(owner, [controller = owner, mime, data] {
+                    controller->capture(mime, data, false);
+                }, Qt::QueuedConnection);
                 return;
             }
             if (errno == EINTR) continue;
@@ -306,6 +326,13 @@ struct ClipboardController::Backend
         if ((*found)->object) zwlr_data_control_source_v1_destroy((*found)->object);
         (*found)->object = nullptr;
         sources.erase(found);
+    }
+
+    void reportReady(bool ready, const QString &status = {})
+    {
+        QMetaObject::invokeMethod(owner, [controller = owner, ready, status] {
+            controller->setBackendReady(ready, status);
+        }, Qt::QueuedConnection);
     }
 
     static void registryGlobal(void *data, wl_registry *registryObject, uint32_t name,
@@ -347,7 +374,7 @@ struct ClipboardController::Backend
     {
         auto *self = static_cast<Backend *>(data);
         self->connected = false;
-        self->owner->setBackendReady(false, QStringLiteral("系统剪贴板监视已终止"));
+        self->reportReady(false, QStringLiteral("系统剪贴板监视已终止"));
     }
     static void primarySelected(void *data, zwlr_data_control_device_v1 *, zwlr_data_control_offer_v1 *object)
     {
@@ -399,15 +426,27 @@ ClipboardController::ClipboardController(QObject *parent, bool automatic, int ca
         m_status.clear();
         return;
     }
-    m_backend = std::make_unique<Backend>(this);
-    if (m_backend->start()) setBackendReady(true);
-    else {
-        m_backend.reset();
-        setBackendReady(false, QStringLiteral("无法连接系统剪贴板"));
-    }
+    m_backend = new Backend(this);
+    m_backend->moveToThread(&m_backendThread);
+    connect(&m_backendThread, &QThread::started, m_backend, [backend = m_backend] {
+        const bool ready = backend->start();
+        if (!ready) backend->shutdown();
+        backend->reportReady(ready, ready ? QString() : QStringLiteral("无法连接系统剪贴板"));
+    });
+    connect(&m_backendThread, &QThread::finished, m_backend, &QObject::deleteLater);
+    m_backendThread.setObjectName(QStringLiteral("WaylandClipboard"));
+    m_backendThread.start();
 }
 
-ClipboardController::~ClipboardController() = default;
+ClipboardController::~ClipboardController()
+{
+    if (m_backend) {
+        QMetaObject::invokeMethod(m_backend, [backend = m_backend] { backend->shutdown(); },
+                                  Qt::BlockingQueuedConnection);
+        m_backendThread.quit();
+        m_backendThread.wait();
+    }
+}
 
 void ClipboardController::setActive(bool active)
 {
@@ -511,10 +550,21 @@ bool ClipboardController::capture(const QString &mime, const QByteArray &data, b
 bool ClipboardController::copyItem(const QString &id)
 {
     const Entry *entry = findEntry(id);
-    const bool success = entry && m_backend && m_backend->publish(*entry);
-    emit actionFinished(QStringLiteral("copy"), success,
-        success ? QString() : QStringLiteral("无法写入系统剪贴板"));
-    return success;
+    if (!entry || !m_backend || !m_ready) {
+        emit actionFinished(QStringLiteral("copy"), false, QStringLiteral("无法写入系统剪贴板"));
+        return false;
+    }
+    // Qt's own clipboard consumer may synchronously wait for this source.
+    // The source must keep serving requests while the GUI thread is waiting.
+    const Entry snapshot = *entry;
+    QMetaObject::invokeMethod(m_backend, [backend = m_backend, controller = this, snapshot] {
+        const bool success = backend->publish(snapshot);
+        QMetaObject::invokeMethod(controller, [controller, success] {
+            emit controller->actionFinished(QStringLiteral("copy"), success,
+                success ? QString() : QStringLiteral("无法写入系统剪贴板"));
+        }, Qt::QueuedConnection);
+    }, Qt::QueuedConnection);
+    return true;
 }
 
 bool ClipboardController::togglePin(const QString &id)

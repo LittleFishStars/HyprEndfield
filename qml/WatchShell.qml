@@ -33,14 +33,15 @@ Item {
     readonly property real closingLeadDuration: sourceWatchAnimation.contentTransitionDuration
     readonly property real closingDurationScale: 0.80
     readonly property real closingSequenceDuration: closingDurationScale * (closingLeadDuration + sourceWatchAnimation.closingDuration)
-    readonly property real sourceAnimationTime: animationPhase === 2 ? Math.max(0, animationTime) : animationTime
+    readonly property real sourceAnimationTime: sourceWatchAnimation.clipTime(animationPhase, animationTime)
     readonly property real centralClosingTime: animationPhase === 2 ? Math.max(0, Math.min(closingLeadDuration, animationTime + closingLeadDuration)) : sourceAnimationTime
     readonly property var animationFrame: sourceWatchAnimation.frame(animationPhase, sourceAnimationTime)
     readonly property var settledFrame: sourceWatchAnimation.frame(0, sourceWatchAnimation.openingDuration)
     readonly property var baseContentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, contentAnimationTime) : animationPhase === 2 ? sourceWatchAnimation.frame(animationPhase, centralClosingTime) : animationFrame
     readonly property var contentAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, contentAnimationTime + contentAdvanceDuration)) : animationFrame
     readonly property var navigationAnimationFrame: animationPhase === 1 ? sourceWatchAnimation.frame(animationPhase, Math.min(sourceWatchAnimation.openingDuration, contentAnimationTime + contentAdvanceDuration)) : animationFrame
-    readonly property real backdropOpacity: frameValue("backdropOpacity", 1)
+    // WatchBlur has a separate linear wrapper in the source project.
+    readonly property real backdropOpacity: sourceWatchAnimation.frame(animationPhase, animationTime).backdropOpacity
     readonly property bool transitioning: sourceClip.running || contentClip.running
     readonly property real contentOverlapDuration: 0.40
 

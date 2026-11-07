@@ -21,11 +21,13 @@ find_file(WLR_DATA_CONTROL_PROTOCOL wlr-data-control-unstable-v1.xml
         /usr/share/wlr-protocols/unstable
     REQUIRED)
 set(WLR_DATA_CONTROL_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/wlr-data-control-unstable-v1-client-protocol.h")
+set(WLR_DATA_CONTROL_SERVER_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/wlr-data-control-unstable-v1-server-protocol.h")
 set(WLR_DATA_CONTROL_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/wlr-data-control-unstable-v1-protocol.c")
 add_custom_command(
-    OUTPUT "${WLR_DATA_CONTROL_HEADER}" "${WLR_DATA_CONTROL_SOURCE}"
+    OUTPUT "${WLR_DATA_CONTROL_HEADER}" "${WLR_DATA_CONTROL_SOURCE}" "${WLR_DATA_CONTROL_SERVER_HEADER}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
     COMMAND "${WAYLAND_SCANNER_EXECUTABLE}" client-header "${WLR_DATA_CONTROL_PROTOCOL}" "${WLR_DATA_CONTROL_HEADER}"
+    COMMAND "${WAYLAND_SCANNER_EXECUTABLE}" server-header "${WLR_DATA_CONTROL_PROTOCOL}" "${WLR_DATA_CONTROL_SERVER_HEADER}"
     COMMAND "${WAYLAND_SCANNER_EXECUTABLE}" private-code "${WLR_DATA_CONTROL_PROTOCOL}" "${WLR_DATA_CONTROL_SOURCE}"
     DEPENDS "${WLR_DATA_CONTROL_PROTOCOL}"
     VERBATIM)
@@ -180,6 +182,7 @@ include(GNUInstallDirs)
 include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    pkg_check_modules(WAYLAND_SERVER REQUIRED IMPORTED_TARGET wayland-server)
     find_program(DBUS_RUN_SESSION_EXECUTABLE dbus-run-session REQUIRED)
     qt_add_executable(hyprendfield_player_tests tests/now_playing.cpp
         src/nowplayingcontroller.cpp src/nowplayingcontroller.hpp
@@ -235,11 +238,11 @@ if(BUILD_TESTING)
     target_compile_definitions(hyprendfield_calendar_tests PRIVATE CALENDAR_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME calendar COMMAND hyprendfield_calendar_tests)
     set_tests_properties(calendar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
-    qt_add_executable(hyprendfield_clipboard_tests tests/clipboard.cpp
+    qt_add_executable(hyprendfield_clipboard_tests tests/clipboard.cpp tests/clipboard_wayland_server.hpp
         src/clipboardcontroller.cpp src/clipboardcontroller.hpp
-        ${WLR_DATA_CONTROL_HEADER} ${WLR_DATA_CONTROL_SOURCE})
+        ${WLR_DATA_CONTROL_HEADER} ${WLR_DATA_CONTROL_SOURCE} ${WLR_DATA_CONTROL_SERVER_HEADER})
     target_include_directories(hyprendfield_clipboard_tests PRIVATE src "${CMAKE_CURRENT_BINARY_DIR}/generated")
-    target_link_libraries(hyprendfield_clipboard_tests PRIVATE Qt6::Quick Qt6::Test PkgConfig::WAYLAND_CLIENT)
+    target_link_libraries(hyprendfield_clipboard_tests PRIVATE Qt6::Quick Qt6::Test PkgConfig::WAYLAND_CLIENT PkgConfig::WAYLAND_SERVER)
     target_compile_definitions(hyprendfield_clipboard_tests PRIVATE CLIPBOARD_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME clipboard COMMAND hyprendfield_clipboard_tests)
     set_tests_properties(clipboard PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)

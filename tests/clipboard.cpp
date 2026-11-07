@@ -1,4 +1,5 @@
 #include "clipboardcontroller.hpp"
+#include "clipboard_wayland_server.hpp"
 
 #include <QBuffer>
 #include <QFontDatabase>
@@ -10,8 +11,11 @@
 #include <QQuickWindow>
 #include <QSGRendererInterface>
 #include <QSignalSpy>
+#include <QScopeGuard>
 #include <QSurfaceFormat>
 #include <QtTest>
+
+#include <poll.h>
 
 namespace {
 QByteArray testImage()
@@ -57,9 +61,51 @@ private slots:
     {
         if (!qEnvironmentVariableIsSet("HYPR_CLIPBOARD_LIVE")) QSKIP("live Wayland check is opt-in");
         ClipboardController controller;
+        QTRY_VERIFY_WITH_TIMEOUT(controller.state().value("ready").toBool(), 1000);
         const QVariantMap state = controller.state();
         QVERIFY2(state.value("ready").toBool(), qPrintable(state.value("status").toString()));
         QCOMPARE(state.value("total").toInt(), 0);
+    }
+
+    void servesCopyWhileGuiWaits()
+    {
+        ClipboardWaylandServer server;
+        QVERIFY(server.valid());
+        const auto originalDisplay = qgetenv("WAYLAND_DISPLAY");
+        const auto restoreDisplay = qScopeGuard([originalDisplay] {
+            if (originalDisplay.isNull()) qunsetenv("WAYLAND_DISPLAY");
+            else qputenv("WAYLAND_DISPLAY", originalDisplay);
+        });
+        qputenv("WAYLAND_DISPLAY", server.socketPath());
+        ClipboardController controller;
+        QTRY_VERIFY_WITH_TIMEOUT(controller.state().value("ready").toBool(), 1000);
+        QCOMPARE(controller.state().value("total").toInt(), 0);
+
+        const QByteArray synthetic("HyprEndfield isolated copy test");
+        server.offerText(synthetic);
+        QTRY_COMPARE_WITH_TIMEOUT(controller.state().value("total").toInt(), 1, 1000);
+        const auto entry = controller.state().value("items").toList().constFirst().toMap();
+        QCOMPARE(entry.value("preview").toString(), QString::fromUtf8(synthetic));
+        QSignalSpy completed(&controller, &ClipboardController::actionFinished);
+        const int descriptor = server.nextCopyDescriptor();
+        QVERIFY(descriptor >= 0);
+        QElapsedTimer elapsed;
+        elapsed.start();
+        QVERIFY(controller.copyItem(entry.value("id").toString()));
+        QVERIFY2(elapsed.elapsed() < 100, "Copy blocked the GUI call");
+
+        // Deliberately wait without processing Qt events, as a synchronous
+        // Qt clipboard consumer does. The source must still serve the bytes.
+        pollfd readable{descriptor, POLLIN, 0};
+        QCOMPARE(::poll(&readable, 1, 700), 1);
+        char bytes[256];
+        const ssize_t count = ::read(descriptor, bytes, sizeof(bytes));
+        QVERIFY(count > 0);
+        QCOMPARE(QByteArray(bytes, count), synthetic);
+        QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 1000);
+        QVERIFY(completed.constFirst()[1].toBool());
+        QTest::qWait(30);
+        QCOMPARE(controller.state().value("total").toInt(), 1);
     }
 
     void capturesWaylandOffers()

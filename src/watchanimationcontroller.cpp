@@ -645,6 +645,16 @@ QQuaternion WatchAnimationController::neutralGyro() const
     return m_data->neutralGyro.isNull() ? QQuaternion() : m_data->neutralGyro;
 }
 
+double WatchAnimationController::clipTime(int phase, double elapsed) const
+{
+    // HUDSourceWatchPlayback.clipTime / UIAnimationWrapper animEase=6.
+    // Finite clips use OutQuad; watch_loop retains its linear clock.
+    if (phase != OpeningPhase && phase != ClosingPhase) return elapsed;
+    const double length = phase == OpeningPhase ? openingDuration() : closingDuration();
+    const double progress = std::clamp(elapsed / length, 0.0, 1.0);
+    return (2.0 * progress - progress * progress) * length;
+}
+
 QVariantMap WatchAnimationController::frame(int phase, double time) const
 {
     QVariantMap frame;

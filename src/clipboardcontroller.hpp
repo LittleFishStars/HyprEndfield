@@ -3,6 +3,7 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QThread>
 #include <QVariantMap>
 
 #include <memory>
@@ -50,5 +51,6 @@ private:
     int m_capacity = 10;
     QString m_status;
     std::vector<Entry> m_entries;
-    std::unique_ptr<Backend> m_backend;
+    Backend *m_backend = nullptr;
+    QThread m_backendThread;
 };

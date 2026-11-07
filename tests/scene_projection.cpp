@@ -24,6 +24,13 @@ int main(int argc, char **argv)
     const QVector3D points[] = {{960,540,0}, {271,56,0}, {1306,58,0}, {289,850,0}, {1750,950,0}};
     const double levels[] = {-130, -112, -60, -37.7, 0, 10, 22, 26, 28, 34, 50, 64, 72, 144};
     const auto neutral = scene.neutralGyro();
+    for (int phase : {1, 2}) {
+        const double length = phase == 1 ? scene.openingDuration() : scene.closingDuration();
+        require(std::abs(scene.clipTime(phase, length / 2) - length * .75) < 1e-10,
+                "Finite clip playback omitted the original OutQuad wrapper");
+        require(scene.clipTime(phase, -1) == 0 && scene.clipTime(phase, length + 1) == length,
+                "Finite wrapper clock must clamp to the original clip endpoints");
+    }
     const auto tilted = scene.gyroTarget(1, -1, 1.25);
     const auto floor = scene.projectPlane(0, true, neutral, 0, 0, identity);
     for (double height : levels) {
@@ -73,6 +80,19 @@ int main(int argc, char **argv)
     const auto rightID = idFor("MiddleDecoNode/DecoOut/Right");
     const auto storageID = idFor("HudBgShdow/TechtreeNode/TechtreeBtn/Icon");
     const auto reportID = idFor("HudBgShdow/ReportNode/ReportBtn/Icon");
+    // The exported DecoOut rotation accelerates toward its final raw key.
+    // The source wrapper must slow the sampling clock before watch_loop starts.
+    for (const auto &id : {leftID, rightID}) {
+        const double end = scene.openingDuration();
+        const QVector3D corner(174, 232.5, 0);
+        const auto before = scene.projectSourceNode(id, 1, scene.clipTime(1, end - .01), neutral).map(corner);
+        const auto endpoint = scene.projectSourceNode(id, 1, scene.clipTime(1, end), neutral).map(corner);
+        const auto rawBefore = scene.projectSourceNode(id, 1, end - .01, neutral).map(corner);
+        require((before - endpoint).length() < (rawBefore - endpoint).length() * .08,
+                "Curved frames still accelerate abruptly at the entrance endpoint");
+        require((scene.projectSourceNode(id, 0, 0, neutral, 0).map(corner) - endpoint).length() < .003,
+                "Curved frames jump when the ambient loop begins");
+    }
     for (const auto &id : {ringID, leftID, rightID, storageID, reportID}) {
         require(!id.isEmpty(), "Missing authored surface node");
         const auto matrix = scene.projectSourceNode(id, 0, 0, scene.neutralGyro());
