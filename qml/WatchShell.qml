@@ -746,8 +746,8 @@ Item {
                 id: closePointer
                 anchors.fill: parent
                 hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: appController.hideHud()
             }
         }
 
@@ -770,7 +770,7 @@ Item {
         y: 622
         width: 450
         height: 18
-        text: "ESC / CLICK OUTSIDE TO CLOSE"
+        text: "ESC TO CLOSE"
         color: "#747879"
         font.family: harmonyRegular.name
         font.pixelSize: 8

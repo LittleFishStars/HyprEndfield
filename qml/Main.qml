@@ -77,7 +77,7 @@ Window {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: appController.hideHud()
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
         }
     }
 
