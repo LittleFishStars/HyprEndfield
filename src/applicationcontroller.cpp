@@ -3,8 +3,29 @@
 #include <QCoreApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QProcess>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QTimer>
+
+namespace
+{
+bool dispatchHyprlandSubmap(const QString &name)
+{
+    if (qEnvironmentVariableIsEmpty("HYPRLAND_INSTANCE_SIGNATURE")) {
+        return false;
+    }
+
+    const QString hyprctl = QStandardPaths::findExecutable(QStringLiteral("hyprctl"));
+    if (hyprctl.isEmpty()) {
+        return false;
+    }
+
+    return QProcess::startDetached(
+        hyprctl,
+        {QStringLiteral("dispatch"), QStringLiteral("submap"), name});
+}
+}
 
 ApplicationController::ApplicationController(QObject *parent)
     : QObject(parent)
@@ -12,6 +33,11 @@ ApplicationController::ApplicationController(QObject *parent)
 {
     connect(m_server, &QLocalServer::newConnection,
             this, &ApplicationController::acceptConnection);
+}
+
+ApplicationController::~ApplicationController()
+{
+    resetHyprlandSubmap();
 }
 
 bool ApplicationController::hudVisible() const
@@ -56,10 +82,12 @@ void ApplicationController::showHud()
         m_window->raise();
         m_window->requestActivate();
     }
+    activateHyprlandSubmap();
 }
 
 void ApplicationController::hideHud()
 {
+    resetHyprlandSubmap();
     setHudVisible(false);
     if (m_window) {
         m_window->hide();
@@ -77,6 +105,7 @@ void ApplicationController::toggleHud()
 
 void ApplicationController::quitApplication()
 {
+    resetHyprlandSubmap();
     QCoreApplication::quit();
 }
 
@@ -109,4 +138,19 @@ void ApplicationController::setHudVisible(bool visible)
 
     m_hudVisible = visible;
     emit hudVisibleChanged();
+}
+
+void ApplicationController::activateHyprlandSubmap()
+{
+    m_hyprlandSubmapActive = dispatchHyprlandSubmap(QStringLiteral("hyprendfield"));
+}
+
+void ApplicationController::resetHyprlandSubmap()
+{
+    if (!m_hyprlandSubmapActive) {
+        return;
+    }
+
+    dispatchHyprlandSubmap(QStringLiteral("reset"));
+    m_hyprlandSubmapActive = false;
 }

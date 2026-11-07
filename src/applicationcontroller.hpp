@@ -14,6 +14,7 @@ class ApplicationController final : public QObject
 
 public:
     explicit ApplicationController(QObject *parent = nullptr);
+    ~ApplicationController() override;
 
     [[nodiscard]] bool hudVisible() const;
     void setWindow(QQuickWindow *window);
@@ -33,9 +34,12 @@ private slots:
     void acceptConnection();
 
 private:
+    void activateHyprlandSubmap();
+    void resetHyprlandSubmap();
     void setHudVisible(bool visible);
 
     QPointer<QQuickWindow> m_window;
     QLocalServer *m_server = nullptr;
     bool m_hudVisible = false;
+    bool m_hyprlandSubmapActive = false;
 };
