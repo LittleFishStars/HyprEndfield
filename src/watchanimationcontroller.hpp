@@ -36,7 +36,9 @@ public:
                                       const QQuaternion &gyro, int phase, double time,
                                       const QMatrix4x4 &local) const;
     Q_INVOKABLE QMatrix4x4 projectSourceNode(const QString &id, int phase, double time,
-                                           const QQuaternion &gyro) const;
+                                           const QQuaternion &gyro, double ambientTime = -1) const;
+    Q_INVOKABLE void restartAmbientMotion();
+    void restartAmbientMotion(quint64 seed);
 
 private:
     struct Data;

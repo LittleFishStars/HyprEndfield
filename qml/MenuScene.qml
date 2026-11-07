@@ -91,6 +91,7 @@ Item {
             required property var modelData
             shell: menu.shell
             spec: modelData
+            ambientTime: menu.shell.sourceAmbientSampleTime
             z: -200
             opacity: menu.shell.ringOpacity(modelData.group === "outer" ? "outerOpacity" : "secondaryOpacity")
         }

@@ -25,6 +25,10 @@ Item {
     property int animationPhase: 0
     property real animationTime: sourceWatchAnimation.openingDuration
     property real contentAnimationTime: sourceWatchAnimation.openingDuration
+    property real sourceAmbientTime: 0
+    readonly property bool sourceAmbientEnabled: displaySettings.ambientAnimation && !displaySettings.reduceMotion && !displaySettings.lowPowerVisualMode
+    readonly property bool sourceEntranceFinished: animationPhase !== 1 || animationTime >= sourceWatchAnimation.openingDuration
+    readonly property real sourceAmbientSampleTime: sourceAmbientEnabled && sourceEntranceFinished ? sourceAmbientTime : -1
     readonly property real contentAdvanceDuration: 0.40
     readonly property real closingLeadDuration: sourceWatchAnimation.contentTransitionDuration
     readonly property real closingDurationScale: 0.80
@@ -184,6 +188,8 @@ Item {
         sourceClip.stop();
         contentClip.stop();
         animationPhase = 1;
+        sourceAmbientTime = 0;
+        sourceWatchAnimation.restartAmbientMotion();
         if (displaySettings.reduceMotion) {
             animationTime = sourceWatchAnimation.openingDuration;
             contentAnimationTime = sourceWatchAnimation.openingDuration;
@@ -232,6 +238,13 @@ Item {
         to: 1
         duration: 500
         easing.type: Easing.OutQuad
+    }
+
+    FrameAnimation {
+        // The original loop begins when the dial entrance finishes. It keeps
+        // its clock through closing and stops when the HUD is concealed.
+        running: appController.hudVisible && shell.sourceAmbientEnabled && shell.sourceEntranceFinished
+        onTriggered: shell.sourceAmbientTime += frameTime
     }
 
     NumberAnimation {

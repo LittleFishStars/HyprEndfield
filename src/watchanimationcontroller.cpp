@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QLoggingCategory>
 #include <QRectF>
+#include <QRandomGenerator>
 #include <QVector>
 #include <QtMath>
 
@@ -196,7 +197,10 @@ struct WatchAnimationController::Data
     };
 
     Clip entrance;
+    Clip ambient;
     Clip exit;
+    QVector<QPair<QString, QString>> ambientBindings;
+    QHash<QString, double> ambientRates;
     ScalarCurve blurEntrance;
     ScalarCurve blurExit;
     ScalarCurve gyroPitch;
@@ -254,7 +258,7 @@ struct WatchAnimationController::Data
         QRectF rect;
     };
 
-    ResolvedNode resolveSourceNode(const QString &id, int phase, double time) const
+    ResolvedNode resolveSourceNode(const QString &id, int phase, double time, double ambientTime = -1) const
     {
         const auto node = sourceNodes.value(id);
         if (node.isEmpty()) return {};
@@ -263,7 +267,7 @@ struct WatchAnimationController::Data
         const QString path = node.value("path").toString();
         // HUDSourceWatchAnimation.pose initializes the live WorldUIRoot panel.
         if (path == "WatchPanel_PC") return {{}, QRectF(-1200, -675, 2400, 1350)};
-        const auto parent = resolveSourceNode(node.value("parent_id").toString(), phase, time);
+        const auto parent = resolveSourceNode(node.value("parent_id").toString(), phase, time, ambientTime);
         const QString clipPath = path.mid(QStringLiteral("WatchPanel_PC/").size());
         auto position = vector(raw.value("m_LocalPosition"));
         auto scale = vector(raw.value("m_LocalScale"));
@@ -283,7 +287,19 @@ struct WatchAnimationController::Data
         }
         const auto animatedPosition = value(phase, time, clipPath, "m_PositionCurves");
         const auto animatedScale = value(phase, time, clipPath, "m_ScaleCurves");
-        const auto animatedRotation = value(phase, time, clipPath, "m_RotationCurves");
+        auto animatedRotation = value(phase, time, clipPath, "m_RotationCurves");
+        // Source playback applies entrance, then ambient, then exit. Only
+        // the original bound parent rotates; its dots/frames inherit that pose.
+        if (std::isfinite(ambientTime) && ambientTime >= 0 && ambient.duration > 0
+            && (phase != OpeningPhase || time >= entrance.duration)
+            && !(phase == ClosingPhase && curve(exit, clipPath, "m_RotationCurves"))) {
+            const auto rate = ambientRates.constFind(id);
+            if (rate != ambientRates.cend()) {
+                double wrapped = std::fmod(ambientTime * rate.value(), ambient.duration);
+                if (wrapped < 0) wrapped += ambient.duration;
+                animatedRotation = sampled(curve(ambient, clipPath, "m_RotationCurves"), wrapped);
+            }
+        }
         if (animatedPosition.size() == 3) position = QVector3D(animatedPosition[0], animatedPosition[1], animatedPosition[2]);
         if (animatedScale.size() == 3) scale = QVector3D(animatedScale[0], animatedScale[1], animatedScale[2]);
         if (animatedRotation.size() == 4)
@@ -524,6 +540,14 @@ struct WatchAnimationController::Data
             const QString name = clipObject.value(QStringLiteral("name")).toString();
             if (name == QStringLiteral("watch_in01")) {
                 entrance = parseClip(clipObject);
+            } else if (name == QStringLiteral("watch_loop")) {
+                ambient = parseClip(clipObject);
+                for (const auto &value : clipObject.value("curves").toArray()) {
+                    const auto curve = value.toObject();
+                    if (curve.value("group").toString() != "m_RotationCurves") continue;
+                    for (const auto &id : curve.value("node_matches").toArray())
+                        ambientBindings.append({id.toString(), curve.value("path").toString()});
+                }
             } else if (name == QStringLiteral("watch_out")) {
                 exit = parseClip(clipObject);
             }
@@ -596,6 +620,7 @@ WatchAnimationController::WatchAnimationController(QObject *parent)
     , m_data(std::make_unique<Data>())
 {
     m_data->load();
+    restartAmbientMotion();
 }
 
 WatchAnimationController::~WatchAnimationController() = default;
@@ -759,12 +784,40 @@ QMatrix4x4 WatchAnimationController::projectPlane(double height, bool compensate
 }
 
 QMatrix4x4 WatchAnimationController::projectSourceNode(const QString &id, int phase, double time,
-                                                      const QQuaternion &gyro) const
+                                                      const QQuaternion &gyro, double ambientTime) const
 {
     if (!m_data->sourceNodes.contains(id) || m_data->sourceFieldOfView <= 0) return {};
-    const auto node = m_data->resolveSourceNode(id, phase, time);
+    const auto node = m_data->resolveSourceNode(id, phase, time, ambientTime);
     QMatrix4x4 result = m_data->sourceScreen() * m_data->sourceView * m_data->sourceWorld(gyro) * node.world;
     result.translate(node.rect.x(), node.rect.y() + node.rect.height());
     result.scale(1, -1, 1);
     return Data::planeHomography(result);
+}
+
+void WatchAnimationController::restartAmbientMotion()
+{
+    restartAmbientMotion(QRandomGenerator::global()->generate64());
+}
+
+void WatchAnimationController::restartAmbientMotion(quint64 seed)
+{
+    // HUDSourceDesktopAmbientMotion: SplitMix64, in original curve/node order.
+    // One speed/direction per opening; never randomize individual frames.
+    auto random = [&seed]() {
+        seed += Q_UINT64_C(0x9e3779b97f4a7c15);
+        quint64 value = seed;
+        value = (value ^ (value >> 30)) * Q_UINT64_C(0xbf58476d1ce4e5b9);
+        value = (value ^ (value >> 27)) * Q_UINT64_C(0x94d049bb133111eb);
+        return double((value ^ (value >> 31)) >> 11) / 9007199254740992.0;
+    };
+    m_data->ambientRates.clear();
+    for (const auto &[id, path] : m_data->ambientBindings) {
+        if (!m_data->sourceNodes.contains(id)) continue;
+        double rate = 1;
+        if (path.contains("/MiddleDecoNode/")) {
+            rate = .6 + (1.25 - .6) * random();
+            rate *= random() < .5 ? -1 : 1;
+        }
+        m_data->ambientRates.insert(id, rate);
+    }
 }

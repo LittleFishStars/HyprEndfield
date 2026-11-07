@@ -107,6 +107,71 @@ int main(int argc, char **argv)
     const auto right = scene.projectSourceNode(rightID, 0, 0, scene.neutralGyro());
     require(left.map(QVector3D(174,232.5,0)).x() < left.map(QVector3D(0,232.5,0)).x(), "Left curved frame lost its original mirror");
     require(right.map(QVector3D(174,232.5,0)).x() > right.map(QVector3D(0,232.5,0)).x(), "Right curved frame is incorrectly mirrored");
+
+    QFile clipsFile(":/assets/watch/clips.json");
+    require(clipsFile.open(QIODevice::ReadOnly), "Missing source loop fixture");
+    QJsonObject loop;
+    for (const auto &v : QJsonDocument::fromJson(clipsFile.readAll()).object().value("clips").toArray())
+        if (v.toObject().value("binding").toString() == "_animationLoop") loop = v.toObject();
+    const double loopDuration = loop.value("last_key_time").toDouble();
+    require(loopDuration > 0, "Original watch_loop was not found");
+    // Independent SplitMix64 fixture from HUDSourceDesktopAmbientMotion.
+    // Cover both directions, different parent speeds and reopening seeds.
+    const quint64 seeds[] = {Q_UINT64_C(0x454e444649454c45), Q_UINT64_C(0x454e444649454c46)};
+    const double rates[][2] = {{.9442545409639657, -1.0098051785812545},
+                              {-.9835934303242009, -1.1565648057489737}};
+    const QString parents[] = {"MiddleDecoNode/OutRingNode", "MiddleDecoNode/DecoOut"};
+    int ambientSamples = 0;
+    for (int seed = 0; seed < 2; ++seed) {
+        scene.restartAmbientMotion(seeds[seed]);
+        for (int channel = 0; channel < 2; ++channel) {
+            const auto id = idFor(parents[channel]);
+            const auto rest = scene.projectSourceNode(id, 0, 0, neutral);
+            const double rate = rates[seed][channel];
+            QJsonArray keys;
+            for (const auto &v : loop.value("curves").toArray())
+                if (v.toObject().value("path").toString() == prefix.mid(14) + parents[channel])
+                    keys = v.toObject().value("raw").toObject().value("curve").toObject().value("m_Curve").toArray();
+            require(keys.size() == 821, "Missing exact source decorative rotation keys");
+            const QVector3D point(600, 30, 0);
+            for (const auto &v : keys) {
+                const auto key = v.toObject();
+                const double t = key.value("time").toDouble();
+                const double elapsed = rate > 0 ? t / rate : (loopDuration - t) / -rate;
+                const auto q = key.value("value").toObject();
+                QMatrix4x4 spin;
+                spin.rotate(QQuaternion(float(q.value("w").toDouble()), 0, 0, -float(q.value("z").toDouble())).normalized());
+                const auto actual = scene.projectSourceNode(id, 0, 0, neutral, elapsed);
+                require((actual.map(point) - rest.map(spin.map(point))).length() < .005,
+                        "Ambient rotation differs from original keys, speed or playback direction");
+                require((actual.map(QVector3D()) - rest.map(QVector3D())).length() < .003,
+                        "Ambient rotation changed the original parent pivot");
+                ++ambientSamples;
+            }
+            const auto moving = scene.projectSourceNode(id, 0, 0, neutral, 3);
+            const auto repeated = scene.projectSourceNode(id, 0, 0, neutral, 3 + loopDuration / std::abs(rate));
+            require((moving.map(point) - repeated.map(point)).length() < .003, "Ambient cycle failed to repeat");
+            require((moving.map(point) - rest.map(point)).length() > 10, "Decorations remained stationary");
+            require((scene.projectSourceNode(id, 1, .25, neutral, 3).map(point)
+                     - scene.projectSourceNode(id, 1, .25, neutral).map(point)).length() < .003,
+                    "Ambient motion started before the dial entrance finished");
+            require((scene.projectSourceNode(id, 2, 0, neutral, 3).map(point) - moving.map(point)).length() < .003,
+                    "Closing reset the ambient rotation");
+            const auto children = channel == 0 ? QList<QString>{idFor("MiddleDecoNode/OutRingNode/Dot")}
+                                              : QList<QString>{leftID, rightID};
+            for (const auto &child : children) {
+                const auto childRest = scene.projectSourceNode(child, 0, 0, neutral);
+                const auto childMoving = scene.projectSourceNode(child, 0, 0, neutral, 3);
+                const auto inherited = moving * rest.inverted() * childRest;
+                require((childMoving.map(points[0]) - inherited.map(points[0])).length() < .02,
+                        "A dot or curved frame does not inherit its original parent rotation");
+            }
+        }
+    }
+    require((scene.projectSourceNode(storageID, 0, 0, neutral, 4).map(points[0])
+             - scene.projectSourceNode(storageID, 0, 0, neutral).map(points[0])).length() < .003,
+            "Decorative animation moved an unrelated bottom button");
     std::cout << "Projection, depth compensation, parallax and 122 animation samples passed.\n";
     std::cout << "Original camera, outer-ring centre, mirrored frames, bottom hit mapping and 610 source animation samples passed.\n";
+    std::cout << ambientSamples << " original ambient keys, seeded speeds, reverse loops, inherited rotations and transition checks passed.\n";
 }

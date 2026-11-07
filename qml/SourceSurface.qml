@@ -7,12 +7,13 @@ Item {
     required property var shell
     required property var spec
     property bool drawImage: true
+    property real ambientTime: -1
     width: spec.width
     height: spec.height
     transform: Matrix4x4 {
         matrix: sourceWatchAnimation.projectSourceNode(surface.spec.id,
                     surface.shell.animationPhase, surface.shell.sourceAnimationTime,
-                    surface.shell.sourceGyro)
+                    surface.shell.sourceGyro, surface.ambientTime)
     }
     Image {
         id: artwork
