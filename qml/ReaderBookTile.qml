@@ -55,14 +55,16 @@ Item {
             PathSvg { path: { const w = tile.width + 8, h = tile.height + 8; return "M0 0h9v2H0zM0 0h2v" + h + "H0zM0 " + (h - 2) + "h9v2H0zM" + (w - 9) + " 0h9v2h-9zM" + (w - 2) + " 0h2v" + h + "h-2zM" + (w - 9) + " " + (h - 2) + "h9v2h-9z" } }
         }
     }
+    // The higher more-button area consumes its click without opening the book.
+    // Leave drag stealing enabled so the surrounding GridView can still scroll.
+    MouseArea { anchors.fill: parent; onClicked: tile.opened() }
     Rectangle {
         id: more; x: tile.width - 26; y: 8; width: 22; height: 22; radius: 11
         color: moreHover.hovered ? "#F2141414" : "#CC141414"; scale: moreHover.hovered ? 1.08 : 1
         Text { anchors.horizontalCenter: parent.horizontalCenter; y: 2; text: "⋯"; color: Appearance.tone("#FFFFFF"); font.family: harmonyBold.name; font.pixelSize: 12; font.weight: Font.Black; renderType: Text.CurveRendering }
         HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: tile.moreRequested(more.x + more.width / 2, more.y + more.height) }
+        MouseArea { anchors.fill: parent; onClicked: tile.moreRequested(more.x + more.width / 2, more.y + more.height) }
         Behavior on scale { NumberAnimation { duration: tile.reduceMotion ? 0 : 120 } }
     }
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-    TapHandler { acceptedButtons: Qt.LeftButton; onTapped: tile.opened() }
 }
