@@ -87,7 +87,7 @@ SettingsController::SettingsController(QObject *parent, QString preferences, QSt
         {"customAccent", "#FAD41F"}, {"customLogo", ""}, {"applicationIcon", "endfield"},
         {"ambientAnimation", true}, {"reduceMotion", false}, {"lowPowerVisualMode", false},
         {"recordingMode", false}, {"dailyBootLog", true}, {"facilityAlerts", true},
-        {"languageIndex", 0}, {"launchAtLogin", false}, {"closeOnFocusLost", false}, {"displayChoice", "pointer"},
+        {"languageIndex", 0}, {"launchAtLogin", false}, {"closeOnFocusLost", false}, {"displayChoice", "pointer"}, {"soundVolume", 50},
         {"moduleOrder", defaultModules()}, {"hiddenModules", QStringList{}},
         {"batteryMethod", 0}, {"batteryDuration", 10.0}, {"batteryPlacement", 0}, {"batteryScale", 1.0},
         {"batteryX", .5}, {"batteryY", .12}, {"batteryMetric", 0}};
@@ -122,7 +122,7 @@ SettingsController::SettingsController(QObject *parent, QString preferences, QSt
 }
 
 QString SettingsController::storageKey(const QString &key) const {
-    static const QStringList system{"languageIndex", "launchAtLogin", "closeOnFocusLost", "displayChoice", "moduleOrder", "hiddenModules"};
+    static const QStringList system{"languageIndex", "launchAtLogin", "closeOnFocusLost", "displayChoice", "moduleOrder", "hiddenModules", "soundVolume"};
     return (system.contains(key) ? "system/" : "display/") + key;
 }
 QVariant SettingsController::normalized(const QString &key, const QVariant &input) const {
@@ -131,7 +131,7 @@ QVariant SettingsController::normalized(const QString &key, const QVariant &inpu
         {"uiScale", {.2, 2}}, {"hudOffsetX", {-.5, .5}}, {"hudOffsetY", {-.5, .5}},
         {"parallaxIntensity", {0, 2}}, {"perspectiveIntensity", {0, 2}}, {"backgroundBrightness", {0, 1}}, {"blurAmount", {0, 1}},
         {"themeIndex", {0, 2}}, {"clockStyleIndex", {0, 4}}, {"centerLogoIndex", {0, 4}}, {"accentIndex", {0, 5}},
-        {"languageIndex", {0, 5}}, {"batteryMethod", {0, 2}}, {"batteryDuration", {1, 60}}, {"batteryPlacement", {0, 1}},
+        {"languageIndex", {0, 5}}, {"soundVolume", {0, 100}}, {"batteryMethod", {0, 2}}, {"batteryDuration", {1, 60}}, {"batteryPlacement", {0, 1}},
         {"batteryScale", {.65, 1.6}}, {"batteryX", {0, 1}}, {"batteryY", {0, 1}}, {"batteryMetric", {0, 5}}};
     if (ranges.contains(key)) {
         bool ok = false; double v = input.toDouble(&ok);

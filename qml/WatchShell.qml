@@ -7,6 +7,7 @@ Item {
     property var projectionWorkspace
 
     required property var displaySettings
+    required property var soundEffects
     width: 1000
     height: 640
 

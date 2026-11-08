@@ -220,6 +220,7 @@ qt_add_qml_module(hyprendfield
         qml/ReaderPageSlider.qml
         qml/HudSettingsRow.qml
         qml/HudSlider.qml
+        qml/HudSounds.qml
         qml/HudGlyph.qml
         qml/MenuArt.qml
         qml/MenuPlane.qml
@@ -242,6 +243,14 @@ if(NOT HYPR_BUILD_ID)
 endif()
 target_compile_definitions(hyprendfield PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="${HYPR_BUILD_ID}")
 file(GLOB_RECURSE SETTINGS_ASSETS CONFIGURE_DEPENDS "assets/settings/*")
+# Predecoded PCM keeps short feedback sounds ready without decoding on every input.
+# Originals remain in assets/audio; encode derivatives with ffmpeg -i <mp3> -map_metadata -1 -c:a pcm_s16le <wav>.
+set(HUD_SOUND_ASSETS
+    assets/audio/HyprField_Open.wav
+    assets/audio/HyprField_Close.wav
+    assets/audio/HyprField_Select.wav
+    assets/audio/HyprField_Click.wav)
+qt_add_resources(hyprendfield "hud_sound_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${HUD_SOUND_ASSETS})
 file(GLOB_RECURSE MEDIA_ASSETS CONFIGURE_DEPENDS "assets/media-assembly/*")
 file(GLOB_RECURSE ORBIPOM_ASSETS CONFIGURE_DEPENDS "assets/orbipom/*")
 file(GLOB_RECURSE SHORTCUT_ASSETS CONFIGURE_DEPENDS "assets/app-shortcut/*")
@@ -347,10 +356,10 @@ if(BUILD_TESTING)
         src/settingscontroller.cpp src/settingscontroller.hpp src/centerlogo.cpp src/centerlogo.hpp
         src/facilitycontroller.cpp src/facilitycontroller.hpp src/applicationcontroller.cpp src/applicationcontroller.hpp)
     target_include_directories(hyprendfield_settings_tests PRIVATE src)
-    target_link_libraries(hyprendfield_settings_tests PRIVATE Qt6::Quick Qt6::Test Qt6::Network Qt6::Concurrent LayerShellQt::Interface)
+    target_link_libraries(hyprendfield_settings_tests PRIVATE Qt6::Quick Qt6::Test Qt6::Network Qt6::Concurrent Qt6::Multimedia LayerShellQt::Interface)
     target_compile_definitions(hyprendfield_settings_tests PRIVATE HYPR_VERSION="${PROJECT_VERSION}" HYPR_BUILD_ID="test"
         SETTINGS_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml" SETTINGS_PREVIEW_DIR="${CMAKE_CURRENT_BINARY_DIR}/settings-preview")
-    qt_add_resources(hyprendfield_settings_tests "settings_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS}
+    qt_add_resources(hyprendfield_settings_tests "settings_test_assets" PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SETTINGS_ASSETS} ${HUD_SOUND_ASSETS} ${MENU_VECTOR_ASSETS}
         assets/icons/notes.png assets/icons/file-shelf.png assets/icons/clipboard.png assets/icons/archive.png
         assets/icons/reader.png assets/icons/work-mode.png assets/icons/calendar.png assets/icons/projection.png assets/icons/media-assembly.png assets/icons/minigame.png assets/icons/event-log.png)
     add_test(NAME settings COMMAND hyprendfield_settings_tests)

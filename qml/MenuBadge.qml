@@ -8,6 +8,7 @@ Item {
     property real leanX: 0
     property real leanY: 0
     signal clicked()
+    signal hoverEntered()
     readonly property var profile: profileController.state
     width: 389
     height: 116
@@ -85,5 +86,5 @@ Item {
         color: "#80ffffff"
         renderType: Text.CurveRendering
     }
-    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: badge.clicked() }
+    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onEntered: badge.hoverEntered(); onClicked: badge.clicked() }
 }

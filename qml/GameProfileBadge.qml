@@ -13,6 +13,7 @@ Item {
     property real highlight: pointer.pressed ? 0.019607843831181526 : hovered ? 1 : 0
     Behavior on highlight { NumberAnimation { duration: badge.shell.displaySettings && badge.shell.displaySettings.reduceMotion ? 0 : 100; easing.type: Easing.Linear } }
     signal clicked()
+    signal hoverEntered()
     width:1920; height:1080
     function caption(binding) {
         switch (binding) {
@@ -55,6 +56,6 @@ Item {
     }
     SourceSurface {
         shell:badge.shell; spec:Source.data.root; drawImage:false
-        MouseArea { id:pointer; anchors.fill:parent; hoverEnabled:true; cursorShape:Qt.PointingHandCursor; onClicked:badge.clicked() }
+        MouseArea { id:pointer; anchors.fill:parent; hoverEnabled:true; cursorShape:Qt.PointingHandCursor; onEntered:badge.hoverEntered(); onClicked:badge.clicked() }
     }
 }

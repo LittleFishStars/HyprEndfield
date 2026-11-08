@@ -239,10 +239,12 @@ Item {
                 cardIndex: index
                 label: modelData.label
                 glyph: modelData.key
+                selected: menu.shell.selectedModule === modelData.key
                 leanX: menu.leanX
                 leanY: menu.leanY
                 opacity: menu.shell.navigationListValue("leftAlpha", index, 1)
-                onTriggered: menu.shell.selectedModule = modelData.key
+                onHoverEntered: menu.shell.soundEffects.playHover()
+                onTriggered: { menu.shell.soundEffects.playClick(); menu.shell.selectedModule = modelData.key }
             }
         }
     }
@@ -287,13 +289,15 @@ Item {
                             readonly property int slot: row.index * 2 + index
                             x: index * 128
                             entry: menu.shell.rightButtons[slot]
+                            selected: menu.shell.selectedModule === entry.key
                             secondColumn: index === 1
                             rowX: row.x
                             rowY: row.y
                             leanX: menu.leanX
                             leanY: menu.leanY
                             opacity: menu.shell.navigationListValue("rightAlpha", slot, 1)
-                            onTriggered: { if (entry.shortcutId) appShortcutsController.requestOpen(entry.shortcutId); else menu.shell.selectedModule = entry.key }
+                            onHoverEntered: menu.shell.soundEffects.playHover()
+                            onTriggered: { menu.shell.soundEffects.playClick(); if (entry.shortcutId) appShortcutsController.requestOpen(entry.shortcutId); else menu.shell.selectedModule = entry.key }
                             DropArea {
                                 anchors.fill: parent
                                 enabled: parent.entry.key === "fileShelf"
@@ -366,7 +370,8 @@ Item {
             z: 26
             label: index === 0 ? qsTr("存储") : qsTr("活动监视器")
             opacity: menu.shell.remainingContentFrameValue(index === 0 ? "storageOpacity" : "activityOpacity", 1)
-            onTriggered: menu.shell.selectedModule = index === 0 ? "storage" : "activity"
+            onHoverEntered: menu.shell.soundEffects.playHover()
+            onTriggered: { menu.shell.soundEffects.playClick(); menu.shell.selectedModule = index === 0 ? "storage" : "activity" }
         }
     }
     MenuPlane {
@@ -399,14 +404,16 @@ Item {
             y: 850
             leanX: menu.leanX
             leanY: menu.leanY
-            onClicked: menu.shell.selectedModule = "profile"
+            onHoverEntered: menu.shell.soundEffects.playHover()
+            onClicked: { menu.shell.soundEffects.playClick(); menu.shell.selectedModule = "profile" }
         }
     }
     GameProfileBadge {
         shell:menu.shell; z:64
         visible:typeof accountController !== "undefined" && accountController.gameCard
         opacity:menu.shell.contentFrameValue("identityOpacity",1)
-        onClicked:menu.shell.selectedModule="profile"
+        onHoverEntered:menu.shell.soundEffects.playHover()
+        onClicked:{ menu.shell.soundEffects.playClick(); menu.shell.selectedModule="profile" }
     }
     MenuPlane {
         scene:menu.shell; elevation:0; z:90

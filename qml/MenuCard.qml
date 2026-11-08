@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import "MenuGeometry.js" as Geometry
+import "Appearance.js" as Appearance
 
 Item {
     id: card
@@ -9,6 +10,10 @@ Item {
     required property string glyph
     property real leanX: 0
     property real leanY: 0
+    property bool selected: false
+    readonly property bool highlighted: selected || pointer.containsMouse
+    // HUDSourceWatchView.updateDesktopSelection darkens the accent on light plates.
+    readonly property color labelColor: highlighted ? Qt.darker(Appearance.accent("#FAD41F"), 2) : "#313131"
     readonly property var spec: Geometry.data.cards[cardIndex]
     property real hoverLift: pointer.containsMouse ? 1 : 0
     Behavior on hoverLift {
@@ -19,6 +24,7 @@ Item {
         }
     }
     signal triggered
+    signal hoverEntered
     width: 440
     height: 172
     x: spec.x
@@ -52,7 +58,7 @@ Item {
         MenuArt {
             anchors.fill: parent
             asset: "card-" + card.cardIndex + "-hover"
-            opacity: pointer.containsMouse ? 1 : 0
+            opacity: card.highlighted ? 1 : 0
             Behavior on opacity {
                 NumberAnimation {
                     duration: 200
@@ -69,13 +75,15 @@ Item {
             rotation: -2
         }
         Text {
+            objectName: "menuCardLabel"
             x: card.spec.centre[0] - 75
             y: card.spec.text.y[0] - 34
             width: 150
             height: 34
             text: card.label
-            color: "#313131"
-            font.family: harmonyMedium.name
+            color: card.labelColor
+            font.family: card.selected ? harmonyBold.name : harmonyMedium.name
+            font.weight: card.selected ? Font.Bold : Font.Medium
             font.pixelSize: card.spec.text.size
             horizontalAlignment: Text.AlignHCenter
             rotation: -2
@@ -100,6 +108,7 @@ Item {
         containmentMask: hitShape
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onEntered: card.hoverEntered()
         onClicked: card.triggered()
     }
 }

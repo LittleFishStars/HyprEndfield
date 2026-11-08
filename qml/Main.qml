@@ -47,6 +47,12 @@ Window {
 
     readonly property var displaySettings: settingsController
     BatteryAlertWindow { }
+    HudSounds {
+        id: hudSounds
+        volume: settingsController.soundVolume
+        hudOpen: appController.hudOpen
+        interactive: appController.hudOpen && !watchShell.transitioning && !fullProjection.opened
+    }
 
     Rectangle {
         id: backdrop
@@ -64,6 +70,7 @@ Window {
 
     WatchShell {
         id: watchShell
+        soundEffects: hudSounds
         projectionWorkspace: fullProjection
         visible: !fullProjection.opened
         anchors.centerIn: parent

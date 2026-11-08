@@ -21,7 +21,7 @@ Item {
     onConfirmingChanged: if (confirming) forceActiveFocus()
     onOpenMenuChanged: if (openMenu) forceActiveFocus()
     Keys.onEscapePressed: event => { if (confirming || openMenu) { confirming = false; openMenu = ""; event.accepted = true; } else event.accepted = false; }
-    SettingsHeader { title: root.section === "main" ? qsTr("系统设置") : qsTr("模块"); english: root.section === "main" ? "SYSTEM" : "MODULES"; crumbs: root.section === "main" ? "SYSTEM" : "SYSTEM / MODULES"; count: root.section === "main" ? "06" : String(root.settings.moduleOrder.length).padStart(2, "0"); back: root.section !== "main"; onBackRequested: root.section = "main" }
+    SettingsHeader { title: root.section === "main" ? qsTr("系统设置") : qsTr("模块"); english: root.section === "main" ? "SYSTEM" : "MODULES"; crumbs: root.section === "main" ? "SYSTEM" : "SYSTEM / MODULES"; count: root.section === "main" ? "07" : String(root.settings.moduleOrder.length).padStart(2, "0"); back: root.section !== "main"; onBackRequested: root.section = "main" }
     Item {
         visible: root.section === "main"; y: 81; width: 590; height: 429
         HudSettingsRow { objectName: "settingLanguage"; title: qsTr("语言"); mode: "dropdown"; value: root.languageOptions[root.settings.languageIndex]; dropdownOpened: root.openMenu === "language"; onActivated: root.openMenu = root.openMenu === "language" ? "" : "language" }
@@ -29,7 +29,8 @@ Item {
         HudSettingsRow { objectName: "settingFocus"; y: 112; title: qsTr("失去焦点时关闭"); mode: "toggle"; switched: root.settings.closeOnFocusLost; onToggleRequested: value => root.settings.set("closeOnFocusLost", value) }
         HudSettingsRow { objectName: "settingDisplay"; y: 168; title: qsTr("显示器"); mode: "dropdown"; value: root.selectedDisplay >= 0 ? root.settings.displays[root.selectedDisplay].title : "—"; dropdownOpened: root.openMenu === "screen"; onActivated: root.openMenu = root.openMenu === "screen" ? "" : "screen" }
         HudSettingsRow { objectName: "settingModules"; y: 224; title: qsTr("模块"); mode: "nav"; chipText: root.moduleCount; onActivated: root.section = "modules" }
-        HudSettingsRow { objectName: "settingRestore"; y: 280; title: qsTr("恢复默认设置"); mode: "button"; onActivated: root.confirming = true }
+        HudSettingsRow { objectName: "settingSoundVolume"; y: 280; title: qsTr("音效音量"); mode: "slider"; sliderValue: root.settings.soundVolume; onSliderMoved: (value, final) => { if (final) root.settings.set("soundVolume", value) } }
+        HudSettingsRow { objectName: "settingRestore"; y: 336; title: qsTr("恢复默认设置"); mode: "button"; onActivated: root.confirming = true }
     }
     Flickable {
         id: modules; objectName: "settingsModuleList"; visible: root.section === "modules"

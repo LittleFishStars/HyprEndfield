@@ -7,6 +7,7 @@ Item {
     required property var spec
     required property string label
     signal triggered
+    signal hoverEntered
     width: 1920
     height: 1080
     SourceSurface {
@@ -25,6 +26,8 @@ Item {
             anchors.fill: parent
             containmentMask: silhouette
             cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+            onEntered: button.hoverEntered()
             onClicked: button.triggered()
         }
     }

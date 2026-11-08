@@ -1,4 +1,5 @@
 // Linux-specific states and component messages; order: EN, ZH, ZH-TW, JA, KO.
+        {"Sound effects volume", "音效音量", "音效音量", "効果音の音量", "효과음 음량"},
         {"Custom card", "自定义名片", "自訂名片", "カスタム名刺", "사용자 지정 카드"},
         {"Game card", "游戏名片", "遊戲名片", "ゲーム名刺", "게임 카드"},
         {"Next %1", "下次回复 %1", "下次回復 %1", "次の回復 %1", "다음 회복 %1"},

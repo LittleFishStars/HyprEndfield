@@ -1,4 +1,5 @@
 import QtQuick
+import "Appearance.js" as Appearance
 
 Item {
     id: tile
@@ -8,8 +9,12 @@ Item {
     property real rowX: 0
     property real rowY: 0
     property bool secondColumn: false
+    property bool selected: false
+    readonly property bool highlighted: selected || pointer.containsMouse
+    readonly property color labelColor: highlighted ? Qt.darker(Appearance.accent("#FAD41F"), 2) : "#313131"
     property real lift: pointer.containsMouse ? 1 : 0
     signal triggered
+    signal hoverEntered
     width: 107
     height: 104
     Behavior on lift {
@@ -55,7 +60,7 @@ Item {
             anchors.fill: parent
             radius: 8
             color: "#f6f6f4"
-            opacity: tile.lift * .75
+            opacity: tile.selected ? .75 : tile.lift * .75
             antialiasing: true
         }
         Image {
@@ -85,8 +90,9 @@ Item {
             width: 103
             height: 29
             text: tile.entry.label
-            color: "#313131"
-            font.family: harmonyMedium.name
+            color: tile.labelColor
+            font.family: tile.selected ? harmonyBold.name : harmonyMedium.name
+            font.weight: tile.selected ? Font.Bold : Font.Medium
             font.pixelSize: text.length > 4 ? 17 : 21
             fontSizeMode: Text.HorizontalFit
             minimumPixelSize: 12
@@ -100,6 +106,7 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onEntered: tile.hoverEntered()
         onClicked: tile.triggered()
     }
 }
