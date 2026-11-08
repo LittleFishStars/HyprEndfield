@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QTimer>
 
 class QLocalServer;
 class QQuickWindow;
@@ -56,10 +57,13 @@ private:
     void selectScreen();
     void checkFocus();
     void recreateSurface();
+    void showAndFocusWindow();
+    void finishFocusRequest();
 
     QPointer<QQuickWindow> m_window;
     QLocalServer *m_server = nullptr;
     SettingsController *m_settings = nullptr;
+    QTimer m_focusRequestTimeout;
     bool m_receivedFocus = false;
     bool m_projectionActive = false;
     bool m_hudVisible = false;

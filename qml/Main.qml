@@ -20,7 +20,7 @@ Window {
                                | LayerShell.Window.AnchorLeft
                                | LayerShell.Window.AnchorRight
     LayerShell.Window.layer: LayerShell.Window.LayerOverlay
-    LayerShell.Window.keyboardInteractivity: LayerShell.Window.KeyboardInteractivityOnDemand
+    // ApplicationController acquires focus on opening, then restores OnDemand.
     LayerShell.Window.exclusionZone: -1
     LayerShell.Window.scope: appController.layerScope
     LayerShell.Window.wantsToBeOnActiveScreen: true

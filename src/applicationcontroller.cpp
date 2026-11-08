@@ -40,10 +40,15 @@ ApplicationController::ApplicationController(QObject *parent)
 {
     connect(m_server, &QLocalServer::newConnection,
             this, &ApplicationController::acceptConnection);
+    m_focusRequestTimeout.setSingleShot(true);
+    m_focusRequestTimeout.setInterval(1000);
+    connect(&m_focusRequestTimeout, &QTimer::timeout,
+            this, &ApplicationController::finishFocusRequest);
 }
 
 ApplicationController::~ApplicationController()
 {
+    finishFocusRequest();
     resetHyprlandSubmap();
 }
 
@@ -61,12 +66,22 @@ void ApplicationController::setWindow(QQuickWindow *window)
 {
     m_window = window;
     if (m_window) {
-        m_window->setVisible(m_hudVisible);
-        LayerShellQt::Window::get(m_window)->setCloseOnDismissed(false);
+        auto *layer = LayerShellQt::Window::get(m_window);
+        layer->setCloseOnDismissed(false);
+        layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
         connect(m_window, &QWindow::activeChanged, this, [this] {
-            if (m_window->isActive()) m_receivedFocus = true;
-            else QTimer::singleShot(250, this, &ApplicationController::checkFocus);
+            if (m_window->isActive()) {
+                m_receivedFocus = true;
+                finishFocusRequest();
+            } else {
+                QTimer::singleShot(250, this, &ApplicationController::checkFocus);
+            }
         });
+        connect(m_window, &QWindow::visibleChanged, this, [this](bool visible) {
+            if (!visible) finishFocusRequest();
+        });
+        if (m_hudVisible && m_hudOpen) showAndFocusWindow();
+        else m_window->setVisible(m_hudVisible);
     }
 }
 
@@ -79,10 +94,10 @@ void ApplicationController::setSettings(SettingsController *settings)
             return;
         }
         if (key != "displayChoice" || !m_window || !m_hudOpen) return;
-        m_receivedFocus = false; m_window->hide(); selectScreen(); m_window->show(); m_window->requestActivate();
+        m_receivedFocus = false; m_window->hide(); selectScreen(); showAndFocusWindow();
     });
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] {
-        QTimer::singleShot(0, this, [this] { if (m_hudOpen && m_window) { selectScreen(); m_window->show(); } });
+        QTimer::singleShot(0, this, [this] { if (m_hudOpen && m_window) { selectScreen(); showAndFocusWindow(); } });
     });
 }
 
@@ -103,7 +118,41 @@ void ApplicationController::recreateSurface() {
     m_receivedFocus = false; m_window->hide(); m_window->destroy();
     emit layerScopeChanged();
     LayerShellQt::Window::get(m_window)->setScope(layerScope());
-    if (visible) { m_window->show(); m_window->requestActivate(); }
+    if (visible) {
+        if (m_hudOpen && !m_fileDragActive) showAndFocusWindow();
+        else m_window->show();
+    }
+}
+
+void ApplicationController::showAndFocusWindow()
+{
+    if (!m_window) return;
+    if (!m_window->isVisible() || !m_window->isActive()) {
+        // Hyprland skips OnDemand layers while another surface constrains the
+        // pointer. Exclusive transfers focus and releases that old constraint.
+        // Drop it as soon as focus arrives so global shortcuts and dialogs work.
+        // The timeout also releases it if the compositor declines the request.
+        m_focusRequestTimeout.start();
+        LayerShellQt::Window::get(m_window)->setKeyboardInteractivity(
+            LayerShellQt::Window::KeyboardInteractivityExclusive);
+    } else {
+        // A cancelled file drag can reveal the still-mapped, still-focused HUD.
+        m_receivedFocus = true;
+    }
+    m_window->show();
+    m_window->raise();
+    m_window->requestActivate();
+    m_window->update(); // Commit keyboard mode changes even on an already mapped HUD.
+}
+
+void ApplicationController::finishFocusRequest()
+{
+    m_focusRequestTimeout.stop();
+    if (!m_window) return;
+    auto *layer = LayerShellQt::Window::get(m_window);
+    if (layer->keyboardInteractivity() != LayerShellQt::Window::KeyboardInteractivityExclusive) return;
+    layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
+    m_window->update();
 }
 
 void ApplicationController::selectScreen()
@@ -153,11 +202,7 @@ void ApplicationController::showHud()
     if (m_fileDragActive) return;
     if (!m_hudVisible) { selectScreen(); m_receivedFocus = false; }
     setHudVisible(true);
-    if (m_window) {
-        m_window->show();
-        m_window->raise();
-        m_window->requestActivate();
-    }
+    showAndFocusWindow();
     setHudOpen(true);
     activateHyprlandSubmap();
 }
@@ -165,6 +210,7 @@ void ApplicationController::showHud()
 void ApplicationController::hideHud()
 {
     if (m_settings) { m_settings->revertLayout(); m_settings->cancelBatteryPosition(); }
+    finishFocusRequest();
     resetHyprlandSubmap();
     setHudOpen(false);
 }
@@ -231,6 +277,7 @@ void ApplicationController::finishFileDrag()
 
 void ApplicationController::quitApplication()
 {
+    finishFocusRequest();
     resetHyprlandSubmap();
     setHudOpen(false);
     QCoreApplication::quit();
